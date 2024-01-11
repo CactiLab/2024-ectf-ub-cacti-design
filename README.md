@@ -13,6 +13,7 @@
 * [Official MAX78000FTHR Schematics](https://www.analog.com/media/en/technical-documentation/eval-board-schematic/max78000-fthr-schematic.pdf)
 * [Official MAX78000FTHR User Guide](https://www.analog.com/media/en/technical-documentation/user-guides/max78000-user-guide.pdf)
 * [Maxim Microcontrollers SDK (MSDK)](https://github.com/Analog-Devices-MSDK/msdk)
+* [Maxim Microcontrollers SDK (MSDK) Documentation](https://analog-devices-msdk.github.io/msdk/USERGUIDE/)
 
 ### Tools
 * [Draw.io (Diagramming)](https://drawio.com)
