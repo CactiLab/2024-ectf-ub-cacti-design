@@ -6,6 +6,7 @@
 * [Official eCTF website](https://ectfmitre.gitlab.io/ectf-website/index.html)
 * [Official eCTF Scoreboard](https://scoreboard.mitrecyberacademy.org/)
 * [Official eCTF Flag Submission Page](https://scoreboard.mitrecyberacademy.org/game)
+* [Analog Devices MAX78000FTHR Documentation](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/max78000fthr.html#eb-overview)
 
 ### Tools
 * [Draw.io (Diagramming)](https://drawio.com)
