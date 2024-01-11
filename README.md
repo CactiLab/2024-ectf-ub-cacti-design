@@ -6,7 +6,10 @@
 * [Official eCTF website](https://ectfmitre.gitlab.io/ectf-website/index.html)
 * [Official eCTF Scoreboard](https://scoreboard.mitrecyberacademy.org/)
 * [Official eCTF Flag Submission Page](https://scoreboard.mitrecyberacademy.org/game)
-* [Analog Devices MAX78000FTHR Documentation](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/max78000fthr.html#eb-overview)
+* [MAX78000FTHR Webpage](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/max78000fthr.html#eb-overview)
+* [MAX78000FTHR Datasheet](https://www.analog.com/media/en/technical-documentation/data-sheets/MAX78000FTHR.pdf)
+* [MAX78000FTHR Schematics](https://www.analog.com/media/en/technical-documentation/eval-board-schematic/max78000-fthr-schematic.pdf)
+* [MAX78000FTHR User Guide](https://www.analog.com/media/en/technical-documentation/user-guides/max78000-user-guide.pdf)
 
 ### Tools
 * [Draw.io (Diagramming)](https://drawio.com)
