@@ -33,7 +33,7 @@ allows better collaboration through the comments system.
 
 
 ## Team Members (Alphabetical)
-* Dr. Hongxin Hu (Team Leader)
+* Dr. Hongxin Hu
 * Dr. Ziming Zhao
 * Sai Bhargav M
 * Alex Eastman (Team Leader)
