@@ -15,6 +15,9 @@
 * [Maxim Microcontrollers SDK (MSDK)](https://github.com/Analog-Devices-MSDK/msdk)
 * [Maxim Microcontrollers SDK (MSDK) Documentation](https://analog-devices-msdk.github.io/msdk/USERGUIDE/)
 
+### Nix Official
+* [Nix Package Search](https://search.nixos.org/packages)
+
 ### Tools
 * [Draw.io (Diagramming)](https://drawio.com)
 
