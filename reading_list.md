@@ -5,18 +5,23 @@ competition. You do not need prior permission to contribute to this file. Please
 do not alter others' submissions.
 
 ## Articles
-
+Todo.
 
 ## Blog Posts
-
+Todo.
 
 ## Books
-
+Todo.
 
 ## Documentation / Manuals
+Todo.
 
+## Papers
+Todo.
 
 ## Videos
-
+Todo.
 
 ## Websites
+Todo.
+
