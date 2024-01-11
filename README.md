@@ -5,6 +5,7 @@
 ### MITRE Official
 * [Official eCTF website](https://ectfmitre.gitlab.io/ectf-website/index.html)
 * [Official eCTF Scoreboard](https://scoreboard.mitrecyberacademy.org/)
+* [Official eCTF Flag Submission Page](https://scoreboard.mitrecyberacademy.org/game)
 
 ### Tools
 * [Draw.io (Diagramming)](https://drawio.com)
