@@ -16,7 +16,10 @@
 * [Maxim Microcontrollers SDK (MSDK) Documentation](https://analog-devices-msdk.github.io/msdk/USERGUIDE/)
 
 ### Nix Official
+* [Nix Documentation](https://nix.dev/)
+* [Installing Nix](https://nixos.org/download#download-nix)
 * [Nix Package Search](https://search.nixos.org/packages)
+* [How Nix Works](https://nixos.org/guides/how-nix-works)
 
 ### Tools
 * [Draw.io (Diagramming)](https://drawio.com)
