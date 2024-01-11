@@ -40,6 +40,7 @@ allows better collaboration through the comments system.
 * Gaoxiang Liu (Team Leader)
 * Zheyuan Ma
 * Sagar Mohan
+* Afton Spiegel
 * Xi Tan
 
 
