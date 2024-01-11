@@ -16,6 +16,7 @@
 * [MAX78000FTHR User Guide](https://www.analog.com/media/en/technical-documentation/user-guides/max78000-user-guide.pdf)
 * [Maxim Microcontrollers SDK (MSDK)](https://github.com/Analog-Devices-MSDK/msdk)
 * [Maxim Microcontrollers SDK (MSDK) Documentation](https://analog-devices-msdk.github.io/msdk/USERGUIDE/)
+* [Custom OpenOCD Fork](https://github.com/analogdevicesinc/openocd)
 
 <br>
 
