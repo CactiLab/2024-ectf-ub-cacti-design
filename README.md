@@ -80,6 +80,7 @@ allows better collaboration through the comments system.
 ## Team Members (Alphabetical)
 * Dr. Hongxin Hu
 * Dr. Ziming Zhao
+* MD Armanuzzaman
 * Sai Bhargav M
 * Alex Eastman (Team Leader)
 * Gaoxiang Liu (Team Leader)
