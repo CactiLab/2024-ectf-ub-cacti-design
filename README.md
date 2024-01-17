@@ -3,7 +3,7 @@
 
 ## Competition links
 * [Official eCTF website](https://ectfmitre.gitlab.io/ectf-website/index.html)
-* [Official eCTF Scoreboard](https://scoreboard.mitrecyberacademy.org/)
+* [Official eCTF Scoreboard](https://sb.ectf.mitre.org/)
 * [Official eCTF Flag Submission Page](https://scoreboard.mitrecyberacademy.org/game)
 
 <br>
