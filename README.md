@@ -81,6 +81,7 @@ allows better collaboration through the comments system.
 ## Team Members (Alphabetical)
 * Dr. Hongxin Hu
 * Dr. Ziming Zhao
+* ASV Akhila
 * MD Armanuzzaman
 * Sai Bhargav M
 * Alex Eastman (Team Leader)
@@ -88,6 +89,8 @@ allows better collaboration through the comments system.
 * Gaoxiang Liu (Team Leader)
 * Zheyuan Ma
 * Sagar Mohan
+* Rumaizi Mopuri
+* Barani Rajendran
 * Afton Spiegel
 * Xi Tan
 
