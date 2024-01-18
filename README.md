@@ -1,6 +1,10 @@
 # MITRE 2024 eCTF Challenge
 <img src="https://ectfmitre.gitlab.io/ectf-website/_static/ectf_logo_eng_purple.png" alt="eCTF Flag" width="250"/>
 
+## Flag Submission Details (Remove after open-sourcing)
+Username: ub@ectf.fake
+Password: 5bgrs3rCsCbSsrV6iKq4
+
 ## Competition links
 * [Official eCTF Website](https://ectfmitre.gitlab.io/ectf-website/index.html)
 * [Official eCTF Scoreboard](https://sb.ectf.mitre.org/)
