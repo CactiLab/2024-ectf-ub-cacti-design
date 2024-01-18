@@ -5,6 +5,7 @@
 * [Official eCTF website](https://ectfmitre.gitlab.io/ectf-website/index.html)
 * [Official eCTF Scoreboard](https://sb.ectf.mitre.org/)
 * [Official eCTF Flag Submission Page](https://scoreboard.mitrecyberacademy.org/game)
+* [Official eCTF Reference Design](https://github.com/mitre-cyber-academy/2024-ectf-insecure-example)
 
 <br>
 <br>
