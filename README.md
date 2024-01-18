@@ -1,5 +1,5 @@
 # MITRE 2024 eCTF Challenge
-<img src="https://ectfmitre.gitlab.io/ectf-website/_static/ectf_logo_eng_purple.png" alt="eCTF Flag" width="250"/>
+<img src="https://ectfmitre.gitlab.io/ectf-website/_static/eCTF-RGB-color.png" alt="New MITRE eCTF Logo" width="250"/>
 
 ## Flag Submission Details (Remove after open-sourcing)
 Username: ub@ectf.fake\
