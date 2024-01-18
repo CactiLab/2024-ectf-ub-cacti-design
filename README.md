@@ -49,7 +49,7 @@ Nix is a system that can be utilized to create reproducible build systems. Nix w
 <br>
 <br>
 
-## Poetry Ptyhon Packaging and Dependency Manager
+## Poetry - Python Packaging and Dependency Manager
 * [Poetry Website](https://python-poetry.org)
 
 Poetry is a Python packaging and dependency management utility. Poetry is utilized in the 2024 eCTF to manage dependencies for the eCTF tools, utilities, and additional build infrastructure. It should be automatically installed in your Nix environment.
