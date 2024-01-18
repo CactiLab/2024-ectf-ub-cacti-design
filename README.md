@@ -2,7 +2,7 @@
 <img src="https://ectfmitre.gitlab.io/ectf-website/_static/ectf_logo_eng_purple.png" alt="eCTF Flag" width="250"/>
 
 ## Flag Submission Details (Remove after open-sourcing)
-Username: ub@ectf.fake
+Username: ub@ectf.fake\
 Password: 5bgrs3rCsCbSsrV6iKq4
 
 ## Competition links
