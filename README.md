@@ -2,10 +2,12 @@
 <img src="https://ectfmitre.gitlab.io/ectf-website/_static/ectf_logo_eng_purple.png" alt="eCTF Flag" width="250"/>
 
 ## Competition links
-* [Official eCTF website](https://ectfmitre.gitlab.io/ectf-website/index.html)
+* [Official eCTF Website](https://ectfmitre.gitlab.io/ectf-website/index.html)
 * [Official eCTF Scoreboard](https://sb.ectf.mitre.org/)
 * [Official eCTF Flag Submission Page](https://scoreboard.mitrecyberacademy.org/game)
 * [Official eCTF Reference Design](https://github.com/mitre-cyber-academy/2024-ectf-insecure-example)
+* [Official eCTF Schedule](https://ectfmitre.gitlab.io/ectf-website/2024/events/schedule.html)
+* [Workshop Meeting Link](https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZGRhZGM5OGEtYzgyNy00NDVkLWFhZDQtYWQ0M2NiN2NkNTVk%40thread.v2/0?context=%7b%22Tid%22%3a%22c620dc48-1d50-4952-8b39-df4d54d74d82%22%2c%22Oid%22%3a%226e533417-ddea-4a82-8fe9-faca9da9a7ae%22%7d)
 
 <br>
 <br>
