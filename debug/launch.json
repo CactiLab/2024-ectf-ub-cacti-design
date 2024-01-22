@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Cortex Debug",
+            "cwd": "${workspaceFolder}/application_processor",
+            "executable": "${workspaceFolder}/application_processor/build/max78000.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "openocd",
+            "device": "MAX78000",
+            "configFiles": [
+                "interface/cmsis-dap.cfg",
+                "target/max78000.cfg"
+            ]
+        }
+    ]
+}
