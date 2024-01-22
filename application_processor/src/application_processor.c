@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "syscalls.h"
+#include "mbedtls/aes.h"
 #include "board_link.h"
 #include "simple_flash.h"
 #include "host_messaging.h"
@@ -488,6 +490,10 @@ void attempt_attest() {
 int main() {
     // Initialize board
     init();
+
+    mbedtls_aes_context aes;
+
+    mbedtls_aes_init(&aes);
 
     // Print the component IDs to be helpful
     // Your design does not need to do this
