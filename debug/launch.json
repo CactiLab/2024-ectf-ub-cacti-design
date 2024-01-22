@@ -13,7 +13,8 @@
             "configFiles": [
                 "interface/cmsis-dap.cfg",
                 "target/max78000.cfg"
-            ]
+            ],
+            "svdFile": "${workspaceFolder}/debug/max78000.svd"
         }
     ]
 }
