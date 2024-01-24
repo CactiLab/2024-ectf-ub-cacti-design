@@ -56,6 +56,7 @@
 
 extern void __putchar(char ch);
 
+/*
 int _read_r(struct _reent *r, int file, char *ptr, int len)
 {
   r = r;
@@ -90,7 +91,7 @@ int _write_r(struct _reent *r, int file, char *ptr, int len)
 #if 0
     int index;
 
-    /* For example, output string by UART */
+    // For example, output string by UART
     for (index = 0; index < len; index++)
     {
         if (ptr[index] == '\n')
@@ -136,6 +137,7 @@ void _exit(int a)
   {
   };
 }
+*/
 
 int _kill(int a, int b)
 {
