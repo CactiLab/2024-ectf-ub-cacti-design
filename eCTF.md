@@ -92,7 +92,6 @@ allows better collaboration through the comments system.
 * MD Armanuzzaman
 * Sai Bhargav M
 * Alex Eastman (Team Leader)
-* Kyle Lemma
 * Gaoxiang Liu (Team Leader)
 * Zheyuan Ma
 * Sagar Mohan
