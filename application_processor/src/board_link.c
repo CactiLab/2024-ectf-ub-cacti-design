@@ -23,6 +23,7 @@
  * Initiailize the underlying i2c simple interface
 */
 void board_link_init(void) {
+    // TODO: error handling
     i2c_simple_controller_init();
 }
 

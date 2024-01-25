@@ -14,6 +14,7 @@
 #include "host_messaging.h"
 
 // Print a message through USB UART and then receive a line over USB UART
+// TODO: vulnerable function
 void recv_input(const char *msg, char *buf) {
     print_debug(msg);
     fflush(0);
