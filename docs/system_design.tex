@@ -106,8 +106,94 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 This section defines the security requirements of our design.
 
 \subsection{SR1}
-
+\textbf{The Application Processor (AP) should only boot if all expected Components are present and valid.}
 \paragraph{How we address it:}
+The AP needs to verify all the presented components have provisioned IDs and they are valid components built by the organizers.
+We use the RSA algorithm.
+AP holds the private key,
+while component holds the public key.
+When the host computer sends the boot command to the AP,
+the AP generates a random number and sends the validation command along with the random number to one specific component.
+The component encrypts the received number using the public key and sends the component ID along with the encrypted number back to the AP.
+The AP then decrypts the received encrypted number to check if the decrypted number matches with the original random number.
+If the two numbers are the same,
+verification succeeds.
+The AP could tell this specific component with this ID is valid.
+The AP does this process to all the presented components.
+If all presented components are validated and their IDs are provisioned,
+the AP tries to boot up all the components and enters the post-boot mode.
+
+\subsection{SR2}
+\textbf{Components should only boot after being commanded to by a valid AP that has confirmed the integrity of the device.}
+\paragraph{How we address it:}
+A component needs to verify that it is the boot command is given by the valid AP.
+We use the RSA algorithm.
+AP holds the private key,
+while component holds the public key.
+The AP sends the boot command to one specific component first.
+Then,
+this component generates a random number,
+encrypts it with the public key,
+and sends the encrypted number to the AP.
+The AP decrypts the received encrypted number and sends the decrypted plain number back to the component.
+If the received plain number matches the original generated random number,
+the component boots up.
+
+\subsection{SR3}
+\textbf{The Attestation PIN and Replacement Token should be kept confidential.}
+\paragraph{How we address it:}
+The Attestation PIN and Replacement Token will not be stored in plain text or hardcoded in the program (e.g., use the macro generated at the build phase).
+The PIN and the Token will be hashed using SHA1,
+and the two hash strings will be stored in the flash memory when the AP board boots for the first time.
+After receiving a PIN or a token,
+the AP will apply SHA1 to the input,
+and compare the hash string with the saved one.
+To prevent a brute force attack,
+the AP will go to defense mode after receiving a wrong PIN or token.
+The AP will be frozen for 5 seconds.
+
+\subsection{SR4}
+\textbf{Component Attestation Data should be kept confidential.}
+\paragraph{How we address it:}
+Use AES-128 to encrypt the Component Attestation Data and store it in the flash memory when the board boots for the first time.
+To retrieve the data,
+use the same key to decrypt.
+The key is generated utilizing the global secret.
+To write the plain Component Attestation Data to the I2C buffer,
+a component needs to verify if the request message is from the valid AP.
+RSA algorithm and challenge-response mechanism are used for the verification process.
+The AP holds the private key,
+and the component holds the public key.
+The AP sends a request message to the component,
+the component generates a random number and sends an encrypted number to the AP.
+The AP decrypts using the private key and sends back the plain number to the component.
+Verification succeeds if the received plain number matches the generated one.
+
+\subsection{SR5}
+\textbf{The integrity and authenticity of messages sent and received using the post-boot MISC secure communications functionality should be ensured.}
+\paragraph{How we address it:}
+For integrity,
+all communications in the I2C bus have the data checksum.
+The checksum employs a keyed hash algorithm for the data.
+The key is generated from the global secret to ensure both the AP and component have the same key value.
+After a component receives a message or the AP reads a message,
+the message will always be validated using checksum.
+For authenticity,
+a component needs to validate if the sender is the valid AP before receiving the message,
+and the AP needs to validate if a message is read from a valid component before reading this message.
+We use the RSA algorithm and the challenge-response mechanism.
+AP holds the private key,
+while component holds the public key.
+For the scenario of AP sending a message to a component,
+the AP first sends the request message to one specific component.
+The component sends an encrypted random number to the AP,
+and the AP decrypts the received number and sends the transmitted data and decrypted number back to the component.
+The component can verify if the received number matches the original generated one and receive this message if validation passes.
+For the scenario of AP reading a message from a component,
+the AP sends a random number to the specific component.
+The component encrypts the number and puts the message and encrypted number into the I2C buffer waiting for the AP to read.
+The AP reads the data from the component and decrypts the number to check if it matches the original one and receives the message if validation passes.
+
 
 \section{Security Implementations}
 
