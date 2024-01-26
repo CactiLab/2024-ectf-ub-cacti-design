@@ -98,8 +98,19 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 \newcommand{\flagRollback}{\textsf{Rollback}\xspace}
 
 \section{Introduction}
+The Medical Infrastructure Supply Chain (MISC) system simulates a supply chain security solution for microcontrollers on a medical device.
+Our design consists of three parts: host computer, Application Processor (AP), and Component.
+The MISC system includes one AP and two Components connected via an I2C bus.
+The host computer is a general-purpose computer communicating with the AP over a serial interface.
+The host tools in the host computer send commands to and receive messages from the AP.
 
-
+The following summarizes the features in MISC system:
+\begin{itemize}
+	\item The AP can list provisioned and presented component IDs.
+	\item The whole system will only boot up when all the provisioned components are present and valid.
+	\item The AP can retrieve attestation data from a component with the correct PIN code.
+	\item The integrity and authenticity of communication messages between AP and component are protected.
+\end{itemize}
 
 \section{Security Requirements}
 
