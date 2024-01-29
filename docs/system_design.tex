@@ -145,12 +145,11 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	while CP holds the public key.
 	First, the AP sends the boot command to one specific CP.
 	Then,
-	this CP generates a random number,
-	encrypts it with the public key,
-	and sends the encrypted number to the AP as the challenge.
-	The AP decrypts the received encrypted number and sends the decrypted plain number back to the CP.
-	If the received plain number matches the original generated random number,
-	the CP boots up.
+	this CP generates a random number and sends it number to the AP as the challenge.
+	The AP encrypts the challenge along with the CP ID as the response and sends it back to the CP.
+	The CP decrypts the response,
+	if the decrypted number matches the originally generated random number and the CP ID is correct,
+	validation passes and the CP boots up.
 	
 	\subsection{SR3}
 	\textbf{The Attestation PIN and Replacement Token should be kept confidential.}
@@ -177,8 +176,9 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	The AP holds the private key,
 	and the CP holds the public key.
 	The AP sends a request message to the CP
-	The CP generates a random number and sends an encrypted number to the AP.
-	The AP decrypts using the private key and sends back the plain number to the CP.
+	The CP generates a random number and sends it to the AP as the challenge.
+	The AP encrypts the challenge along with the CP ID using the private key and sends it back to the CP as the response.
+	The CP decrypts the response using the public key and checks if the decrypted random number and ID match.
 	Verification succeeds if the received plain number matches the generated one.
 	
 	\subsection{SR5}
@@ -202,15 +202,18 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	while the CP holds the private key.
 	For the scenario of the AP sending a message to a CP,
 	the AP first sends the request message to one specific CP.
-	The CP sends an encrypted random number to the AP,
-	and the AP decrypts the received number and sends the transmitted data and decrypted number back to the CP.
-	The CP can verify if the received number matches the original generated one and receive this message if validation passes.
+	The CP sends a random number as the challenge number to the AP,
+	and the AP encrypts the received number along with the CP ID as the response.
+	The AP then sends the transmitted data and response back to the CP.
+	The CP decrypts the response to verify if the decrypted number matches the original generated one and if the ID is correct.
+	The CP receives this message if validation passes.
 	For the scenario of AP reading a message from a CP,
-	the AP sends an encrypted random number as a challenge to the specific CP.
-	The CP decrypts the number and puts the message and decrypted number into the I2C buffer waiting for the AP to read.
+	the AP sends a random number as a challenge to the specific CP.
+	The CP encrypts the number along with the ID,
+	then puts the message and decrypted number into the I2C buffer waiting for the AP to read.
 	The AP reads the data from the CP,
-	checks if the number matches the original one,
-	and receives the message if validation passes.
+	and decrypts to check if the number matches the original one and if the ID is correct.
+	The AP will receive the message if validation passes.
 	
 	
 	\section{Security Implementations}
@@ -345,10 +348,11 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		When given a correct PIN,
 		the AP tries to acquire the attestation data from the specific CP with the ID given by the host computer.
 		\item The AP sends the attestation command to the CP.
-		\item The CP generates a random number and encrypts it using the \texttt{RSA1\_Pub} key and sends the encrypted number as the challenge to the AP.
-		\item The AP decrypts the received message using the \texttt{RSA1\_Pri} key and sends the decrypted number as the response back to the CP.
-		\item The CP checks if the received number equals the original generated number.
-		If not,
+		\item The CP generates a random number and sends it as a challenge to the AP.
+		\item The AP encrypts the challenge along with the CP ID using the \texttt{RSA1\_Pri} key and sends it as the response back to the CP.
+		The response is represented as $ response = Enc_{RSA1\_Pri}(challenge|ID) $.
+		\item The CP decrypts the response with the \texttt{RSA1\_Pub} key to check if the decrypted number matches the originally generated number and if the CP ID is correct.
+		If validation fails,
 		the CP sends the verification failure message to the AP,
 		and the AP randomly delays up to 5 seconds to prevent brute force and terminate the attestation mode.
 		Otherwise,
@@ -379,17 +383,18 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		It then sends the challenge and validation command message to the corresponding CP.
 		\item After receiving the challenge and validation message,
 		the CP makes up the response by encrypting the challenge along with the CP ID with the \texttt{RSA2\_Pri} key.
-		The response can be represented as $ response = Enc_{RSA2\_Pri} (challenge | ID) $.
-		It then creates a new challenge by encrypting a random number with the \texttt{RSA1\_Pub} key awaiting for the AP the read.
+		The response can be represented as $ response = Enc_{RSA2\_Pri} (challenge_{from AP} | ID) $.
+		It then creates a new challenge by generating a random number awaiting for the AP the read.
 		\item The AP reads the response from the CP and validates the response by decrypting it to check if the decrypted challenge is the same as the originally generated one and if the CP ID is correct.
 		\item If any validation fails,
 		the AP will randomly delay for up to 5 seconds to mitigate brute force and terminate the booting process.
 		\item If all the CPs are present,
 		the AP then tries to boot all the them.
 		\item For each CP,
-		the AP reads the challenge from the CP and decrypts it with the \texttt{RSA1\_Pri} key to make up the response,
+		the AP reads the challenge from the CP and encrypts it along with the CP ID with the \texttt{RSA1\_Pri} key to make up the response,
 		then sends the response back to the CP.
-		\item The CP validates the response by checking if it is the same as the original generated random number.
+		The response is represented as $ response = Enc_{RSA1\_Pri} (challenge_{from CP} | ID) $.
+		\item The CP validates the response by decrypting it with the \texttt{RSA1\_Pub} key to check if the decrypted number is the same as the original generated random number and if the decrypted CP ID is correct.
 		The CP boots if validation succeeds.
 	\end{enumerate}
 	
@@ -400,7 +405,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	while the CPs are slave devices.
 	Thus,
 	the AP can send messages to or read messages from a CP.
-	However, the CP cannot send messages directly to the AP.
+	However, the CP cannot send messages directly to the AP in normal situations.
 	The integrity and authenticity of the communication are necessary.
 	
 	\textit{Note :} A checksum is used for each sending and reading for communication integrity.
@@ -430,10 +435,10 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	The sending message process is shown in Figure \ref{fig:functionality_post1}.
 	\begin{enumerate}
 		\item The AP sends the sending request command to one specific CP.
-		\item The CP generates a random number and encrypts it with the \texttt{RSA1\_Pub} key as the challenge for the AP.
-		\item The AP decrypts the challenge using the \texttt{RSA1\_Pri} key as the response for the CP.
+		\item The CP generates a random as the challenge for the AP.
+		\item The AP encrypts the challenge along with the CP ID using the \texttt{RSA1\_Pri} key as the response for the CP.
 		The AP also includes the message along with the response in the packet sent to the CP.
-		\item The CP validates the response by comparing the number in the response with the originally generated number.
+		\item The CP validates the response by decrypting it to compare the number with the originally generated number and check if the ID is correct.
 		If validation is successful,
 		the CP receives the message.
 	\end{enumerate}
@@ -445,14 +450,14 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\label{fig:functionality_post2}
 	\end{figure}
 	
-	The reading message process is shown in Figure \ref{fig:functionality_post1}.
+	The reading message process is shown in Figure \ref{fig:functionality_post2}.
 	\begin{enumerate}
-		\item The AP generates a challenge by encrypting a random number with the \texttt{RSA2\_Pub} key and sends the read request command along with the challenge to one specific CP.
-		\item This CP prepares for the message and makes up the response by decrypting the challenge with the \texttt{RSA2\_Pri} key
+		\item The AP generates a challenge using a random number and sends the read request command along with the challenge to one specific CP.
+		\item This CP prepares for the message and makes up the response by encrypting the challenge along with the CP ID with the \texttt{RSA2\_Pri} key,
 		waiting for the AP to read.
 		\item The AP read the packet from the CP.
-		\item The AP validates the response,
-		if validation succeeds,
+		\item The AP decrypts the response using the \texttt{RSA2\_Pub} key to validate if the decrypted number matches the originally generated random number and if the ID is correct.
+		If validation succeeds,
 		it will receive the message.
 	\end{enumerate}
 	
