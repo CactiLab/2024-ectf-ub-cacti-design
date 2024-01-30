@@ -388,6 +388,7 @@ msdk/
 *.synctex.gz(busy)
 *.pdfsync
 #*.pdf
+docs/system_design.pdf
 
 # ectf parameters
 *ectf_params.h
