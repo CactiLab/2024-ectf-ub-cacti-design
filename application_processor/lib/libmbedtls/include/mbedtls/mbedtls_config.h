@@ -705,7 +705,7 @@
  *
  * Uncomment this macro to enable the NULL cipher and ciphersuites
  */
-#define MBEDTLS_CIPHER_NULL_CIPHER
+// #define MBEDTLS_CIPHER_NULL_CIPHER
 
 /**
  * \def MBEDTLS_CIPHER_PADDING_PKCS7
@@ -752,20 +752,20 @@
  * Comment macros to disable the curve and functions for it
  */
 /* Short Weierstrass curves (supporting ECP, ECDH, ECDSA) */
-#define MBEDTLS_ECP_DP_SECP192R1_ENABLED
-#define MBEDTLS_ECP_DP_SECP224R1_ENABLED
+// #define MBEDTLS_ECP_DP_SECP192R1_ENABLED
+// #define MBEDTLS_ECP_DP_SECP224R1_ENABLED
 #define MBEDTLS_ECP_DP_SECP256R1_ENABLED
-#define MBEDTLS_ECP_DP_SECP384R1_ENABLED
-#define MBEDTLS_ECP_DP_SECP521R1_ENABLED
-#define MBEDTLS_ECP_DP_SECP192K1_ENABLED
-#define MBEDTLS_ECP_DP_SECP224K1_ENABLED
-#define MBEDTLS_ECP_DP_SECP256K1_ENABLED
-#define MBEDTLS_ECP_DP_BP256R1_ENABLED
-#define MBEDTLS_ECP_DP_BP384R1_ENABLED
-#define MBEDTLS_ECP_DP_BP512R1_ENABLED
+// #define MBEDTLS_ECP_DP_SECP384R1_ENABLED
+// #define MBEDTLS_ECP_DP_SECP521R1_ENABLED
+// #define MBEDTLS_ECP_DP_SECP192K1_ENABLED
+// #define MBEDTLS_ECP_DP_SECP224K1_ENABLED
+// #define MBEDTLS_ECP_DP_SECP256K1_ENABLED
+// #define MBEDTLS_ECP_DP_BP256R1_ENABLED
+// #define MBEDTLS_ECP_DP_BP384R1_ENABLED
+// #define MBEDTLS_ECP_DP_BP512R1_ENABLED
 /* Montgomery curves (supporting ECP) */
 #define MBEDTLS_ECP_DP_CURVE25519_ENABLED
-#define MBEDTLS_ECP_DP_CURVE448_ENABLED
+// #define MBEDTLS_ECP_DP_CURVE448_ENABLED
 
 /**
  * \def MBEDTLS_ECP_NIST_OPTIM
@@ -1217,7 +1217,7 @@
  * This option is only useful if both MBEDTLS_SHA256_C and
  * MBEDTLS_SHA512_C are defined. Otherwise the available hash module is used.
  */
-//#define MBEDTLS_ENTROPY_FORCE_SHA256
+#define MBEDTLS_ENTROPY_FORCE_SHA256
 
 /**
  * \def MBEDTLS_ENTROPY_NV_SEED
@@ -1302,7 +1302,7 @@
  *
  * This enables support for PKCS#1 v1.5 operations.
  */
-#define MBEDTLS_PKCS1_V15
+// #define MBEDTLS_PKCS1_V15
 
 /**
  * \def MBEDTLS_PKCS1_V21
@@ -1316,7 +1316,7 @@
  *
  * This enables support for RSAES-OAEP and RSASSA-PSS operations.
  */
-#define MBEDTLS_PKCS1_V21
+// #define MBEDTLS_PKCS1_V21
 
 /** \def MBEDTLS_PSA_CRYPTO_BUILTIN_KEYS
  *
@@ -1495,7 +1495,7 @@
  *
  * Uncomment to enable the smaller implementation of SHA256.
  */
-#define MBEDTLS_SHA256_SMALLER
+// #define MBEDTLS_SHA256_SMALLER
 
 /**
  * \def MBEDTLS_SHA512_SMALLER
@@ -1505,7 +1505,7 @@
  *
  * Uncomment to enable the smaller implementation of SHA512.
  */
-#define MBEDTLS_SHA512_SMALLER
+// #define MBEDTLS_SHA512_SMALLER
 
 /**
  * \def MBEDTLS_SSL_ALL_ALERT_MESSAGES
@@ -2355,7 +2355,7 @@
  *          library/x509write_crt.c
  *          library/x509write_csr.c
  */
-// #define MBEDTLS_ASN1_WRITE_C
+#define MBEDTLS_ASN1_WRITE_C
 
 /**
  * \def MBEDTLS_BASE64_C
@@ -2679,7 +2679,7 @@
  *           and at least one MBEDTLS_ECP_DP_XXX_ENABLED for a
  *           short Weierstrass curve.
  */
-// #define MBEDTLS_ECDSA_C
+#define MBEDTLS_ECDSA_C
 
 /**
  * \def MBEDTLS_ECJPAKE_C
@@ -2715,7 +2715,7 @@
  *
  * Requires: MBEDTLS_BIGNUM_C and at least one MBEDTLS_ECP_DP_XXX_ENABLED
  */
-// #define MBEDTLS_ECP_C
+#define MBEDTLS_ECP_C
 
 /**
  * \def MBEDTLS_ENTROPY_C
@@ -3204,7 +3204,7 @@
  *
  * Requires: MBEDTLS_BIGNUM_C, MBEDTLS_OID_C
  */
-#define MBEDTLS_RSA_C
+// #define MBEDTLS_RSA_C
 
 /**
  * \def MBEDTLS_SHA1_C
