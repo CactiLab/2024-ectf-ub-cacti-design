@@ -121,13 +121,16 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	The AP and CPs must be \textit{valid} (built by the organizers) for the MISC system to work properly.
 	
 	In the sections below,
-	the term \textit{nonce} refers to a random number.
+	the term \textit{nonce} refers to a random number,
+	which is mainly used for a challenge in the challenge-response mechanism.
 	
 	The term \textit{purpose label} is a 1-byte number that marks the purpose of the message,
 	for example,
-	booting,
+	different numbers for booting,
 	communicating,
-	and attesting have different numbers.
+	attesting,
+	sending,
+	and reading.
 	
 	\subsection{SR1 \& SR2}
 	\textbf{The Application Processor (AP) should only boot if all expected CPs are present and valid.}
@@ -157,19 +160,19 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	For a CP,
 	it will verify the response from the AP using the first public key and boot up if verification passes.
 	
-	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionality or other CPs).
+	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionalities or other CPs).
 	
 	\subsection{SR3}
 	\textbf{The Attestation PIN and Replacement Token should be kept confidential.}
 	\paragraph{How we address it:}
-	The Attestation PIN and Replacement Token will not be stored in plain text or hardcoded in the program (e.g., use the macro generated at the build phase).
+	The Attestation PIN and Replacement Token will not be stored in plain text or hardcoded in the program (e.g., use the macro generated in the building phase).
 	The PIN and the Token will be hashed using a keyed-hash algorithm during the building process,
 	and the PIN and Replacement Token macros will be replaced with the two hash strings.
 	AP holds the hash key.
 	After receiving a PIN or a token,
-	the AP will apply SHA1 to the input,
+	the AP will apply the keyed hash to the input,
 	and compare the hash string with the saved one.
-	The comparison time is constant regardless of the content of the PIN or Replacement Token to mitigate a side-channel attack.
+	The comparison time is constant regardless of the content of the PIN or Replacement Token to mitigate a timing side-channel attack.
 	To mitigate a brute force attack,
 	the AP will delay randomly up to 5 seconds after receiving a wrong PIN or token.
 	
@@ -178,7 +181,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	\paragraph{How we address it:}
 	Use AES to encrypt the CP Attestation Data with a Python script to replace the plain text with the encrypted text in macros when building a CP.
 	The AES key is generated based on a shared secret between AP and CP.
-	A CP does not have the decryption process during runtime.
+	A CP does not have the decryption functionality during runtime.
 	When requesting the attestation data,
 	a CP puts the encrypted text in the I2C buffer.
 	The AP reads the encrypted text,
@@ -186,7 +189,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	and sends it to the host computer.
 	
 	A CP needs to verify if the Attestation Data reading request message is from the valid AP.
-	RSA algorithm and challenge-response mechanism are used for the verification process.
+	public-key cryptography algorithm and challenge-response mechanism are used for the verification process.
 	The AP holds the private key,
 	and the CP holds the public key.
 	The AP sends a request message to the CP
@@ -198,7 +201,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	challenge,
 	and CP ID are correct.
 	
-	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionality or other CPs).
+	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionalities or other CPs).
 	
 	\subsection{SR5}
 	\textbf{The integrity and authenticity of messages sent and received using the post-boot MISC secure communications functionality should be ensured.}
@@ -233,7 +236,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	and the signature.
 	It verifies the response and the message signature using the second public key.
 	
-	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionality or other CPs).
+	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionalities or other CPs).
 	
 	
 	\section{Security Implementations}
@@ -278,21 +281,17 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	\subsubsection{First Booting}
 	Devices will be initialized at the first boot.
 	The AP will store provisioned CP IDs in plain text,
-	the private key of \texttt{RSA1},
-	and the public key of \texttt{RSA2} in the flash memory.
-	A hash key is generated based on the Global Secret for the keyed-hash algorithm.
-	The PIN and replace Token will be keyed-hashed,
-	and the AP stores the hash values in the flash.
-	The CP stores the private key of \texttt{RSA2} and the public key of \texttt{RSA1}.
-	An AES-128 key will be generated based on the Global Secret to encrypt the attestation data.
-	The encrypted data will be stored in the flash.
+	the \texttt{K\_Pri1} and \texttt{K\_Pub2} keys in the flash memory.
+	A hash key is generated and stored in the flash based on the Global Secret for the keyed-hash algorithm.
+	An AES key is generated and stored in the flash based on the Global Secret for decrypting attestation data.
+	The CP stores the \texttt{K\_Pri2} and \texttt{K\_Pub1} keys.
 	
 	\subsection{Functionalities}
 	The term \textit{packet} refers to all the communication data either the AP sends to a CP,
 	or the AP reads from a CP.
 	
 	\subsubsection{Listing}
-	The Listing functionality checks the provisioned CP IDs of the APs and the IDs of all the presented CPs.
+	The Listing functionality checks the provisioned CP IDs in the AP and the IDs of all the presented CPs.
 	As CP IDs are not secrets,
 	there is nothing to protect during this process.
 	
@@ -336,7 +335,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		the AP generates a nonce as the challenge.
 		It then sends the \texttt{boot} command and the challenge to the corresponding CP.
 		\item After receiving the boot command and the challenge,
-		the CP makes up the response by signing a boot purpose label (a 1-byte number marks the purpose is booting),
+		the CP makes up the response by signing a boot purpose label,
 		the challenge,
 		along with the CP ID using the \texttt{K\_Pri2} key.
 		It then creates a new challenge by generating a nonce and puts the response and new challenge to the I2C buffer waiting for the AP to read.
@@ -344,12 +343,13 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		It checks if the purpose label is for booting,
 		the nonce is the same as the originally generated one,
 		and the CP ID are correct.
+		The AP also records the challenge from this CP.
 		\item For a validation failure,
 		the AP will randomly delay for up to 5 seconds to mitigate a brute force attack and terminate the booting process.
 		\item If all the CPs are present,
 		the AP then tries to boot them all.
 		\item To boot a CP,
-		the AP finds the nonce in the challenge sent by this CP before.
+		the AP finds the challenge sent by this CP before.
 		Then sign the booting purpose label, nonce, and CP ID with the \texttt{K\_Pri1} key as the response.
 		The AP sends the response to this CP.
 		\item After receiving the response from the AP,
@@ -359,7 +359,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	
 	\subsubsection{Replace}
 	The Replace functionality is for replacing a CP on the medical device.
-	The technician in a repair station needs to tell the AP which CP ID are no longer provisioned and what the new CP ID with supplying the correct replacement Token.
+	The technician in a repair station needs to tell the AP which CP ID is no longer provisioned and what the new CP ID with supplying the correct replacement Token.
 	The replace Token will be hashed before comparing with the saved Token hash value.
 	
 	\begin{figure}[h]
@@ -384,12 +384,13 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		the AP will wait for the host computer to send the old (currently provisioned) and new IDs.
 		\item The AP modifies the flash memory after receiving the two IDs and sends a success message to the host computer.
 		And the new ID becomes the provisioned ID.
+		The AP stores the new ID in the flash memory.
 	\end{enumerate}
 	
 	\subsubsection{Attestation}
-	The functionality gets the attestation data from one specific CP by supplying the correct PIN code and the CP ID.
-	The attestation data is sensitive and encrypted when storing,
-	so decrypting is necessary when retrieving the data.
+	The functionality is for getting the attestation data from one specific CP by supplying the correct PIN code and the CP ID.
+	The attestation data is encrypted in the flash memory,
+	so decrypting is necessary after retrieving the data.
 	Also,
 	the PIN code will be hashed before comparing with the saved PIN code hash value.
 	
@@ -406,7 +407,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The AP enters the \texttt{attestation} mode and waits for the host computer to send the PIN code
 		\item After receiving the PIN code,
 		the AP applies the keyed-hash algorithm to the PIN and compares it with the stored one.
-		The comparison time is always constant no matter the PIN correctness.
+		The comparison time is always constant no matter the correctness of the PIN.
 		The AP will randomly delay for up to 5 seconds to mitigate brute force and then terminate the attestation mode for a wrong PIN.
 		When given a correct PIN,
 		the AP tries to acquire the attestation data from the specific CP with the ID given by the host computer.
