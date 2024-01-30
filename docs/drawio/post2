@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2024-01-30T04:45:00.269Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="2gOH10Vu0gBWns_gHGFb" version="23.0.2" type="device">
+<mxfile host="app.diagrams.net" modified="2024-01-30T14:58:29.411Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="c9pZ2vhP7f0ZaVKt6LNC" version="23.0.2" type="device">
   <diagram name="Page-1" id="2YBvvXClWsGukQMizWep">
-    <mxGraphModel dx="1118" dy="611" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="780" dy="427" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -29,7 +29,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="9xmCD3t41xQCNdKe1iWf-1" value="Sign (p, nonce, ID) + message + &lt;br&gt;checksum" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" target="9xmCD3t41xQCNdKe1iWf-2" edge="1">
+        <mxCell id="9xmCD3t41xQCNdKe1iWf-1" value="Sign (p, nonce, ID) + message + &lt;br&gt;Sign (message)" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" target="9xmCD3t41xQCNdKe1iWf-2" edge="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="265" y="160" as="sourcePoint" />
             <Array as="points">
@@ -59,7 +59,7 @@
             <mxPoint x="310" y="190" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="JR4a7RBkgbdiAM9AKK9V-1" value="p is the reading purpose label" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#e6e6e6;size=12;" vertex="1" parent="1">
+        <mxCell id="JR4a7RBkgbdiAM9AKK9V-1" value="p is the reading purpose label" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#e6e6e6;size=12;" parent="1" vertex="1">
           <mxGeometry x="300" y="165" width="90" height="55" as="geometry" />
         </mxCell>
       </root>

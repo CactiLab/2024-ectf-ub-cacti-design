@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2024-01-30T04:41:37.146Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="rEm7Pt1Z8XYc9la3X3sn" version="23.0.2" type="device">
+<mxfile host="app.diagrams.net" modified="2024-01-30T14:57:39.068Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="F5BJTie9z9k5IZwyLYg7" version="23.0.2" type="device">
   <diagram name="Page-1" id="2YBvvXClWsGukQMizWep">
-    <mxGraphModel dx="1968" dy="611" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1495" dy="353" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -44,7 +44,7 @@
         <mxCell id="0H2hq_mlnMutdMI_ohXj-2" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};" parent="1" vertex="1">
           <mxGeometry x="90" y="160" width="10" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="0H2hq_mlnMutdMI_ohXj-3" value="Sign(p, nonce, ID) + &lt;br&gt;message + checksum" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" edge="1">
+        <mxCell id="0H2hq_mlnMutdMI_ohXj-3" value="Sign(p, nonce, ID) + &lt;br&gt;message + Sign (message)" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" edge="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="95" y="200" as="sourcePoint" />
             <Array as="points">
@@ -83,7 +83,7 @@
             <mxPoint x="320" y="190" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="ZnoU0ZXlEVNPZgJDSVdL-1" value="p is the sending purpose label" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#e6e6e6;size=6;" vertex="1" parent="1">
+        <mxCell id="ZnoU0ZXlEVNPZgJDSVdL-1" value="p is the sending purpose label" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#e6e6e6;size=6;" parent="1" vertex="1">
           <mxGeometry x="140" y="210" width="90" height="50" as="geometry" />
         </mxCell>
       </root>
