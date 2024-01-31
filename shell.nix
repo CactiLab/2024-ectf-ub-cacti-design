@@ -40,6 +40,6 @@ pkgs.mkShell {
       cp -r $msdk $PWD/msdk
       chmod -R u+rwX,go+rX,go-w $PWD/msdk
       export MAXIM_PATH=$PWD/msdk
-      export MBEDTLS_PATH="${pkgs.mbedtls}/"
+      export MBEDTLS_PATH="${pkgs.mbedtls}"
     '';
 }

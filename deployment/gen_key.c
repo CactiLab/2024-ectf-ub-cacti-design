@@ -82,6 +82,8 @@ int dev_random_entropy_poll(void *data, unsigned char *output,
 #define DFL_TYPE                MBEDTLS_PK_RSA
 #define DFL_RSA_KEYSIZE         4096
 #define DFL_FILENAME            "keyfile.key"
+#define DFL_PRIV_FILENAME       "priv.key"
+#define DFL_PUB_FILENAME        "pub.key"
 #define DFL_FORMAT              FORMAT_PEM
 #define DFL_USE_DEV_RANDOM      0
 
@@ -118,6 +120,8 @@ struct options {
     int rsa_keysize;            /* length of key in bits                */
     int ec_curve;               /* curve identifier for EC keys         */
     const char *filename;       /* filename of the key file             */
+    const char *priv_filename;  /* filename of the private key file     */
+    const char *pub_filename;   /* filename of the public key file      */
     int format;                 /* the output format to use             */
     int use_dev_random;         /* use /dev/random as entropy source    */
 } opt;
@@ -156,6 +160,57 @@ static int write_private_key(mbedtls_pk_context *key, const char *output_file)
     }
 
     fclose(f);
+
+    return 0;
+}
+
+static int write_ecp_key_pairs(mbedtls_pk_context *pk, const char *priv_file, const char *pub_file)
+{
+    int ret;
+    FILE *f;
+    unsigned char output_buf[16000];
+    unsigned char *c = output_buf;
+    size_t len = 0;
+
+    memset(output_buf, 0, 16000);
+    mbedtls_ecp_keypair *key = mbedtls_pk_ec(*pk);
+
+    /* Write private key */
+    if ((ret = mbedtls_ecp_write_key(key, output_buf, 16000)) != 0) {
+        return ret;
+    }
+    len = strlen((char *) output_buf);
+
+    if ((f = fopen(priv_file, "wb")) == NULL) {
+        return -1;
+    }
+
+    if (fwrite(c, 1, len, f) != len) {
+        fclose(f);
+        return -1;
+    }
+
+    fclose(f);
+    memset(output_buf, 0, 16000);
+
+    /* Write public key */
+    if ((ret = mbedtls_ecp_point_write_binary(&key->private_grp, &key->private_Q, 
+                                              MBEDTLS_ECP_PF_UNCOMPRESSED, &len, 
+                                              output_buf, 16000)) != 0) {
+        return ret;
+    }
+
+    if ((f = fopen(pub_file, "wb")) == NULL) {
+        return -1;
+    }
+
+    if (fwrite(c, 1, len, f) != len) {
+        fclose(f);
+        return -1;
+    }
+
+    fclose(f);
+    memset(output_buf, 0, 16000);
 
     return 0;
 }
@@ -218,6 +273,8 @@ usage:
     opt.rsa_keysize         = DFL_RSA_KEYSIZE;
     opt.ec_curve            = DFL_EC_CURVE;
     opt.filename            = DFL_FILENAME;
+    opt.priv_filename       = DFL_PRIV_FILENAME;
+    opt.pub_filename        = DFL_PUB_FILENAME;
     opt.format              = DFL_FORMAT;
     opt.use_dev_random      = DFL_USE_DEV_RANDOM;
 
@@ -380,9 +437,16 @@ usage:
      */
     mbedtls_printf("  . Writing key to file...");
 
-    if ((ret = write_private_key(&key, opt.filename)) != 0) {
-        mbedtls_printf(" failed\n");
-        goto exit;
+    if (opt.type == MBEDTLS_PK_ECKEY) {
+        if ((ret = write_ecp_key_pairs(&key, opt.priv_filename, opt.pub_filename)) != 0) {
+            mbedtls_printf(" failed\n");
+            goto exit;
+        }
+    } else {
+        if ((ret = write_private_key(&key, opt.filename)) != 0) {
+            mbedtls_printf(" failed\n");
+            goto exit;
+        }
     }
 
     mbedtls_printf(" ok\n");

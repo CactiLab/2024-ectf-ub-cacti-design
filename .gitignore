@@ -3,7 +3,7 @@
 .DS_Store
 .vscode/
 **/gcc
-
+*.key
 !device/lib
 
 ## Begin Generic .gitignore ##
