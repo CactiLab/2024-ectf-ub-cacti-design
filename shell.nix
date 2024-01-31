@@ -26,7 +26,9 @@ pkgs.mkShell {
     pkgs.poetry
     pkgs.cacert
     (pkgs.callPackage custom_nix_pkgs/analog_openocd.nix { })
+    #(pkgs.callPackage custom_nix_pkgs/mbedtls.nix { })
     pkgs.minicom
+    pkgs.mbedtls
   ];
 
   msdk = builtins.fetchGit {
