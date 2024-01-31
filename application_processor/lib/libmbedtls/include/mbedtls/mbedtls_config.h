@@ -7,6 +7,11 @@
  *  or disable features selectively, and reduce the global
  *  memory footprint.
  */
+/*
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
 /**
  * This is an optional version symbol that enables compatibility handling of
  * config files.
@@ -645,7 +650,7 @@
  *
  * Enable Cipher Block Chaining mode (CBC) for symmetric ciphers.
  */
-// #define MBEDTLS_CIPHER_MODE_CBC
+#define MBEDTLS_CIPHER_MODE_CBC
 
 /**
  * \def MBEDTLS_CIPHER_MODE_CFB
@@ -776,7 +781,7 @@
  *
  * Comment this macro to disable NIST curves optimisation.
  */
-// #define MBEDTLS_ECP_NIST_OPTIM
+#define MBEDTLS_ECP_NIST_OPTIM
 
 /**
  * \def MBEDTLS_ECP_RESTARTABLE
