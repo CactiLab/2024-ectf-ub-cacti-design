@@ -194,7 +194,7 @@ static int write_ecp_key_pairs(mbedtls_pk_context *pk, const char *priv_file, co
     memset(output_buf, 0, 16000);
 
     /* Write public key */
-    if ((ret = mbedtls_ecp_point_write_binary(&key->private_grp, &key->private_Q, 
+    if ((ret = mbedtls_ecp_point_write_binary(&key->MBEDTLS_PRIVATE(grp), &key->MBEDTLS_PRIVATE(Q), 
                                               MBEDTLS_ECP_PF_UNCOMPRESSED, &len, 
                                               output_buf, 16000)) != 0) {
         return ret;
