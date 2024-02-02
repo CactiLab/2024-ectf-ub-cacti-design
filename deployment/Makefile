@@ -8,7 +8,7 @@ __check_defined = \
 		$(error Undefined $1$(if $2, ($2))))
 
 all: global_secrets.h gen_key
-	./gen_key.elf type=ec ec_curve=x25519 format=der use_dev_random=1
+	./gen_key.elf type=ec ec_curve=secp256r1 format=der use_dev_random=1
 	./ecdsa.elf
 
 global_secrets.h:
@@ -19,4 +19,4 @@ gen_key: gen_key.c
 	gcc -o ecdsa.elf ecdsa.c -I$(MBEDTLS_PATH)/include -L$(MBEDTLS_PATH)/lib -lmbedtls -lmbedx509 -lmbedcrypto
 
 clean:
-	rm -f global_secrets.h *.elf *.key
+	rm -f global_secrets.h *.elf *.bin

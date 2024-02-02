@@ -4,6 +4,7 @@
 .vscode/
 **/gcc
 *.key
+*.bin
 !device/lib
 
 ## Begin Generic .gitignore ##

@@ -81,9 +81,9 @@ int dev_random_entropy_poll(void *data, unsigned char *output,
 
 #define DFL_TYPE                MBEDTLS_PK_RSA
 #define DFL_RSA_KEYSIZE         4096
-#define DFL_FILENAME            "keyfile.key"
-#define DFL_PRIV_FILENAME       "priv.key"
-#define DFL_PUB_FILENAME        "pub.key"
+#define DFL_FILENAME            "keyfile.bin"
+#define DFL_PRIV_FILENAME       "priv.bin"
+#define DFL_PUB_FILENAME        "pub.bin"
 #define DFL_FORMAT              FORMAT_PEM
 #define DFL_USE_DEV_RANDOM      0
 
@@ -164,39 +164,38 @@ static int write_private_key(mbedtls_pk_context *key, const char *output_file)
     return 0;
 }
 
-static int write_ecp_key_pairs(mbedtls_pk_context *pk, const char *priv_file, const char *pub_file)
+static int write_ecp_key_pairs(mbedtls_ecp_keypair *key, const char *priv_file, const char *pub_file)
 {
     int ret;
     FILE *f;
-    unsigned char output_buf[16000];
-    unsigned char *c = output_buf;
+    unsigned char priv_buf[32];
+    unsigned char pub_buf[64 + 1];
     size_t len = 0;
 
-    memset(output_buf, 0, 16000);
-    mbedtls_ecp_keypair *key = mbedtls_pk_ec(*pk);
+    memset(priv_buf, 0, sizeof(priv_buf));
+    memset(pub_buf, 0, sizeof(pub_buf));
 
     /* Write private key */
-    if ((ret = mbedtls_ecp_write_key(key, output_buf, 16000)) != 0) {
+    if ((ret = mbedtls_ecp_write_key(key, priv_buf, sizeof(priv_buf))) != 0) {
         return ret;
     }
-    len = strlen((char *) output_buf);
 
     if ((f = fopen(priv_file, "wb")) == NULL) {
         return -1;
     }
 
-    if (fwrite(c, 1, len, f) != len) {
+    if (fwrite(priv_buf, 1, sizeof(priv_buf), f) != sizeof(priv_buf)) {
         fclose(f);
         return -1;
     }
 
     fclose(f);
-    memset(output_buf, 0, 16000);
+    memset(priv_buf, 0, sizeof(priv_buf));
 
     /* Write public key */
     if ((ret = mbedtls_ecp_point_write_binary(&key->MBEDTLS_PRIVATE(grp), &key->MBEDTLS_PRIVATE(Q), 
                                               MBEDTLS_ECP_PF_UNCOMPRESSED, &len, 
-                                              output_buf, 16000)) != 0) {
+                                              pub_buf, sizeof(pub_buf))) != 0) {
         return ret;
     }
 
@@ -204,13 +203,13 @@ static int write_ecp_key_pairs(mbedtls_pk_context *pk, const char *priv_file, co
         return -1;
     }
 
-    if (fwrite(c, 1, len, f) != len) {
+    if (fwrite(pub_buf, 1, len, f) != len) {
         fclose(f);
         return -1;
     }
 
     fclose(f);
-    memset(output_buf, 0, 16000);
+    memset(pub_buf, 0, sizeof(pub_buf));
 
     return 0;
 }
@@ -438,7 +437,8 @@ usage:
     mbedtls_printf("  . Writing key to file...");
 
     if (opt.type == MBEDTLS_PK_ECKEY) {
-        if ((ret = write_ecp_key_pairs(&key, opt.priv_filename, opt.pub_filename)) != 0) {
+        mbedtls_ecp_keypair *ecp = mbedtls_pk_ec(key);
+        if ((ret = write_ecp_key_pairs(ecp, opt.priv_filename, opt.pub_filename)) != 0) {
             mbedtls_printf(" failed\n");
             goto exit;
         }
@@ -449,7 +449,7 @@ usage:
         }
     }
 
-    mbedtls_printf(" ok\n");
+    mbedtls_printf(" ok\n\n");
 
     exit_code = MBEDTLS_EXIT_SUCCESS;
 

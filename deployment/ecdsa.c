@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define DEV_RANDOM_THRESHOLD        32
-#define ECPARAMS MBEDTLS_ECP_DP_CURVE25519
+#define ECPARAMS MBEDTLS_ECP_DP_SECP256R1
 
 int dev_random_entropy_poll(void *data, unsigned char *output,
                             size_t len, size_t *olen)
@@ -47,10 +47,30 @@ int dev_random_entropy_poll(void *data, unsigned char *output,
     return 0;
 }
 
+static void dump_buf(const char *title, unsigned char *buf, size_t len)
+{
+    size_t i;
+
+    mbedtls_printf("%s", title);
+    for (i = 0; i < len; i++) {
+        mbedtls_printf("%c%c", "0123456789ABCDEF" [buf[i] / 16],
+                       "0123456789ABCDEF" [buf[i] % 16]);
+    }
+    mbedtls_printf("\n");
+}
+
+void print_key_info(const mbedtls_ecp_keypair *key) {
+    mbedtls_printf("curve: %s\n",
+                    mbedtls_ecp_curve_info_from_grp_id(key->MBEDTLS_PRIVATE(grp).id)->name);
+    mbedtls_mpi_write_file("X_Q:   ", &key->MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(X), 16, NULL);
+    mbedtls_mpi_write_file("Y_Q:   ", &key->MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(Y), 16, NULL);
+    mbedtls_mpi_write_file("D:     ", &key->MBEDTLS_PRIVATE(d), 16, NULL);
+}
+
 static int read_public_key(mbedtls_ecp_keypair *ecp, const char *pub_file)
 {
     FILE *file;
-    unsigned char key_buf[32];
+    unsigned char key_buf[64 + 1];
     size_t bytes_read;
     int ret;
 
@@ -63,9 +83,9 @@ static int read_public_key(mbedtls_ecp_keypair *ecp, const char *pub_file)
     bytes_read = fread(key_buf, 1, sizeof(key_buf), file);
     if (bytes_read < sizeof(key_buf)) {
         if (feof(file)) {
-            printf("Premature end of file. Expected 32 bytes, got %zu.\n", bytes_read);
+            mbedtls_printf("failed\n  ! Premature end of file. Expected 64 + 1 bytes, got %zu.\n", bytes_read);
         } else {
-            perror("Failed to read public key file");
+            mbedtls_printf("failed\n  ! Failed to read public key file");
         }
         fclose(file);
         return -1;
@@ -74,16 +94,15 @@ static int read_public_key(mbedtls_ecp_keypair *ecp, const char *pub_file)
 
     if ((ret = mbedtls_ecp_point_read_binary(&ecp->MBEDTLS_PRIVATE(grp), 
                                             &ecp->MBEDTLS_PRIVATE(Q), key_buf, bytes_read)) != 0) {
-        mbedtls_printf("failed\n  ! mbedtls_ecp_point_read_binary returned %d\n", ret);
+        mbedtls_printf("failed\n  ! mbedtls_ecp_point_read_binary returned  -0x%X\n", -ret);
         return ret;
     }
 
     if ((ret = mbedtls_ecp_check_pubkey(&ecp->MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(Q))) != 0) {
-        mbedtls_printf("failed\n  ! mbedtls_ecp_check_pubkey returned %d\n", ret);
+        mbedtls_printf("failed\n  ! mbedtls_ecp_check_pubkey returned  -0x%X\n", -ret);
         return ret;
     }
 
-    mbedtls_printf("  . Read public key ok\n");
     return 0;
 }
 
@@ -103,9 +122,9 @@ static int read_priv_key(mbedtls_ecp_keypair *ecp, const char *priv_file)
     bytes_read = fread(key_buf, 1, sizeof(key_buf), file);
     if (bytes_read  < sizeof(key_buf)) {
         if (feof(file)) {
-            printf("  . Premature end of file. Expected 32 bytes, got %zu.\n", sizeof(key_buf));
+            printf("failed\n  ! Premature end of file. Expected 32 bytes, got %zu.\n", bytes_read);
         } else {
-            perror("  . Failed to read private key file");
+            perror("failed\n  ! Failed to read private key file");
         }
         fclose(file);
         return ret;
@@ -113,16 +132,15 @@ static int read_priv_key(mbedtls_ecp_keypair *ecp, const char *priv_file)
     fclose(file);
 
     if ((ret = mbedtls_ecp_read_key(ECPARAMS, ecp, key_buf, sizeof(key_buf))) != 0) {
-        mbedtls_printf("failed\n  ! mbedtls_ecp_read_key returned %d\n", ret);
+        mbedtls_printf("failed\n  ! mbedtls_ecp_read_key returned  -0x%X\n", -ret);
         return ret;
     }
 
     if ((ret = mbedtls_ecp_check_privkey(&ecp->MBEDTLS_PRIVATE(grp), &ecp->MBEDTLS_PRIVATE(d))) != 0) {
-        mbedtls_printf("failed\n  ! mbedtls_ecp_check_privkey returned %d\n", ret);
+        mbedtls_printf("failed\n  ! mbedtls_ecp_check_privkey returned  -0x%X\n", -ret);
         return ret;
     }
 
-    mbedtls_printf("  . Read private key ok\n");
     return 0;
 }
 
@@ -138,6 +156,14 @@ int main(int argc, char *argv[])
     const char *pers = "ecdsa";
     ((void)argv);
 
+    unsigned char message[100];
+    unsigned char hash[32];
+    unsigned char sig[MBEDTLS_ECDSA_MAX_LEN];
+    size_t sig_len;
+
+    memset(sig, 0, sizeof(sig));
+    memset(message, 0x25, sizeof(message));
+
     mbedtls_ecp_keypair_init(&key);
     mbedtls_ecp_group_load(&key.MBEDTLS_PRIVATE(grp), ECPARAMS);
 
@@ -152,21 +178,13 @@ int main(int argc, char *argv[])
     mbedtls_ecp_keypair_init(&key);
     mbedtls_ecp_group_load(&key.MBEDTLS_PRIVATE(grp), ECPARAMS);
 
-    mbedtls_printf("  . Reading private key\n");
-    if (read_priv_key(&key, "priv.key") != 0) {
+    mbedtls_printf("  . Reading private key...");
+    if (read_priv_key(&key, "priv.bin") != 0) {
         goto exit;
     }
+    mbedtls_printf(" ok\n");
 
-    mbedtls_printf("  . Reading public key\n");
-    if (read_public_key(&key, "pub.key") != 0) {
-        goto exit;
-    }
-
-    mbedtls_printf("curve: %s\n",
-                    mbedtls_ecp_curve_info_from_grp_id(key.MBEDTLS_PRIVATE(grp).id)->name);
-    mbedtls_mpi_write_file("X_Q:   ", &key.MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(X), 16, NULL);
-    mbedtls_mpi_write_file("Y_Q:   ", &key.MBEDTLS_PRIVATE(Q).MBEDTLS_PRIVATE(Y), 16, NULL);
-    mbedtls_mpi_write_file("D:     ", &key.MBEDTLS_PRIVATE(d), 16, NULL);
+    print_key_info(&key);
 
     mbedtls_ecdsa_from_keypair(&ecdsa_ctx, &key);
 
@@ -193,7 +211,67 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    // TODO: Sign and verify a message
+    /*
+     * Compute message hash
+     */
+    mbedtls_printf("\n  . Computing message hash...");
+    fflush(stdout);
+
+    if ((ret = mbedtls_sha256(message, sizeof(message), hash, 0)) != 0) {
+        mbedtls_printf(" failed\n  ! mbedtls_sha256 returned  -0x%X\n", -ret);
+        goto exit;
+    }
+
+    mbedtls_printf(" ok\n");
+    dump_buf("  + Hash: ", hash, sizeof(hash));
+
+    /*
+     * Sign message hash
+     */
+    mbedtls_printf("  . Signing message hash...");
+    fflush(stdout);
+
+    if ((ret = mbedtls_ecdsa_write_signature(&ecdsa_ctx, MBEDTLS_MD_SHA256,
+                                             hash, sizeof(hash),
+                                             sig, sizeof(sig), &sig_len,
+                                             mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
+        mbedtls_printf(" failed\n  ! mbedtls_ecdsa_write_signature returned -0x%X\n", -ret);
+        if (!mbedtls_ecdsa_can_do(key.MBEDTLS_PRIVATE(grp).id)) {
+            mbedtls_printf("  ! This curve is not supported for ECDSA\n");
+        }
+
+        goto exit;
+    }
+    mbedtls_printf(" ok (signature length = %u)\n", (unsigned int) sig_len);
+
+    dump_buf("  + Signature: ", sig, sig_len);
+
+    /*
+     * Verify signature
+     */
+    mbedtls_printf("\n  . Reading public key...");
+    mbedtls_ecp_keypair_init(&key);
+    mbedtls_ecp_group_load(&key.MBEDTLS_PRIVATE(grp), ECPARAMS);
+
+    if (read_public_key(&key, "pub.bin") != 0) {
+        goto exit;
+    }
+
+    mbedtls_ecdsa_from_keypair(&ecdsa_ctx, &key);
+    
+    mbedtls_printf(" ok\n  . Verifying signature...");
+    fflush(stdout);
+
+    if ((ret = mbedtls_ecdsa_read_signature(&ecdsa_ctx,
+                                            hash, sizeof(hash),
+                                            sig, sig_len)) != 0) {
+        mbedtls_printf(" failed\n  ! mbedtls_ecdsa_read_signature returned  -0x%X\n", -ret);
+        goto exit;
+    }
+
+    mbedtls_printf(" ok\n");
+
+    print_key_info(&key);
 
     exit_code = MBEDTLS_EXIT_SUCCESS;
 exit:
