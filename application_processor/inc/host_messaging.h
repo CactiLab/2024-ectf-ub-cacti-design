@@ -14,10 +14,13 @@
 #ifndef __HOST_MESSAGING__
 #define __HOST_MESSAGING__
 
+#define HOST_MESSAGE_MAX_LENGTH 17
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 
+// TODO: we may need to remove print_hex functions
 // Macro definitions to print the specified format for error messages
 #define print_error(...) printf("%%error: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
 #define print_hex_error(...) printf("%%error: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
