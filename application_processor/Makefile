@@ -415,8 +415,10 @@ ifeq "$(MAKECMDGOALS)" ""
 MAKECMDGOALS:=$(.DEFAULT_GOAL)
 endif
 
+pre:
+	python keygen.py
 
-all:
+all: pre
 # 	Extend the functionality of the "all" recipe here
 	arm-none-eabi-size --format=berkeley $(BUILD_DIR)/$(PROJECT).elf
 
