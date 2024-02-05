@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 import sys
-import re
 
 def read_binary_file(path):
     with open(path, 'rb') as file:
@@ -43,7 +42,7 @@ def main():
     args = parser.parse_args()
     
     if not args.header_file.exists():
-        print(f"Header file {args.header_file} does not exist.")
+        print(f"Header file {args.header_file} does not exist. Build the deployment package first.")
         sys.exit(1)
     
     if not args.priv_key_file.exists():
@@ -56,9 +55,8 @@ def main():
     
     priv_key = args.priv_key_file.read_bytes()
     pub_key = args.pub_key_file.read_bytes()
-
     
-    ap_pin, ap_token = parse_and_modify_header(header_path, priv_key, pub_key)
+    ap_pin, ap_token = parse_and_modify_header(args.header_file, priv_key, pub_key)
     
     if ap_pin and ap_token:
         print(f"AP_PIN: {ap_pin}")
