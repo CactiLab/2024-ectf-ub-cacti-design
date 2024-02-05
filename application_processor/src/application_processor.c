@@ -25,7 +25,6 @@
 #include <string.h>
 
 #include "syscalls.h"
-#include "mbedtls/ecdsa.h"
 #include "board_link.h"
 #include "simple_flash.h"
 #include "host_messaging.h"
@@ -492,12 +491,6 @@ void attempt_attest() {
 int main() {
     // Initialize board
     init();
-
-    mbedtls_ecdsa_context ctx_sign, ctx_verify;
-    mbedtls_ecp_point Q;
-    mbedtls_ecp_point_init(&Q);
-    mbedtls_ecdsa_init(&ctx_sign);
-    mbedtls_ecdsa_init(&ctx_verify);
 
     // Print the component IDs to be helpful
     // Your design does not need to do this

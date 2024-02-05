@@ -19,19 +19,19 @@ override BOARD=FTHR_RevA
 MFLOAT_ABI=soft
 
 ROOT=.
-LIBMBEDTLS_ROOT=${ROOT}/lib/libmbedtls
+# LIBMBEDTLS_ROOT=${ROOT}/lib/libmbedtls
 
 IPATH+=../deployment
 IPATH+=inc/
-IPATH += ${LIBMBEDTLS_ROOT}/include
+# IPATH += ${LIBMBEDTLS_ROOT}/include
 VPATH+=src/
 
-PROJ_LDFLAGS += -L${LIBMBEDTLS_ROOT}/lib
-PROJ_LIBS += everest
-PROJ_LIBS += mbedcrypto
-PROJ_LIBS += mbedx509
-PROJ_LIBS += mbedtls
-PROJ_LIBS += p256m
+# PROJ_LDFLAGS += -L${LIBMBEDTLS_ROOT}/lib
+# PROJ_LIBS += everest
+# PROJ_LIBS += mbedcrypto
+# PROJ_LIBS += mbedx509
+# PROJ_LIBS += mbedtls
+# PROJ_LIBS += p256m
 
 PROJ_LDFLAGS += -Wl,--no-warn-rwx-segments
 
