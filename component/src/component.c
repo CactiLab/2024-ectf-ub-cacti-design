@@ -212,7 +212,10 @@ int main(void) {
     
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
-    board_link_init(addr);
+    if (board_link_init(addr) != E_NO_ERROR) {
+        // fail to initialize
+        return 0;
+    }
     
     LED_On(LED2);
 

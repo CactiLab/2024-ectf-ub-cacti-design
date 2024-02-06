@@ -159,7 +159,8 @@ int get_provisioned_ids(uint32_t* buffer) {
 
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
-void init() {
+// return SUCCESS_RETURN if succeed, other return ERROR_RETURN
+int init() {
 
     // Enable global interrupts    
     __enable_irq();
@@ -184,7 +185,10 @@ void init() {
     }
     
     // Initialize board link interface
-    board_link_init();
+    if (board_link_init() != E_NO_ERROR) {
+        return ERROR_RETURN;
+    }
+    return SUCCESS_RETURN;
 }
 
 // Send a command to a component and receive the result
@@ -490,7 +494,9 @@ void attempt_attest() {
 
 int main() {
     // Initialize board
-    init();
+    if (init() != SUCCESS_RETURN) {
+        return 0;
+    }
 
     // Print the component IDs to be helpful
     // Your design does not need to do this

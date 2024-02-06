@@ -20,11 +20,12 @@
 /**
  * @brief Initialize the board link connection
  * 
+ * @return negative fail, 0 success
+ * 
  * Initiailize the underlying i2c simple interface
 */
-void board_link_init(void) {
-    // TODO: error handling
-    i2c_simple_controller_init();
+int board_link_init(void) {
+    return i2c_simple_controller_init();
 }
 
 /**
