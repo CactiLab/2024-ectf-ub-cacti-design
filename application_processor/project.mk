@@ -18,20 +18,12 @@
 override BOARD=FTHR_RevA
 MFLOAT_ABI=soft
 
-ROOT=.
-# LIBMBEDTLS_ROOT=${ROOT}/lib/libmbedtls
 
 IPATH+=../deployment
 IPATH+=inc/
-# IPATH += ${LIBMBEDTLS_ROOT}/include
 VPATH+=src/
 
-# PROJ_LDFLAGS += -L${LIBMBEDTLS_ROOT}/lib
-# PROJ_LIBS += everest
-# PROJ_LIBS += mbedcrypto
-# PROJ_LIBS += mbedx509
-# PROJ_LIBS += mbedtls
-# PROJ_LIBS += p256m
+PROJ_CFLAGS += -DBLAKE2_NO_UNROLLING
 
 PROJ_LDFLAGS += -Wl,--no-warn-rwx-segments
 
@@ -40,15 +32,3 @@ PROJ_LDFLAGS += -Wl,--no-warn-rwx-segments
 LINKERFILE=firmware.ld
 STARTUPFILE=startup_firmware.S
 ENTRY=firmware_startup
-
-# ****************** eCTF Crypto Example *******************
-# Uncomment the commented lines below and comment the disable
-# lines to enable the eCTF Crypto Example.
-# WolfSSL must be included in this directory as wolfssl/
-# WolfSSL can be downloaded from: https://www.wolfssl.com/download/
-
-# Disable Crypto Example
-CRYPTO_EXAMPLE=0
-
-# Enable Crypto Example
-#CRYPTO_EXAMPLE=1

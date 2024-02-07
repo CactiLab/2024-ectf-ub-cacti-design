@@ -21,12 +21,15 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "syscalls.h"
 #include "simple_i2c_peripheral.h"
 #include "board_link.h"
+#include "simple_flash.h"
+
+#include "monocypher.h"
 
 // Includes from containerized build
 #include "ectf_params.h"
-#include "global_secrets.h"
 
 #ifdef POST_BOOT
 #include "led.h"
@@ -47,7 +50,21 @@
 #define ATTESTATION_CUSTOMER "Fritz"
 */
 
+// Flash Macros
+#define FLASH_ADDR ((MXC_FLASH_MEM_BASE + MXC_FLASH_MEM_SIZE) - (2 * MXC_FLASH_PAGE_SIZE))
+#define FLASH_MAGIC 0xDEADBEEF
+
 /******************************** TYPE DEFINITIONS ********************************/
+#define PRIV_KEY_SIZE 64
+#define PUB_KEY_SIZE 32
+
+// Datatype for information stored in flash
+typedef struct {
+    uint32_t flash_magic;
+    uint8_t cp_priv_key[PRIV_KEY_SIZE];
+    uint8_t ap_pub_key[PUB_KEY_SIZE];
+} flash_entry;
+
 // Commands received by Component using 32 bit integer
 typedef enum {
     COMPONENT_CMD_NONE,
@@ -85,6 +102,10 @@ void process_attest(void);
 uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
 uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 
+/********************************* GLOBAL VARIABLES **********************************/
+// Variable for information stored in flash memory
+flash_entry flash_status;
+
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
  * @brief Secure Send 
@@ -111,6 +132,50 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 */
 int secure_receive(uint8_t* buffer) {
     return wait_and_receive_packet(buffer);
+}
+
+/********************************* UTILITIES **********************************/
+
+// Initialize the device
+// This must be called on startup to initialize the flash and i2c interfaces
+void init() {
+
+    // Enable global interrupts    
+    __enable_irq();
+
+    // Setup Flash
+    flash_simple_init();
+
+    // Test application has been booted before
+    flash_simple_read(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+
+    // Write Component IDs from flash if first boot e.g. flash unwritten
+    if (flash_status.flash_magic != FLASH_MAGIC) {
+        printf("First boot, setting flash!\n");
+
+        flash_status.flash_magic = FLASH_MAGIC;
+
+        uint32_t cp_private_key[] = {CP_PRIVATE_KEY};
+        uint32_t ap_public_key[] = {AP_PUBLIC_KEY};
+        memcpy(flash_status.cp_priv_key, cp_private_key, PRIV_KEY_SIZE);
+        memcpy(flash_status.ap_pub_key, ap_public_key, PUB_KEY_SIZE);
+
+        flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+
+        crypto_wipe(cp_private_key, sizeof(cp_private_key));
+        crypto_wipe(ap_public_key, sizeof(ap_public_key));
+        crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    }
+    
+    // Initialize board link interface
+    i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
+    if (board_link_init(addr) != E_NO_ERROR) {
+        // TODO: PANIC
+        return;
+    }
+
+    LED_On(LED2);
 }
 
 /******************************* FUNCTION DEFINITIONS *********************************/
@@ -205,19 +270,10 @@ void process_attest() {
 /*********************************** MAIN *************************************/
 
 int main(void) {
+    // Initialize board
+    init();
+
     printf("Component Started\n");
-    
-    // Enable Global Interrupts
-    __enable_irq();
-    
-    // Initialize Component
-    i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
-    if (board_link_init(addr) != E_NO_ERROR) {
-        // fail to initialize
-        return 0;
-    }
-    
-    LED_On(LED2);
 
     while (1) {
         wait_and_receive_packet(receive_buffer);

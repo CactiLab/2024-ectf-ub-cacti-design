@@ -7,8 +7,9 @@ __check_defined = \
 	$(if $(value $1),, \
 		$(error Undefined $1$(if $2, ($2))))
 
-all: global_secrets.h keygen
-	./keygen.elf priv=priv.bin pub=pub.bin
+all: keygen
+	./keygen.elf priv=ap_priv.bin pub=ap_pub.bin
+	./keygen.elf priv=cp_priv.bin pub=cp_pub.bin
 
 global_secrets.h:
 	echo "#define SECRET 1234" > global_secrets.h

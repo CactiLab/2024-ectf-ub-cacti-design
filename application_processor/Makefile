@@ -416,7 +416,7 @@ MAKECMDGOALS:=$(.DEFAULT_GOAL)
 endif
 
 pre:
-	python keygen.py --header-file inc/ectf_params.h --priv-key-file ../deployment/priv.bin --pub-key-file ../deployment/pub.bin
+	python preprocess.py --header-file inc/ectf_params.h --ap-priv-key-file ../deployment/ap_priv.bin --cp-pub-key-file ../deployment/cp_pub.bin
 
 all: pre
 # 	Extend the functionality of the "all" recipe here

@@ -419,7 +419,10 @@ MAKECMDGOALS:=$(.DEFAULT_GOAL)
 endif
 
 
-all:
+pre:
+	python preprocess.py --header-file inc/ectf_params.h --cp-priv-key-file ../deployment/cp_priv.bin --ap-pub-key-file ../deployment/ap_pub.bin
+
+all: pre
 # 	Extend the functionality of the "all" recipe here
 	arm-none-eabi-size --format=berkeley $(BUILD_DIR)/$(PROJECT).elf
 

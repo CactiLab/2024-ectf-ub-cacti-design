@@ -21,7 +21,7 @@ struct options {
     "    pub=%%s                default: pub.bin\n"    \
     "\n"
 
-void generateRandomNumber(uint8_t* buffer, int size) {
+void get_rand(uint8_t* buffer, int size) {
     int urandom = open("/dev/urandom", O_RDONLY);
     if (urandom == -1) {
         perror("Failed to open /dev/urandom");
@@ -37,7 +37,7 @@ void generateRandomNumber(uint8_t* buffer, int size) {
     close(urandom);
 }
 
-void printBuffer(const uint8_t* buffer, int size) {
+void print_buffer(const uint8_t* buffer, int size) {
     for (int i = 0; i < size; i++) {
         printf("%02X", buffer[i]);
     }
@@ -49,9 +49,9 @@ int main(int argc, char *argv[]) {
     char *p, *q;
     struct options opt;
 
-    uint8_t seed[32];                          /* Random seed          */
-    uint8_t sk[64];                            /* secret key           */
-    uint8_t pk[32];                            /* Matching public key  */
+    uint8_t seed[32];              /* Random seed          */
+    uint8_t sk[64];                /* secret key           */
+    uint8_t pk[32];                /* Matching public key  */
 
     if (argc != 3) {
 usage:
@@ -74,17 +74,17 @@ usage:
             }
     }
 
-    generateRandomNumber(seed, sizeof(seed));
+    get_rand(seed, sizeof(seed));
 
     printf("seed: ");
-    printBuffer(seed, sizeof(seed));
+    print_buffer(seed, sizeof(seed));
 
     crypto_eddsa_key_pair(sk, pk, seed);
 
     printf("sk: ");
-    printBuffer(sk, sizeof(sk));
+    print_buffer(sk, sizeof(sk));
     printf("pk: ");
-    printBuffer(pk, sizeof(pk));
+    print_buffer(pk, sizeof(pk));
 
     FILE* skFile = fopen(opt.priv_filename, "wb");
     if (skFile == NULL) {
@@ -93,6 +93,7 @@ usage:
     }
     fwrite(sk, sizeof(uint8_t), sizeof(sk), skFile);
     fclose(skFile);
+    crypto_wipe(sk, sizeof(sk));
 
     FILE* pkFile = fopen(opt.pub_filename, "wb");
     if (pkFile == NULL) {
@@ -101,6 +102,7 @@ usage:
     }
     fwrite(pk, sizeof(uint8_t), sizeof(pk), pkFile);
     fclose(pkFile);
+    crypto_wipe(pk, sizeof(pk));
 
     return 0;
 }
