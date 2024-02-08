@@ -84,6 +84,8 @@ typedef struct {
 
 #define PRIV_KEY_SIZE 64
 #define PUB_KEY_SIZE 32
+#define AP_PRIV_KEY_OFFSET offsetof(flash_entry, ap_priv_key)
+#define CP_PUB_KEY_OFFSET offsetof(flash_entry, cp_pub_key)
 
 // Datatype for information stored in flash
 typedef struct {
@@ -156,10 +158,36 @@ int get_provisioned_ids(uint32_t* buffer) {
 
 /********************************* UTILITIES **********************************/
 
-// Initialize the device
-// This must be called on startup to initialize the flash and i2c interfaces
-// return SUCCESS_RETURN if succeed, other return ERROR_RETURN
-int init() {
+/**
+ * @brief Retrieves AP's private key from flash memory.
+ * 
+ * This function reads AP's private key from the specified flash address
+ * and stores it in the global `flash_status.ap_priv_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_ap_priv_key() {
+    flash_simple_read(FLASH_ADDR + AP_PRIV_KEY_OFFSET, (uint32_t*)flash_status.ap_priv_key, PRIV_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves CP's public key from flash memory.
+ * 
+ * This function reads CP's public key from the specified flash address
+ * and stores it in the global `flash_status.cp_pub_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_cp_pub_key() {
+    flash_simple_read(FLASH_ADDR + CP_PUB_KEY_OFFSET, (uint32_t*)flash_status.cp_pub_key, PUB_KEY_SIZE);
+}
+
+/**
+ * @brief Initialize the device.
+ * 
+ * This function must be called on startup to initialize the flash and i2c interfaces.
+ */
+void init() {
 
     // Enable global interrupts    
     __enable_irq();
@@ -195,9 +223,9 @@ int init() {
     
     // Initialize board link interface
     if (board_link_init() != E_NO_ERROR) {
-        return ERROR_RETURN;
+        // TODO: PANIC
+        return;
     }
-    return SUCCESS_RETURN;
 }
 
 // Send a command to a component and receive the result
@@ -259,6 +287,7 @@ int validate_components() {
     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 
     // Send validate command to each component
+    // TODO: Fix the component count to 2
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         // Set the I2C address of the component
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
@@ -342,36 +371,6 @@ int attest_component(uint32_t component_id) {
 // YOUR DESIGN MUST NOT CHANGE THIS FUNCTION
 // Boot message is customized through the AP_BOOT_MSG macro
 void boot() {
-    // Example of how to utilize included simple_crypto.h
-    #ifdef CRYPTO_EXAMPLE
-    // This string is 16 bytes long including null terminator
-    // This is the block size of included symmetric encryption
-    char* data = "Crypto Example!";
-    uint8_t ciphertext[BLOCK_SIZE];
-    uint8_t key[KEY_SIZE];
-    
-    // Zero out the key
-    bzero(key, BLOCK_SIZE);
-
-    // Encrypt example data and print out
-    encrypt_sym((uint8_t*)data, BLOCK_SIZE, key, ciphertext); 
-    print_debug("Encrypted data: ");
-    print_hex_debug(ciphertext, BLOCK_SIZE);
-
-    // Hash example encryption results 
-    uint8_t hash_out[HASH_SIZE];
-    hash(ciphertext, BLOCK_SIZE, hash_out);
-
-    // Output hash result
-    print_debug("Hash result: ");
-    print_hex_debug(hash_out, HASH_SIZE);
-    
-    // Decrypt the encrypted message and print out
-    uint8_t decrypted[BLOCK_SIZE];
-    decrypt_sym(ciphertext, BLOCK_SIZE, key, decrypted);
-    print_debug("Decrypted message: %s\r\n", decrypted);
-    #endif
-
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
@@ -422,12 +421,15 @@ int validate_token() {
 
 // Boot the components and board if the components validate
 void attempt_boot() {
-    if (validate_components()) {
+    volatile int ret = -1;
+    ret = validate_components();
+    if (ret != SUCCESS_RETURN) {
         print_error("Components could not be validated\n");
         return;
     }
     print_debug("All Components validated\n");
-    if (boot_components()) {
+    ret = boot_components();
+    if (ret != SUCCESS_RETURN) {
         print_error("Failed to boot all components\n");
         return;
     }
@@ -496,10 +498,7 @@ void attempt_attest() {
 
 int main() {
     // Initialize board
-    if (init() != SUCCESS_RETURN) {
-        // TODO: PANIC
-        return 0;
-    }
+    init();
 
     print_info("Application Processor Started\n");
 

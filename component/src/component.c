@@ -57,6 +57,8 @@
 /******************************** TYPE DEFINITIONS ********************************/
 #define PRIV_KEY_SIZE 64
 #define PUB_KEY_SIZE 32
+#define CP_PRIV_KEY_OFFSET offsetof(flash_entry, cp_priv_key)
+#define AP_PUB_KEY_OFFSET offsetof(flash_entry, ap_pub_key)
 
 // Datatype for information stored in flash
 typedef struct {
@@ -136,8 +138,35 @@ int secure_receive(uint8_t* buffer) {
 
 /********************************* UTILITIES **********************************/
 
-// Initialize the device
-// This must be called on startup to initialize the flash and i2c interfaces
+/**
+ * @brief Retrieves CP's private key from flash memory.
+ * 
+ * This function reads CP's private key from the specified flash address
+ * and stores it in the global `flash_status.cp_priv_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_cp_priv_key() {
+    flash_simple_read(FLASH_ADDR + CP_PRIV_KEY_OFFSET, (uint32_t*)flash_status.cp_priv_key, PRIV_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves AP's public key from flash memory.
+ * 
+ * This function reads AP's public key from the specified flash address
+ * and stores it in the global `flash_status.ap_pub_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_ap_pub_key() {
+    flash_simple_read(FLASH_ADDR + AP_PUB_KEY_OFFSET, (uint32_t*)flash_status.ap_pub_key, PUB_KEY_SIZE);
+}
+
+/**
+ * @brief Initialize the device.
+ * 
+ * This function must be called on startup to initialize the flash and i2c interfaces.
+ */
 void init() {
 
     // Enable global interrupts    
