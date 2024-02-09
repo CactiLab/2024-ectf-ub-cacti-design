@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "syscalls.h"
+#include "common.h"
 #include "simple_i2c_peripheral.h"
 #include "board_link.h"
 #include "simple_flash.h"

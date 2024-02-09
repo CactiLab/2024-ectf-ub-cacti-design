@@ -25,12 +25,10 @@
 #include <string.h>
 
 #include "syscalls.h"
+#include "common.h"
 #include "board_link.h"
 #include "simple_flash.h"
 #include "host_messaging.h"
-#ifdef CRYPTO_EXAMPLE
-#include "simple_crypto.h"
-#endif
 
 #include "monocypher.h"
 
@@ -221,10 +219,13 @@ void init() {
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
     }
     
+    if (rng_init() != E_NO_ERROR) {
+        panic();
+    }
+
     // Initialize board link interface
     if (board_link_init() != E_NO_ERROR) {
-        // TODO: PANIC
-        return;
+        panic();
     }
 }
 
@@ -499,6 +500,13 @@ void attempt_attest() {
 int main() {
     // Initialize board
     init();
+    
+    uint8_t delay_result;
+    RANDOM_DELAY_TINY(delay_result);
+    if (delay_result == 0) {
+        print_error("TRNG failure\n");
+        panic();
+    }
 
     print_info("Application Processor Started\n");
 
