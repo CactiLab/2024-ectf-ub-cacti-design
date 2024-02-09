@@ -12,6 +12,10 @@
  * This function initializes the random number generator by calling the `MXC_TRNG_Init()` function.
  */
 int rng_init(void) {
+    STRVR = 0xFFFFFF;  // max count
+    STCVR = 0;         // force a re-load of the counter value register
+    STCSR = 5;         // enable FCLK count without interrupt
+
     return MXC_TRNG_Init();
 }
 
@@ -26,4 +30,11 @@ int rng_init(void) {
  */
 int rng_get_bytes(uint8_t* buffer, int size) {
     return MXC_TRNG_Random(buffer, size);
+}
+
+/**
+ * @brief return current CPU cycle in int
+*/
+int get_current_cpu_cycle() {
+    return STCVR;
 }
