@@ -64,6 +64,6 @@ void __attribute__((noreturn)) panic(void) {
 /**
  * @brief return current CPU cycle in int
 */
-int get_current_cpu_cycle() {
+unsigned int get_current_cpu_cycle() {
     return STCVR;
 }

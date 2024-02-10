@@ -501,12 +501,18 @@ int main() {
     // Initialize board
     init();
     
-    uint8_t delay_result;
-    RANDOM_DELAY_TINY(delay_result);
-    if (delay_result == 0) {
-        print_error("TRNG failure\n");
-        panic();
-    }
+    // uint8_t delay_result;
+    // RANDOM_DELAY_TINY(delay_result);
+    // if (delay_result == 0) {
+    //     print_error("TRNG failure\n");
+    //     panic();
+    // }
+
+    unsigned int cycle1, cycle2;
+    cycle1 = get_current_cpu_cycle();
+    RANDOM_DELAY_TINY_2;
+    cycle2 = get_current_cpu_cycle();
+    print_info("after tiny delay, cycle1=%u, cycle2=%u, cycle difference=%u\n", cycle1, cycle2, cycle2 - cycle1);
 
     print_info("Application Processor Started\n");
 
