@@ -60,6 +60,9 @@
 #define PUB_KEY_SIZE 32
 #define CP_PRIV_KEY_OFFSET offsetof(flash_entry, cp_priv_key)
 #define AP_PUB_KEY_OFFSET offsetof(flash_entry, ap_pub_key)
+#define NONCE_SIZE 64
+#define SIGNATURE_SIZE 64
+#define MAX_POST_BOOT_MSG_LEN 64
 
 // Datatype for information stored in flash
 typedef struct {
@@ -74,7 +77,9 @@ typedef enum {
     COMPONENT_CMD_SCAN,
     COMPONENT_CMD_VALIDATE,
     COMPONENT_CMD_BOOT,
-    COMPONENT_CMD_ATTEST
+    COMPONENT_CMD_ATTEST,
+    COMPONENT_CMD_MSG_FROM_AP_TO_CP,
+    COMPONENT_CMD_MSG_FROM_CP_TO_AP
 } component_cmd_t;
 
 /******************************** TYPE DEFINITIONS ********************************/
@@ -108,34 +113,6 @@ uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 /********************************* GLOBAL VARIABLES **********************************/
 // Variable for information stored in flash memory
 flash_entry flash_status;
-
-/******************************* POST BOOT FUNCTIONALITY *********************************/
-/**
- * @brief Secure Send 
- * 
- * @param buffer: uint8_t*, pointer to data to be send
- * @param len: uint8_t, size of data to be sent 
- * 
- * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
- * This function must be implemented by your team to align with the security requirements.
-*/
-void secure_send(uint8_t* buffer, uint8_t len) {
-    send_packet_and_ack(len, buffer); 
-}
-
-/**
- * @brief Secure Receive
- * 
- * @param buffer: uint8_t*, pointer to buffer to receive data to
- * 
- * @return int: number of bytes received, negative if error
- * 
- * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
- * This function must be implemented by your team to align with the security requirements.
-*/
-int secure_receive(uint8_t* buffer) {
-    return wait_and_receive_packet(buffer);
-}
 
 /********************************* UTILITIES **********************************/
 
@@ -206,6 +183,89 @@ void init() {
     }
 
     LED_On(LED2);
+}
+
+/******************************* POST BOOT FUNCTIONALITY *********************************/
+/**
+ * @brief Secure Send 
+ * 
+ * @param buffer: uint8_t*, pointer to data to be send
+ * @param len: uint8_t, size of data to be sent 
+ * 
+ * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+*/
+void secure_send(uint8_t* buffer, uint8_t len) {
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+
+    // receive reading command and nonce
+    result = wait_and_receive_packet(receiving_buf);
+    if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
+        return result;
+    }
+
+    // sign nonce and msg
+    memcpy(general_buf, receiving_buf, NONCE_SIZE);
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    general_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+    retrive_cp_priv_key();
+    crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf, NONCE_SIZE + 2);
+    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.cp_priv_key, buffer, len);
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+    memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
+    send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
+}
+
+/**
+ * @brief Secure Receive
+ * 
+ * @param buffer: uint8_t*, pointer to buffer to receive data to
+ * 
+ * @return int: number of bytes received, negative if error
+ * 
+ * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+*/
+int secure_receive(uint8_t* buffer) {
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+
+    // receive sending command
+    result = wait_and_receive_packet(receiving_buf);
+    if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
+        return result;
+    }
+
+    // generate a challenge (nonce)
+    rng_get_bytes(sending_buf, NONCE_SIZE);
+    send_packet_and_ack(NONCE_SIZE, sending_buf);
+
+    // receive sign(p,nonce,address) + sign(msg) + msg
+    result = wait_and_receive_packet(receiving_buf);
+    if (result <= 0) {
+        return result;
+    }
+    int len = result - SIGNATURE_SIZE * 2;
+    sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+    retrive_ap_pub_key();
+    int r1 = crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2);
+    int r2 = crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len);
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    if (r1 != 0 || r2 != 0) {
+        panic();
+        return 0;
+    }
+    memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
+
+    return len;
 }
 
 /******************************* FUNCTION DEFINITIONS *********************************/

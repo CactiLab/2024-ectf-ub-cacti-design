@@ -84,6 +84,9 @@ typedef struct {
 #define PUB_KEY_SIZE 32
 #define AP_PRIV_KEY_OFFSET offsetof(flash_entry, ap_priv_key)
 #define CP_PUB_KEY_OFFSET offsetof(flash_entry, cp_pub_key)
+#define NONCE_SIZE 64
+#define SIGNATURE_SIZE 64
+#define MAX_POST_BOOT_MSG_LEN 64
 
 // Datatype for information stored in flash
 typedef struct {
@@ -100,59 +103,14 @@ typedef enum {
     COMPONENT_CMD_SCAN,
     COMPONENT_CMD_VALIDATE,
     COMPONENT_CMD_BOOT,
-    COMPONENT_CMD_ATTEST
+    COMPONENT_CMD_ATTEST,
+    COMPONENT_CMD_MSG_FROM_AP_TO_CP,
+    COMPONENT_CMD_MSG_FROM_CP_TO_AP
 } component_cmd_t;
 
 /********************************* GLOBAL VARIABLES **********************************/
 // Variable for information stored in flash memory
 flash_entry flash_status;
-
-/******************************* POST BOOT FUNCTIONALITY *********************************/
-/**
- * @brief Secure Send 
- * 
- * @param address: i2c_addr_t, I2C address of recipient
- * @param buffer: uint8_t*, pointer to data to be send
- * @param len: uint8_t, size of data to be sent 
- * 
- * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
- * This function must be implemented by your team to align with the security requirements.
-
-*/
-int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
-    return send_packet(address, len, buffer);
-}
-
-/**
- * @brief Secure Receive
- * 
- * @param address: i2c_addr_t, I2C address of sender
- * @param buffer: uint8_t*, pointer to buffer to receive data to
- * 
- * @return int: number of bytes received, negative if error
- * 
- * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
- * This function must be implemented by your team to align with the security requirements.
-*/
-int secure_receive(i2c_addr_t address, uint8_t* buffer) {
-    return poll_and_receive_packet(address, buffer);
-}
-
-/**
- * @brief Get Provisioned IDs
- * 
- * @param uint32_t* buffer
- * 
- * @return int: number of ids
- * 
- * Return the currently provisioned IDs and the number of provisioned IDs
- * for the current AP. This functionality is utilized in POST_BOOT functionality.
- * This function must be implemented by your team.
-*/
-int get_provisioned_ids(uint32_t* buffer) {
-    memcpy(buffer, flash_status.component_ids, flash_status.component_cnt * sizeof(uint32_t));
-    return flash_status.component_cnt;
-}
 
 /********************************* UTILITIES **********************************/
 
@@ -243,6 +201,115 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
         return ERROR_RETURN;
     }
     return len;
+}
+
+/******************************* POST BOOT FUNCTIONALITY *********************************/
+/**
+ * @brief Secure Send 
+ * 
+ * @param address: i2c_addr_t, I2C address of recipient
+ * @param buffer: uint8_t*, pointer to data to be send
+ * @param len: uint8_t, size of data to be sent 
+ * 
+ * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+
+*/
+int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
+    if (len > MAX_POST_BOOT_MSG_LEN) {
+        panic();
+    }
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+
+    // sending command
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    result = send_packet(address, sizeof(uint8_t), sending_buf);
+    if (result == ERROR_RETURN) {
+        return ERROR_RETURN;
+    }
+
+    // receive nonce and sign
+    result = poll_and_receive_packet(address, receiving_buf);
+    if (result != NONCE_SIZE) {
+        return ERROR_RETURN;
+    }
+    memcpy(general_buf, receiving_buf, NONCE_SIZE);
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    general_buf[NONCE_SIZE + 1] = address;
+    retrive_ap_priv_key();
+    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);
+    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, buffer, len);
+    crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+    memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
+    result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
+    if (result == ERROR_RETURN) {
+        return ERROR_RETURN;
+    }
+
+    return SUCCESS_RETURN;
+}
+
+/**
+ * @brief Secure Receive
+ * 
+ * @param address: i2c_addr_t, I2C address of sender
+ * @param buffer: uint8_t*, pointer to buffer to receive data to
+ * 
+ * @return int: number of bytes received, negative if error
+ * 
+ * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+*/
+int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = 0;
+
+    // send reading command, generate nonce
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    rng_get_bytes(sending_buf + 1, NONCE_SIZE);
+    send_packet(address, NONCE_SIZE + 1, sending_buf);
+
+    // validate nonce
+    result = poll_and_receive_packet(address, receiving_buf);
+    if (result <= 0) {
+        return result;
+    }
+    int len = result - SIGNATURE_SIZE * 2;
+    memcpy(general_buf, sending_buf + 1, NONCE_SIZE);
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    general_buf[NONCE_SIZE + 1] = address;
+    retrive_cp_pub_key();
+    int r1 = crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2);
+    int r2 = crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len);
+    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+    if (r1 != 0 || r2 != 0) {
+        panic();
+        return 0;
+    }
+    memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
+
+    return len;
+}
+
+/**
+ * @brief Get Provisioned IDs
+ * 
+ * @param uint32_t* buffer
+ * 
+ * @return int: number of ids
+ * 
+ * Return the currently provisioned IDs and the number of provisioned IDs
+ * for the current AP. This functionality is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team.
+*/
+int get_provisioned_ids(uint32_t* buffer) {
+    memcpy(buffer, flash_status.component_ids, flash_status.component_cnt * sizeof(uint32_t));
+    return flash_status.component_cnt;
 }
 
 /******************************** COMPONENT COMMS ********************************/
@@ -496,6 +563,8 @@ void attempt_attest() {
 }
 
 /*********************************** MAIN *************************************/
+#define PRIVKEY 0x6f, 0x05, 0xeb, 0xe4, 0xd6, 0x38, 0x35, 0x46, 0x64, 0x73, 0x30, 0xf9, 0xf9, 0x43, 0x0f, 0x6b, 0x5d, 0xdd, 0x56, 0x57, 0xc1, 0xc1, 0x03, 0xb7, 0xfd, 0x35, 0xa7, 0x1d, 0x21, 0x6e, 0x63, 0x25, 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
+#define PUBKEY 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
 
 int main() {
     // Initialize board
@@ -514,6 +583,22 @@ int main() {
     cycle2 = get_current_cpu_cycle();
     print_info("after tiny delay, cycle1=%u, cycle2=%u, cycle difference=%u\n", cycle1, cycle2, cycle2 - cycle1);
 
+    uint8_t message[64] = "I love you.";
+    uint8_t privkey[] = {PRIVKEY};
+    uint8_t pubkey[] = {PUBKEY};
+    uint8_t signature[64];
+    crypto_eddsa_sign(signature, privkey, message, 12);
+    print_info("private key: ");
+    print_hex(privkey, sizeof(privkey));
+    print_info("\n");
+    print_info("signature: ");
+    print_hex(signature, 64);
+    print_info("\n");
+    int r = crypto_eddsa_check(signature, pubkey, message, 12);
+    print_info("check result 1: =%d\n", r);
+    message[0] = 65;
+    r = crypto_eddsa_check(signature, pubkey, message, 12);
+    print_info("check result 2: =%d\n", r);
     print_info("Application Processor Started\n");
 
     // Handle commands forever
