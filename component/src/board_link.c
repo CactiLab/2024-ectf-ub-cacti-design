@@ -48,6 +48,9 @@ i2c_addr_t component_id_to_i2c_addr(uint32_t component_id) {
  * send a packet to the AP and wait for the message to be received
 */
 void send_packet_and_ack(uint8_t len, uint8_t* packet) {
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
     I2C_REGS[TRANSMIT_LEN][0] = len;
     memcpy((void*)I2C_REGS[TRANSMIT], (void*)packet, len);
     I2C_REGS[TRANSMIT_DONE][0] = false;
@@ -69,6 +72,9 @@ uint8_t wait_and_receive_packet(uint8_t* packet) {
     while(!I2C_REGS[RECEIVE_DONE][0]);
 
     uint8_t len = I2C_REGS[RECEIVE_LEN][0];
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
     memcpy(packet, (void*)I2C_REGS[RECEIVE], len);
 
     return len;
