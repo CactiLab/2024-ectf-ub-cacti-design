@@ -15,12 +15,15 @@
 #define __BOARD_LINK__
 
 #include "simple_i2c_peripheral.h"
+#include "common.h"
 
 /******************************** MACRO DEFINITIONS ********************************/
 // Last byte of the component ID is the I2C address
 #define COMPONENT_ADDR_MASK 0x000000FF             
 #define SUCCESS_RETURN 0
 #define ERROR_RETURN -1
+
+#define COMPONENT_ADDRESS (uint8_t) COMPONENT_ID & COMPONENT_ADDR_MASK;
 
 /******************************** FUNCTION PROTOTYPES ********************************/
 
