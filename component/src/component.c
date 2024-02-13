@@ -207,7 +207,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // receive reading command and nonce
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
-        return result;
+        return;
     }
 
     // sign nonce and msg

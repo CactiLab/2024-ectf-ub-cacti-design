@@ -9,7 +9,7 @@ def read_binary_file(path):
 def format_key_for_c_define(key):
     return ', '.join(f'0x{byte:02x}' for byte in key)
 
-def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key):
+def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key, ap_hash_key, ap_hash_salt, ap_hash_pin, ap_hash_token):
     with open(header_path, 'r') as file:
         lines = file.readlines()
 
@@ -34,7 +34,11 @@ def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key):
                 else:
                     break  # Stop before non-directive, non-empty lines
         file.write(f'#define AP_PRIVATE_KEY {format_key_for_c_define(ap_priv_key)}\n')
-        file.write(f'#define CP_PUBLIC_KEY {format_key_for_c_define(cp_pub_key)}\n')
+        file.write(f'#define CP_PUBLIC_KEY {format_key_for_c_define(cp_pub_key)}\n')    
+        file.write(f'#define AP_HASH_PIN {format_key_for_c_define(ap_hash_pin)}\n')
+        file.write(f'#define AP_HASH_TOKEN {format_key_for_c_define(ap_hash_token)}\n')
+        file.write(f'#define AP_HASH_KEY {format_key_for_c_define(ap_hash_key)}\n')
+        file.write(f'#define AP_HASH_SALT {format_key_for_c_define(ap_hash_salt)}\n')
     
     return cp_ids, cp_cnt, ap_pin, ap_token
 
@@ -43,6 +47,10 @@ def main():
     parser.add_argument("--header-file", type=Path, required=True)
     parser.add_argument("--ap-priv-key-file", type=Path, required=True)
     parser.add_argument("--cp-pub-key-file", type=Path, required=True)
+    parser.add_argument("--hash-key-file", type=Path, required=True)
+    parser.add_argument("--hash-salt-file", type=Path, required=True)
+    parser.add_argument("--hash-pin-file", type=Path, required=True)
+    parser.add_argument("--hash-token-file", type=Path, required=True)
     args = parser.parse_args()
     
     if not args.header_file.exists():
@@ -57,10 +65,30 @@ def main():
         print(f"CP's public key file {args.cp_pub_key_file} does not exist. Build the deployment package first.")
         sys.exit(1)
     
+    if not args.hash_key_file.exists():
+        print(f"Hash key file {args.hash_key_file} does not exist. Build the deployment package first.")
+        sys.exit(1)
+
+    if not args.hash_salt_file.exists():
+        print(f"Hash salt file {args.hash_salt_file} does not exist. Build the deployment package first.")
+        sys.exit(1)
+
+    if not args.hash_pin_file.exists():
+        print(f"Hash for PIN file {args.hash_pin_file} does not exist. Build the deployment package first.")
+        sys.exit(1)
+
+    if not args.hash_token_file.exists():
+        print(f"Hash for token file {args.hash_token_file} does not exist. Build the deployment package first.")
+        sys.exit(1)
+    
     priv_key = args.ap_priv_key_file.read_bytes()
     pub_key = args.cp_pub_key_file.read_bytes()
+    hash_key = args.hash_key_file.read_bytes()
+    hash_salt = args.hash_salt_file.read_bytes()
+    hash_pin = args.hash_pin_file.read_bytes()
+    hash_token = args.hash_pin_file.read_bytes()
     
-    cp_ids, cp_cnt, ap_pin, ap_token = parse_and_modify_header(args.header_file, priv_key, pub_key)
+    cp_ids, cp_cnt, ap_pin, ap_token = parse_and_modify_header(args.header_file, priv_key, pub_key, hash_key, hash_salt, hash_pin, hash_token)
     
     if ap_pin and ap_token and cp_ids and cp_cnt:
         print(f"AP_PIN: {ap_pin}")

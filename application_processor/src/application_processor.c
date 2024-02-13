@@ -563,6 +563,7 @@ void attempt_attest() {
 }
 
 /*********************************** MAIN *************************************/
+// remove
 #define PRIVKEY 0x6f, 0x05, 0xeb, 0xe4, 0xd6, 0x38, 0x35, 0x46, 0x64, 0x73, 0x30, 0xf9, 0xf9, 0x43, 0x0f, 0x6b, 0x5d, 0xdd, 0x56, 0x57, 0xc1, 0xc1, 0x03, 0xb7, 0xfd, 0x35, 0xa7, 0x1d, 0x21, 0x6e, 0x63, 0x25, 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
 #define PUBKEY 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
 
@@ -577,6 +578,7 @@ int main() {
     //     panic();
     // }
 
+    // remove
     unsigned int cycle1, cycle2;
     cycle1 = get_current_cpu_cycle();
     RANDOM_DELAY_TINY_2;
@@ -599,6 +601,30 @@ int main() {
     message[0] = 65;
     r = crypto_eddsa_check(signature, pubkey, message, 12);
     print_info("check result 2: =%d\n", r);
+    
+    uint8_t pass[] = "123456";
+    uint8_t salt[] = {AP_HASH_SALT};
+    uint8_t kkey[] = {AP_HASH_KEY};
+    uint8_t hash[64];
+    uint8_t *workarea = malloc(1024 * 115);
+    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, 115, 3, 1};
+    crypto_argon2_inputs cai = {pass, salt, 6, sizeof(salt)};
+    crypto_argon2_extras cae = {kkey, NULL, sizeof(kkey), 0};
+    crypto_argon2(hash, 64, workarea, cac, cai, cae);
+    print_info("hash=");
+    print_hex(hash, 64);
+    print_info("\n");
+    uint8_t hash_pin[] = {AP_HASH_PIN};
+    r = crypto_verify64(hash, hash_pin);
+    print_info("r=%d\n", r);
+    print_info("PIN: ");
+    print_hex(pass, 6);
+    print_info("\nKey: ");
+    print_hex(kkey, sizeof(kkey));
+    print_info("\nSalt: ");
+    print_hex(salt, sizeof(salt));
+
+
     print_info("Application Processor Started\n");
 
     // Handle commands forever
