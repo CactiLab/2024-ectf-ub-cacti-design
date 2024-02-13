@@ -84,9 +84,20 @@ typedef struct {
 #define PUB_KEY_SIZE 32
 #define AP_PRIV_KEY_OFFSET offsetof(flash_entry, ap_priv_key)
 #define CP_PUB_KEY_OFFSET offsetof(flash_entry, cp_pub_key)
+#define HASH_KEY_OFFSET offsetof(flash_entry, hash_key)
+#define HASH_SALT_OFFSET offsetof(flash_entry, hash_salt)
+#define PIN_HASH_OFFSET offsetof(flash_entry, pin_hash)
+#define TOKEN_HASH_OFFSET offsetof(flash_entry, token_hash)
 #define NONCE_SIZE 64
 #define SIGNATURE_SIZE 64
 #define MAX_POST_BOOT_MSG_LEN 64
+#define PIN_LEN 6
+#define TOKEN_LEN 16
+#define HASH_KEY_LEN 128
+#define HASH_SALT_LEN 128
+#define NB_BLOCKS 115
+#define HASH_LEN 64
+
 
 // Datatype for information stored in flash
 typedef struct {
@@ -95,6 +106,10 @@ typedef struct {
     uint32_t component_ids[8];
     uint8_t ap_priv_key[PRIV_KEY_SIZE];
     uint8_t cp_pub_key[PUB_KEY_SIZE];
+    uint8_t hash_key[HASH_KEY_LEN];
+    uint8_t hash_salt[HASH_SALT_LEN];
+    uint8_t pin_hash[HASH_LEN];
+    uint8_t token_hash[HASH_LEN];
 } flash_entry;
 
 // Datatype for commands sent to components
@@ -139,6 +154,54 @@ void retrive_cp_pub_key() {
 }
 
 /**
+ * @brief Retrieves hash key from flash memory.
+ * 
+ * This function reads the hash key from the specified flash address
+ * and stores it in the global `flash_status.hash_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_hash_key() {
+    flash_simple_read(FLASH_ADDR + HASH_KEY_OFFSET, (uint32_t*)flash_status.hash_key, HASH_KEY_LEN);
+}
+
+/**
+ * @brief Retrieves hash salt from flash memory.
+ * 
+ * This function reads the hash salt from the specified flash address
+ * and stores it in the global `flash_status.hash_salt` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_hash_salt() {
+    flash_simple_read(FLASH_ADDR + HASH_SALT_OFFSET, (uint32_t*)flash_status.hash_salt, HASH_SALT_LEN);
+}
+
+/**
+ * @brief Retrieves pin hash value from flash memory.
+ * 
+ * This function reads the pin hash value from the specified flash address
+ * and stores it in the global `flash_status.pin_hash` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_pin_hash() {
+    flash_simple_read(FLASH_ADDR + PIN_HASH_OFFSET, (uint32_t*)flash_status.pin_hash, HASH_LEN);
+}
+
+/**
+ * @brief Retrieves token hash value from flash memory.
+ * 
+ * This function reads the token hash value from the specified flash address
+ * and stores it in the global `flash_status.pin_token` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_token_hash() {
+    flash_simple_read(FLASH_ADDR + TOKEN_HASH_OFFSET, (uint32_t*)flash_status.token_hash, HASH_LEN);
+}
+
+/**
  * @brief Initialize the device.
  * 
  * This function must be called on startup to initialize the flash and i2c interfaces.
@@ -166,15 +229,32 @@ void init() {
 
         uint32_t ap_private_key[] = {AP_PRIVATE_KEY};
         uint32_t cp_public_key[] = {CP_PUBLIC_KEY};
+        uint32_t ap_hash_key[] = {AP_HASH_KEY};
+        uint32_t ap_hash_salt[] = {AP_HASH_SALT};
+        uint32_t ap_hash_pin[] = {AP_HASH_PIN};
+        uint32_t ap_hash_token[] = {AP_HASH_TOKEN};
         memcpy(flash_status.ap_priv_key, ap_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.cp_pub_key, cp_public_key, PUB_KEY_SIZE);
+        memcpy(flash_status.hash_key, ap_hash_key, HASH_KEY_LEN);
+        memcpy(flash_status.hash_salt, ap_hash_salt, HASH_SALT_LEN);
+        memcpy(flash_status.pin_hash, ap_hash_pin, HASH_LEN);
+        memcpy(flash_status.token_hash, ap_hash_token, HASH_LEN);
+
 
         flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
         crypto_wipe(ap_private_key, sizeof(ap_private_key));
         crypto_wipe(cp_public_key, sizeof(cp_public_key));
+        crypto_wipe(ap_hash_key, sizeof(ap_hash_key));
+        crypto_wipe(ap_hash_salt, sizeof(ap_hash_salt));
+        crypto_wipe(ap_hash_pin, sizeof(ap_hash_pin));
+        crypto_wipe(ap_hash_token, sizeof(ap_hash_token));
         crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+        crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+        crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+        crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+        crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     }
     
     if (rng_init() != E_NO_ERROR) {
