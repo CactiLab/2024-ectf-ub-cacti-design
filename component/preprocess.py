@@ -25,13 +25,19 @@ def parse_and_modify_header(header_path, cp_priv_key, ap_pub_key):
             att_customer = line.split('"')[1]
 
     with open(header_path, 'w') as file:
+        # potential bug: if header file has multiple #endif
         for line in lines:
-            if not line.strip() or line.strip().startswith('#'):
-                file.write(line)
-            else:
-                break  # Stop before non-directive, non-empty lines
+            if line.strip().startswith('#endif'):
+                break
+            file.write(line)
+        # for line in lines:
+        #     if not line.strip() or line.strip().startswith('#'):
+        #         file.write(line)
+        #     else:
+        #         break  # Stop before non-directive, non-empty lines
         file.write(f'#define CP_PRIVATE_KEY {format_key_for_c_define(cp_priv_key)}\n')
         file.write(f'#define AP_PUBLIC_KEY {format_key_for_c_define(ap_pub_key)}\n')
+        file.write(f'#endif')
     
     return cp_id, att_loc, att_date, att_customer
 

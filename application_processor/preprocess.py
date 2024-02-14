@@ -25,20 +25,27 @@ def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key, ap_hash_key, a
             cp_cnt = line.strip().split('COMPONENT_CNT ')[1]
 
     with open(header_path, 'w') as file:
+        # remove #endif
+        # potential bug: if header file has multiple #endif
         for line in lines:
-            if line.strip().startswith('#define AP_PIN') or line.strip().startswith('#define AP_TOKEN'):
-                file.write(line)
-            else:
-                if not line.strip() or line.strip().startswith('#'):
-                    file.write(line)
-                else:
-                    break  # Stop before non-directive, non-empty lines
+            if line.strip().startswith('#endif'):
+                break
+            file.write(line)
+            # if line.strip().startswith('#define AP_PIN') or line.strip().startswith('#define AP_TOKEN'):
+            #     file.write(line)
+            # else:
+            #     if not line.strip() or line.strip().startswith('#'):
+            #         file.write(line)
+            #     else:
+            #         break  # Stop before non-directive, non-empty lines
         file.write(f'#define AP_PRIVATE_KEY {format_key_for_c_define(ap_priv_key)}\n')
         file.write(f'#define CP_PUBLIC_KEY {format_key_for_c_define(cp_pub_key)}\n')
         file.write(f'#define AP_HASH_PIN {format_key_for_c_define(ap_hash_pin)}\n')
         file.write(f'#define AP_HASH_TOKEN {format_key_for_c_define(ap_hash_token)}\n')
         file.write(f'#define AP_HASH_KEY {format_key_for_c_define(ap_hash_key)}\n')
         file.write(f'#define AP_HASH_SALT {format_key_for_c_define(ap_hash_salt)}\n')
+        file.write(f'#endif')
+        
     
     return cp_ids, cp_cnt, ap_pin, ap_token
 
