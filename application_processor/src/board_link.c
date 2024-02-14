@@ -4,8 +4,8 @@
  * @brief High Level API for I2C Controller Communications Implementation
  * @date 2024
  *
- * This source file is part of an example system for MITRE's 2SUCCESS_RETURN23 Embedded System CTF (eCTF).
- * This code is being provided only for educational purposes for the 2SUCCESS_RETURN23 MITRE eCTF competition,
+ * This source file is part of an example system for MITRE's 2024 Embedded System CTF (eCTF).
+ * This code is being provided only for educational purposes for the 2024 MITRE eCTF competition,
  * and may not meet MITRE standards for quality. Use this code at your own risk!
  *
  * @copyright Copyright (c) 2024 The MITRE Corporation
