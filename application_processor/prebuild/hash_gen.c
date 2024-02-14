@@ -18,7 +18,8 @@
 #define TOKEN_LEN 16
 #define KEY_LEN 128
 #define SALT_LEN 128
-#define NB_BLOCKS 115
+#define NB_BLOCKS_PIN 115
+#define NB_BLOCKS_TOKEN 65
 #define HASH_LEN 64
 
 struct options {
@@ -126,18 +127,20 @@ int main(int argc, char *argv[]) {
     // hash pin, token
     uint8_t hash_pin[HASH_LEN];
     uint8_t hash_token[HASH_LEN];
-    uint8_t *workarea = malloc(1024 * NB_BLOCKS);
-    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS, 3, 1};
+    uint8_t *workarea_pin = malloc(1024 * NB_BLOCKS_PIN);
+    uint8_t *workarea_token = malloc(1024 * NB_BLOCKS_TOKEN);
+    crypto_argon2_config cac_pin = {CRYPTO_ARGON2_ID, NB_BLOCKS_PIN, 3, 1};
+    crypto_argon2_config cac_token = {CRYPTO_ARGON2_ID, NB_BLOCKS_TOKEN, 3, 1};
     crypto_argon2_inputs cai_pin = {pin, buf + KEY_LEN, PIN_LEN, SALT_LEN};
     crypto_argon2_inputs cai_token = {token, buf + KEY_LEN, TOKEN_LEN, SALT_LEN};
     crypto_argon2_extras cae = {buf, NULL, KEY_LEN, 0};
-    crypto_argon2(hash_pin, HASH_LEN, workarea, cac, cai_pin, cae);
-    crypto_argon2(hash_token, HASH_LEN, workarea, cac, cai_token, cae);
+    crypto_argon2(hash_pin, HASH_LEN, workarea_pin, cac_pin, cai_pin, cae);
+    crypto_argon2(hash_token, HASH_LEN, workarea_token, cac_token, cai_token, cae);
     printf("DEBUG:\n");
     printf("PIN: ");
     print_hex(pin, PIN_LEN);
     printf("\nToken: ");
-    print_hex(hash_token, TOKEN_LEN);
+    print_hex(token, TOKEN_LEN);
     printf("\nKey: ");
     print_hex(buf, KEY_LEN);
     printf("\nSalt: ");

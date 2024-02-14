@@ -82,6 +82,7 @@ typedef struct {
 
 #define PRIV_KEY_SIZE 64
 #define PUB_KEY_SIZE 32
+#define COMPONENT_IDS_OFFSET offsetof(flash_entry, component_ids)
 #define AP_PRIV_KEY_OFFSET offsetof(flash_entry, ap_priv_key)
 #define CP_PUB_KEY_OFFSET offsetof(flash_entry, cp_pub_key)
 #define HASH_KEY_OFFSET offsetof(flash_entry, hash_key)
@@ -95,9 +96,12 @@ typedef struct {
 #define TOKEN_LEN 16
 #define HASH_KEY_LEN 128
 #define HASH_SALT_LEN 128
-#define NB_BLOCKS 115
+#define NB_BLOCKS_PIN 115
+#define NB_BLOCKS_TOKEN 65
+#define NB_PASSES 3
+#define NB_LANES 1
 #define HASH_LEN 64
-
+#define HOST_INPUT_BUF_SIZE 64
 
 // Datatype for information stored in flash
 typedef struct {
@@ -227,12 +231,12 @@ void init() {
         memcpy(flash_status.component_ids, component_ids, 
             COMPONENT_CNT*sizeof(uint32_t));
 
-        uint32_t ap_private_key[] = {AP_PRIVATE_KEY};
-        uint32_t cp_public_key[] = {CP_PUBLIC_KEY};
-        uint32_t ap_hash_key[] = {AP_HASH_KEY};
-        uint32_t ap_hash_salt[] = {AP_HASH_SALT};
-        uint32_t ap_hash_pin[] = {AP_HASH_PIN};
-        uint32_t ap_hash_token[] = {AP_HASH_TOKEN};
+        uint8_t ap_private_key[] = {AP_PRIVATE_KEY};
+        uint8_t cp_public_key[] = {CP_PUBLIC_KEY};
+        uint8_t ap_hash_key[] = {AP_HASH_KEY};
+        uint8_t ap_hash_salt[] = {AP_HASH_SALT};
+        uint8_t ap_hash_pin[] = {AP_HASH_PIN};
+        uint8_t ap_hash_token[] = {AP_HASH_TOKEN};
         memcpy(flash_status.ap_priv_key, ap_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.cp_pub_key, cp_public_key, PUB_KEY_SIZE);
         memcpy(flash_status.hash_key, ap_hash_key, HASH_KEY_LEN);
@@ -556,13 +560,40 @@ int validate_pin() {
 }
 
 // Function to validate the replacement token
+// TODO: short panic mode, remove debug info
 int validate_token() {
-    char buf[50];
+    char buf[HOST_INPUT_BUF_SIZE];
     recv_input("Enter token: ", buf);
-    if (!strcmp(buf, AP_TOKEN)) {
+    if (strlen(buf) != TOKEN_LEN) {
+        print_error("Invalid Token!\n");
+        return ERROR_RETURN;
+    }
+    // print_hex(buf, TOKEN_LEN);
+
+    uint8_t hash[HASH_LEN] = {0};
+    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_TOKEN, NB_PASSES, NB_LANES};
+    uint8_t *workarea = malloc(1024 * cac.nb_blocks);
+    retrive_hash_salt();
+    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
+    retrive_hash_key();
+    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+    crypto_argon2(hash, 64, workarea, cac, cai, cae);
+    // print_info("Key: ");
+    // print_hex(flash_status.hash_key, HASH_KEY_LEN);
+    // print_info("\nToken: ");
+    // print_hex(flash_status.hash_salt, HASH_SALT_LEN);
+    free(workarea);
+    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    retrive_token_hash();
+    if (!crypto_verify64(hash, flash_status.token_hash)) {
+        crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+        crypto_wipe(hash, sizeof(hash));
         print_debug("Token Accepted!\n");
         return SUCCESS_RETURN;
     }
+    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    crypto_wipe(hash, sizeof(hash));
     print_error("Invalid Token!\n");
     return ERROR_RETURN;
 }
@@ -592,7 +623,7 @@ void attempt_boot() {
 
 // Replace a component if the PIN is correct
 void attempt_replace() {
-    char buf[50];
+    char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_token()) {
         return;
@@ -611,9 +642,11 @@ void attempt_replace() {
         if (flash_status.component_ids[i] == component_id_out) {
             flash_status.component_ids[i] = component_id_in;
 
+            flash_simple_write(FLASH_ADDR + COMPONENT_IDS_OFFSET + i, (uint32_t *) (flash_status.component_ids + i), sizeof(flash_status.component_ids[i]));
+
             // write updated component_ids to flash
-            flash_simple_erase_page(FLASH_ADDR);
-            flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+            // flash_simple_erase_page(FLASH_ADDR);
+            // flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
             print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
                     component_id_in);
@@ -659,50 +692,50 @@ int main() {
     // }
 
     // remove
-    unsigned int cycle1, cycle2;
-    cycle1 = get_current_cpu_cycle();
-    RANDOM_DELAY_TINY_2;
-    cycle2 = get_current_cpu_cycle();
-    print_info("after tiny delay, cycle1=%u, cycle2=%u, cycle difference=%u\n", cycle1, cycle2, cycle2 - cycle1);
+    // unsigned int cycle1, cycle2;
+    // cycle1 = get_current_cpu_cycle();
+    // RANDOM_DELAY_TINY_2;
+    // cycle2 = get_current_cpu_cycle();
+    // print_info("after tiny delay, cycle1=%u, cycle2=%u, cycle difference=%u\n", cycle1, cycle2, cycle2 - cycle1);
 
-    uint8_t message[64] = "I love you.";
-    uint8_t privkey[] = {PRIVKEY};
-    uint8_t pubkey[] = {PUBKEY};
-    uint8_t signature[64];
-    crypto_eddsa_sign(signature, privkey, message, 12);
-    print_info("private key: ");
-    print_hex(privkey, sizeof(privkey));
-    print_info("\n");
-    print_info("signature: ");
-    print_hex(signature, 64);
-    print_info("\n");
-    int r = crypto_eddsa_check(signature, pubkey, message, 12);
-    print_info("check result 1: =%d\n", r);
-    message[0] = 65;
-    r = crypto_eddsa_check(signature, pubkey, message, 12);
-    print_info("check result 2: =%d\n", r);
+    // uint8_t message[64] = "I love you.";
+    // uint8_t privkey[] = {PRIVKEY};
+    // uint8_t pubkey[] = {PUBKEY};
+    // uint8_t signature[64];
+    // crypto_eddsa_sign(signature, privkey, message, 12);
+    // print_info("private key: ");
+    // print_hex(privkey, sizeof(privkey));
+    // print_info("\n");
+    // print_info("signature: ");
+    // print_hex(signature, 64);
+    // print_info("\n");
+    // int r = crypto_eddsa_check(signature, pubkey, message, 12);
+    // print_info("check result 1: =%d\n", r);
+    // message[0] = 65;
+    // r = crypto_eddsa_check(signature, pubkey, message, 12);
+    // print_info("check result 2: =%d\n", r);
     
-    uint8_t pass[] = "123456";
-    uint8_t salt[] = {AP_HASH_SALT};
-    uint8_t kkey[] = {AP_HASH_KEY};
-    uint8_t hash[64];
-    uint8_t *workarea = malloc(1024 * 115);
-    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, 115, 3, 1};
-    crypto_argon2_inputs cai = {pass, salt, 6, sizeof(salt)};
-    crypto_argon2_extras cae = {kkey, NULL, sizeof(kkey), 0};
-    crypto_argon2(hash, 64, workarea, cac, cai, cae);
-    print_info("hash=");
-    print_hex(hash, 64);
-    print_info("\n");
-    uint8_t hash_pin[] = {AP_HASH_PIN};
-    r = crypto_verify64(hash, hash_pin);
-    print_info("r=%d\n", r);
-    print_info("PIN: ");
-    print_hex(pass, 6);
-    print_info("\nKey: ");
-    print_hex(kkey, sizeof(kkey));
-    print_info("\nSalt: ");
-    print_hex(salt, sizeof(salt));
+    // uint8_t pass[] = "123456";
+    // uint8_t salt[] = {AP_HASH_SALT};
+    // uint8_t kkey[] = {AP_HASH_KEY};
+    // uint8_t hash[64];
+    // uint8_t *workarea = malloc(1024 * 115);
+    // crypto_argon2_config cac = {CRYPTO_ARGON2_ID, 115, 3, 1};
+    // crypto_argon2_inputs cai = {pass, salt, 6, sizeof(salt)};
+    // crypto_argon2_extras cae = {kkey, NULL, sizeof(kkey), 0};
+    // crypto_argon2(hash, 64, workarea, cac, cai, cae);
+    // print_info("hash=");
+    // print_hex(hash, 64);
+    // print_info("\n");
+    // uint8_t hash_pin[] = {AP_HASH_PIN};
+    // r = crypto_verify64(hash, hash_pin);
+    // print_info("r=%d\n", r);
+    // print_info("PIN: ");
+    // print_hex(pass, 6);
+    // print_info("\nKey: ");
+    // print_hex(kkey, sizeof(kkey));
+    // print_info("\nSalt: ");
+    // print_hex(salt, sizeof(salt));
 
 
     print_info("Application Processor Started\n");

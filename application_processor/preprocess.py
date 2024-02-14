@@ -34,7 +34,7 @@ def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key, ap_hash_key, a
                 else:
                     break  # Stop before non-directive, non-empty lines
         file.write(f'#define AP_PRIVATE_KEY {format_key_for_c_define(ap_priv_key)}\n')
-        file.write(f'#define CP_PUBLIC_KEY {format_key_for_c_define(cp_pub_key)}\n')    
+        file.write(f'#define CP_PUBLIC_KEY {format_key_for_c_define(cp_pub_key)}\n')
         file.write(f'#define AP_HASH_PIN {format_key_for_c_define(ap_hash_pin)}\n')
         file.write(f'#define AP_HASH_TOKEN {format_key_for_c_define(ap_hash_token)}\n')
         file.write(f'#define AP_HASH_KEY {format_key_for_c_define(ap_hash_key)}\n')
@@ -86,7 +86,7 @@ def main():
     hash_key = args.hash_key_file.read_bytes()
     hash_salt = args.hash_salt_file.read_bytes()
     hash_pin = args.hash_pin_file.read_bytes()
-    hash_token = args.hash_pin_file.read_bytes()
+    hash_token = args.hash_token_file.read_bytes()
     
     cp_ids, cp_cnt, ap_pin, ap_token = parse_and_modify_header(args.header_file, priv_key, pub_key, hash_key, hash_salt, hash_pin, hash_token)
     
