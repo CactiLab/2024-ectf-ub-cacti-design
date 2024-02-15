@@ -300,6 +300,8 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
+    MXC_Delay(50);
+
     if (len > MAX_POST_BOOT_MSG_LEN) {
         panic();
     }
@@ -315,11 +317,18 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         return ERROR_RETURN;
     }
 
+    print_info("secure_send 1, sending_buf=");
+    print_hex(sending_buf, 1);
+
     // receive nonce and sign
     result = poll_and_receive_packet(address, receiving_buf);
     if (result != NONCE_SIZE) {
         return ERROR_RETURN;
     }
+
+    print_info("secure_send 2, receiving_buf=");
+    print_hex(receiving_buf, result);
+
     memcpy(general_buf, receiving_buf, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     general_buf[NONCE_SIZE + 1] = address;
@@ -333,6 +342,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         return ERROR_RETURN;
     }
 
+    MXC_Delay(500);
     return SUCCESS_RETURN;
 }
 
@@ -348,21 +358,31 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+    MXC_Delay(50);
+
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = 0;
 
+    // printf("secure_receive 1\n");
+
     // send reading command, generate nonce
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     rng_get_bytes(sending_buf + 1, NONCE_SIZE);
+    // printf("secure_receive 2\n");
     send_packet(address, NONCE_SIZE + 1, sending_buf);
+    // printf("secure_receive 3, sending_buf=\n");
+    // print_hex(sending_buf, NONCE_SIZE + 1);
 
     // validate nonce
     result = poll_and_receive_packet(address, receiving_buf);
     if (result <= 0) {
         return result;
     }
+    // printf("secure_receive 4, receiving_buf=\n");
+    // print_hex(receiving_buf, result);
+
     int len = result - SIGNATURE_SIZE * 2;
     memcpy(general_buf, sending_buf + 1, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
@@ -370,6 +390,21 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     retrive_cp_pub_key();
     int r1 = crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2);
     int r2 = crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len);
+    
+    // printf("secure_receive 5, s1=");
+    // print_hex(receiving_buf, SIGNATURE_SIZE);
+
+    // printf("secure_receive 6, s2=");
+    // print_hex(receiving_buf + SIGNATURE_SIZE, SIGNATURE_SIZE);
+
+    // printf("secure_receive 7, msg=");
+    // print_hex(receiving_buf + SIGNATURE_SIZE * 2, len);
+
+    // printf("secure_receive 8, flash_status.cp_pub_key=");
+    // print_hex(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+
+    // printf("secure_receive 9, r1=%d, r2=%d\n", r1, r2);
+
     crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
     if (r1 != 0 || r2 != 0) {
         panic();
@@ -377,6 +412,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     }
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
+    MXC_Delay(500);
     return len;
 }
 
@@ -403,6 +439,7 @@ int scan_components() {
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         print_info("P>0x%08x\n", flash_status.component_ids[i]);
     }
+    // print_info("ok\n");
 
     // Buffers for board link communication
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
@@ -410,24 +447,28 @@ int scan_components() {
 
     // Scan scan command to each component 
     for (i2c_addr_t addr = 0x8; addr < 0x78; addr++) {
+        // print_info("addr=0x%x\n", addr);
         // I2C Blacklist:
         // 0x18, 0x28, and 0x36 conflict with separate devices on MAX78000FTHR
         if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
             continue;
         }
-
+        // print_info("scan_components 1\n");
         // Create command message 
         command_message* command = (command_message*) transmit_buffer;
         command->opcode = COMPONENT_CMD_SCAN;
+        // print_info("scan_components 2\n");
         
         // Send out command and receive result
         int len = issue_cmd(addr, transmit_buffer, receive_buffer);
+        // print_info("scan_components 3\n");
 
         // Success, device is present
         if (len > 0) {
             scan_message* scan = (scan_message*) receive_buffer;
             print_info("F>0x%08x\n", scan->component_id);
         }
+        // print_info("scan_components 4\n");
     }
     print_success("List\n");
     return SUCCESS_RETURN;
@@ -523,11 +564,28 @@ int attest_component(uint32_t component_id) {
 // YOUR DESIGN MUST NOT CHANGE THIS FUNCTION
 // Boot message is customized through the AP_BOOT_MSG macro
 void boot() {
+    MXC_Delay(50);
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
         POST_BOOT
     #else
+    // test 1
+    // uint8_t buffer[] = "abc";
+    // secure_send(0x24, buffer, sizeof(buffer));
+
+    // test 2
+    // uint8_t buffer[256];
+    // int r = secure_receive(0x24, buffer);
+    // printf("buffer=");
+    // print_hex(buffer, r);
+
+    // test 3
+    uint8_t buffer1[] = "abc";
+    uint8_t buffer2[256];
+    secure_send(0x24, buffer1, sizeof(buffer1));
+    secure_receive(0x24, buffer2);
+    
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
     while (1) {
@@ -623,6 +681,7 @@ void attempt_boot() {
 
 // Replace a component if the PIN is correct
 void attempt_replace() {
+    MXC_Delay(50);
     char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_token()) {
@@ -677,8 +736,8 @@ void attempt_attest() {
 
 /*********************************** MAIN *************************************/
 // remove
-#define PRIVKEY 0x6f, 0x05, 0xeb, 0xe4, 0xd6, 0x38, 0x35, 0x46, 0x64, 0x73, 0x30, 0xf9, 0xf9, 0x43, 0x0f, 0x6b, 0x5d, 0xdd, 0x56, 0x57, 0xc1, 0xc1, 0x03, 0xb7, 0xfd, 0x35, 0xa7, 0x1d, 0x21, 0x6e, 0x63, 0x25, 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
-#define PUBKEY 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
+// #define PRIVKEY 0x6f, 0x05, 0xeb, 0xe4, 0xd6, 0x38, 0x35, 0x46, 0x64, 0x73, 0x30, 0xf9, 0xf9, 0x43, 0x0f, 0x6b, 0x5d, 0xdd, 0x56, 0x57, 0xc1, 0xc1, 0x03, 0xb7, 0xfd, 0x35, 0xa7, 0x1d, 0x21, 0x6e, 0x63, 0x25, 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
+// #define PUBKEY 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
 
 int main() {
     // Initialize board

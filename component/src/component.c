@@ -162,8 +162,8 @@ void init() {
 
         flash_status.flash_magic = FLASH_MAGIC;
 
-        uint32_t cp_private_key[] = {CP_PRIVATE_KEY};
-        uint32_t ap_public_key[] = {AP_PUBLIC_KEY};
+        uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
+        uint8_t ap_public_key[] = {AP_PUBLIC_KEY};
         memcpy(flash_status.cp_priv_key, cp_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.ap_pub_key, ap_public_key, PUB_KEY_SIZE);
 
@@ -178,11 +178,20 @@ void init() {
     // Initialize board link interface
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
     if (board_link_init(addr) != E_NO_ERROR) {
-        // TODO: PANIC
-        return;
+        panic();
+    }
+
+    if(rng_init() != E_NO_ERROR) {
+        panic();
     }
 
     LED_On(LED2);
+}
+
+void print_hex(uint8_t *buf, size_t len) {
+    for (int i = 0; i < len; i++)
+    	printf("%02x", buf[i]);
+    printf("\n");
 }
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
@@ -196,6 +205,8 @@ void init() {
  * This function must be implemented by your team to align with the security requirements.
 */
 void secure_send(uint8_t* buffer, uint8_t len) {
+    MXC_Delay(50);
+
     if (len > MAX_I2C_MESSAGE_LEN) {
         panic();
     }
@@ -204,14 +215,19 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
+    // printf("secure_send 1\n");
+
     // receive reading command and nonce
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
         return;
     }
 
+    // printf("secure_send 2, receiving_buf=");
+    // print_hex(receiving_buf, result);
+
     // sign nonce and msg
-    memcpy(general_buf, receiving_buf, NONCE_SIZE);
+    memcpy(general_buf, receiving_buf + 1, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     general_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
     retrive_cp_priv_key();
@@ -220,6 +236,11 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
     send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
+    
+    MXC_Delay(500);
+
+    // printf("secure_send 3, sending_buf=");
+    // print_hex(sending_buf, SIGNATURE_SIZE * 2 + len);
 }
 
 /**
@@ -233,38 +254,65 @@ void secure_send(uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(uint8_t* buffer) {
+    MXC_Delay(50);
+
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
     // receive sending command
+    // printf("securereceive 1\n");
     result = wait_and_receive_packet(receiving_buf);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
         return result;
     }
+    // printf("securereceive 2, receiving_buf=");
+    // print_hex(receiving_buf, result);
 
     // generate a challenge (nonce)
     rng_get_bytes(sending_buf, NONCE_SIZE);
+    // printf("securereceive 2.5, sending_buf=");
+    // print_hex(sending_buf, NONCE_SIZE);
+
     send_packet_and_ack(NONCE_SIZE, sending_buf);
+
+    // printf("securereceive 3, sending_buf=");
+    // print_hex(sending_buf, NONCE_SIZE);
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0) {
         return result;
     }
+
+    // printf("securereceive 4, receiving_buf=");
+    // print_hex(receiving_buf, result);
+
     int len = result - SIGNATURE_SIZE * 2;
     sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
     retrive_ap_pub_key();
     int r1 = crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2);
     int r2 = crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len);
-    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    // printf("securereceive 5, ap_pub_key=");
+    // print_hex(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    // printf("securereceive 6, s1=");
+    // print_hex(receiving_buf, SIGNATURE_SIZE);
+    // printf("securereceive 7, s2=");
+    // print_hex(receiving_buf + SIGNATURE_SIZE, SIGNATURE_SIZE);
+    // printf("securereceive 8, msg=");
+    // print_hex(receiving_buf + SIGNATURE_SIZE * 2, len);
+    // printf("securereceive 9, len=%d\n", len);
+    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    // printf("securereceive 10, ap_pub_key=");
+    // print_hex(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     if (r1 != 0 || r2 != 0) {
         panic();
         return 0;
     }
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
+    MXC_Delay(500);
     return len;
 }
 
@@ -273,12 +321,30 @@ int secure_receive(uint8_t* buffer) {
 // Example boot sequence
 // Your design does not need to change this
 void boot() {
-
+    MXC_Delay(50);
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
         POST_BOOT
     #else
+
+    // test 1
+    // uint8_t buffer[256];
+    // int r = secure_receive(buffer);
+    // printf("buffer=");
+    // print_hex(buffer, r);
+
+    // test 2
+    // printf("starting test 2 post-boot\n");
+    // uint8_t buffer[] = "I love you.";
+    // secure_send(buffer, sizeof(buffer));
+
+    // test 3
+    uint8_t buffer1[256];
+    uint8_t buffer2[] = "I love you.";
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems
     LED_Off(LED1);
@@ -333,6 +399,7 @@ void process_boot() {
     memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
     send_packet_and_ack(len, transmit_buffer);
     // Call the boot function
+    // printf("before booting\n");
     boot();
 }
 
