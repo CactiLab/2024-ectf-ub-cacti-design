@@ -46,6 +46,7 @@ int get_current_cpu_cycle() {
  * This function is called when a critical error occurs. It disables interrupts and enters an infinite loop.
  */
 void __attribute__((noreturn)) panic(void) {
+    printf("panic!!!!!!\n");
     __disable_irq();
 
     volatile uint32_t counter = 0;
