@@ -452,8 +452,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		nonce,
 		and the CP ID using the \texttt{K\_Pri1} key as the response for the CP.
 		The AP sends the response,
-		message,
-		and a signature of the message (signed using the \texttt{K\_Pri1} key) to th CP.
+		a signature of the message (signed using the \texttt{K\_Pri1} key),
+		and message to th CP.
 		\item The CP verifies using the \texttt{K\_Pub1} key the response by checking if the reading purpose label,
 		nonce,
 		and ID is correct to ensure authenticity.
@@ -476,8 +476,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		nonce,
 		and the ID with the \texttt{K\_Pri2} key as the response.
 		It puts the response,
-		message,
-		and a signature of the message signed using the \texttt{K\_Pri2} key in the I2C buffer,
+		a signature of the message signed using the \texttt{K\_Pri2} key,
+		and message in the I2C buffer,
 		waiting for the AP to read.
 		\item The AP reads the packet from the CP.
 		\item The AP verifies the response using the \texttt{K\_Pub2} key to and check if the reading purpose label,

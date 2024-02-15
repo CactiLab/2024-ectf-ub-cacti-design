@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2024-01-30T14:58:29.411Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="c9pZ2vhP7f0ZaVKt6LNC" version="23.0.2" type="device">
+<mxfile host="app.diagrams.net" modified="2024-02-15T04:53:36.051Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="M0xz43z9k6n_pwyeW5jg" version="23.1.4" type="device">
   <diagram name="Page-1" id="2YBvvXClWsGukQMizWep">
-    <mxGraphModel dx="780" dy="427" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1342" dy="734" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -29,7 +29,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="9xmCD3t41xQCNdKe1iWf-1" value="Sign (p, nonce, ID) + message + &lt;br&gt;Sign (message)" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" target="9xmCD3t41xQCNdKe1iWf-2" edge="1">
+        <mxCell id="9xmCD3t41xQCNdKe1iWf-1" value="Sign (p, nonce, ID) + &lt;br&gt;Sign (message) + message" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" target="9xmCD3t41xQCNdKe1iWf-2" edge="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="265" y="160" as="sourcePoint" />
             <Array as="points">
