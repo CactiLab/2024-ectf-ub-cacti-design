@@ -420,7 +420,9 @@ endif
 
 
 pre:
-	python preprocess.py --header-file inc/ectf_params.h --cp-priv-key-file ../deployment/cp_priv.bin --ap-pub-key-file ../deployment/ap_pub.bin
+	gcc -o enc_att_data.elf ./prebuild/enc_att_data.c ./prebuild/monocypher.c
+	./enc_att_data.elf key=../deployment/aead_key.bin nonce=../deployment/aead_nonce.bin final_cipher_text=final_cipher_text.bin
+	python preprocess.py --header-file inc/ectf_params.h --cp-priv-key-file ../deployment/cp_priv.bin --ap-pub-key-file ../deployment/ap_pub.bin --aead-enc-text-file final_cipher_text.bin
 
 all: pre
 # 	Extend the functionality of the "all" recipe here
