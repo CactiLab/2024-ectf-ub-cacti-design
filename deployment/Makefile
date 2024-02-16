@@ -7,9 +7,10 @@ __check_defined = \
 	$(if $(value $1),, \
 		$(error Undefined $1$(if $2, ($2))))
 
-all: keygen
+all: keygen aead_keygen
 	./keygen.elf priv=ap_priv.bin pub=ap_pub.bin
 	./keygen.elf priv=cp_priv.bin pub=cp_pub.bin
+	./aead_key.elf key=aead_key.bin nonce=aead_nonce.bin
 
 global_secrets.h:
 	echo "#define SECRET 1234" > global_secrets.h
@@ -25,6 +26,9 @@ test: test.c monocypher.c
 
 keygen: keygen.c monocypher.c
 	gcc -o keygen.elf keygen.c monocypher.c
+
+aead_keygen: aead_key.c monocypher.c
+	gcc -o aead_key.elf aead_key.c monocypher.c
 
 clean:
 	rm -f global_secrets.h *.elf *.bin
