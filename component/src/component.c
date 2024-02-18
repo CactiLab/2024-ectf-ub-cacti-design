@@ -329,10 +329,10 @@ void boot() {
     #else
 
     // test 1
-    // uint8_t buffer[256];
-    // int r = secure_receive(buffer);
-    // printf("buffer=");
-    // print_hex(buffer, r);
+    uint8_t buffer[256];
+    int r = secure_receive(buffer);
+    printf("buffer=");
+    print_hex(buffer, r);
 
     // test 2
     // printf("starting test 2 post-boot\n");
@@ -340,10 +340,10 @@ void boot() {
     // secure_send(buffer, sizeof(buffer));
 
     // test 3
-    uint8_t buffer1[256];
-    uint8_t buffer2[] = "I love you.";
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
+    // uint8_t buffer1[256];
+    // uint8_t buffer2[] = "I love you.";
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
 
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems

@@ -18,7 +18,7 @@
 #define TOKEN_LEN 16
 #define KEY_LEN 128
 #define SALT_LEN 128
-#define NB_BLOCKS_PIN 115
+#define NB_BLOCKS_PIN 108
 #define NB_BLOCKS_TOKEN 65
 #define HASH_LEN 64
 
@@ -103,7 +103,6 @@ int main(int argc, char *argv[]) {
     }
     fwrite(buf + KEY_LEN, sizeof(uint8_t), SALT_LEN, salt_file);
     fclose(salt_file);
-    crypto_wipe(buf, sizeof(buf));
 
     // read pin, token plaintexts
     FILE *param_file = fopen("./inc/ectf_params.h", "r");
@@ -137,20 +136,21 @@ int main(int argc, char *argv[]) {
     crypto_argon2_extras cae = {buf, NULL, KEY_LEN, 0};
     crypto_argon2(hash_pin, HASH_LEN, workarea_pin, cac_pin, cai_pin, cae);
     crypto_argon2(hash_token, HASH_LEN, workarea_token, cac_token, cai_token, cae);
-    // printf("DEBUG:\n");
-    // printf("PIN: ");
-    // print_hex(pin, PIN_LEN);
-    // printf("\nToken: ");
-    // print_hex(token, TOKEN_LEN);
-    // printf("\nKey: ");
-    // print_hex(buf, KEY_LEN);
-    // printf("\nSalt: ");
-    // print_hex(buf + KEY_LEN, SALT_LEN);
-    // printf("\nHash PIN: ");
-    // print_hex(hash_pin, HASH_LEN);
-    // printf("\nHash Token: ");
-    // print_hex(hash_token, HASH_LEN);
-    // printf("DEBUG END\n");
+    printf("DEBUG:\n");
+    printf("PIN: ");
+    print_hex(pin, PIN_LEN);
+    printf("\nToken: ");
+    print_hex(token, TOKEN_LEN);
+    printf("\nKey: ");
+    print_hex(buf, KEY_LEN);
+    printf("\nSalt: ");
+    print_hex(buf + KEY_LEN, SALT_LEN);
+    printf("\nHash PIN: ");
+    print_hex(hash_pin, HASH_LEN);
+    printf("\nHash Token: ");
+    print_hex(hash_token, HASH_LEN);
+    printf("DEBUG END\n");
+    crypto_wipe(buf, sizeof(buf));
 
     // write hash pin
     FILE *hash_pin_file = fopen(opt.hash_pin_filename, "wb");

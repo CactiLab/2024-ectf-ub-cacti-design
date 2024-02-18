@@ -96,7 +96,7 @@ typedef struct {
 #define TOKEN_LEN 16
 #define HASH_KEY_LEN 128
 #define HASH_SALT_LEN 128
-#define NB_BLOCKS_PIN 115
+#define NB_BLOCKS_PIN 108
 #define NB_BLOCKS_TOKEN 65
 #define NB_PASSES 3
 #define NB_LANES 1
@@ -609,16 +609,18 @@ void boot() {
 int validate_pin() {
     char buf[HOST_INPUT_BUF_SIZE];
     recv_input("Enter pin: ", buf);
+    MXC_Delay(50);
 
     uint8_t hash[HASH_LEN] = {0};
     crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_PIN, NB_PASSES, NB_LANES};
     uint8_t *workarea = malloc(1024 * cac.nb_blocks);
     retrive_hash_salt();
-    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
+    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, PIN_LEN, sizeof(flash_status.hash_salt)};
     retrive_hash_key();
     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
     free(workarea);
+    MXC_Delay(100);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
     retrive_pin_hash();
@@ -643,7 +645,9 @@ int validate_token() {
         print_error("Invalid Token!\n");
         return ERROR_RETURN;
     }
+    // print_info("\nInputted Token: \n");
     // print_hex(buf, TOKEN_LEN);
+    MXC_Delay(50);
 
     uint8_t hash[HASH_LEN] = {0};
     crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_TOKEN, NB_PASSES, NB_LANES};
@@ -652,15 +656,20 @@ int validate_token() {
     crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
     retrive_hash_key();
     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
-    crypto_argon2(hash, 64, workarea, cac, cai, cae);
+    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
     // print_info("Key: ");
     // print_hex(flash_status.hash_key, HASH_KEY_LEN);
-    // print_info("\nToken: ");
+    // print_info("\nSalt: ");
     // print_hex(flash_status.hash_salt, HASH_SALT_LEN);
     free(workarea);
+    MXC_Delay(50);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
     retrive_token_hash();
+    // print_info("\nSaved Token:");
+    // print_hex(flash_status.token_hash, sizeof(flash_status.token_hash));
+    // print_info("\nCalculated Token:");
+    // print_hex(hash, sizeof(hash));
     if (!crypto_verify64(hash, flash_status.token_hash)) {
         crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
         crypto_wipe(hash, sizeof(hash));
@@ -698,7 +707,7 @@ void attempt_boot() {
 
 // Replace a component if the PIN is correct
 void attempt_replace() {
-    MXC_Delay(50);
+    MXC_Delay(HOST_INPUT_BUF_SIZE);
     char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_token()) {
@@ -738,7 +747,8 @@ void attempt_replace() {
 
 // Attest a component if the PIN is correct
 void attempt_attest() {
-    char buf[50];
+    MXC_Delay(50);
+    char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_pin()) {
         return;

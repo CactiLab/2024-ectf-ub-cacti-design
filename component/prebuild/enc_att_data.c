@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
 
     // write
     FILE *final_cipher_file = fopen(opt.final_cipher_text_filename, "wb");
-    if (nonce_file == NULL) {
+    if (final_cipher_file == NULL) {
         perror("Failed to open the final cipher text file");
         exit(1);
     }
