@@ -418,7 +418,7 @@ endif
 pre:
 	gcc -o ./hash_gen.elf ./prebuild/hash_gen.c ./prebuild/monocypher.c
 	./hash_gen.elf hash_key=hash_key.bin hash_salt=hash_salt.bin hash_pin=hash_pin.bin hash_token=hash_token.bin
-	python preprocess.py --header-file inc/ectf_params.h --ap-priv-key-file ../deployment/ap_priv.bin --cp-pub-key-file ../deployment/cp_pub.bin --hash-key-file hash_key.bin --hash-salt-file hash_salt.bin --hash-pin-file hash_pin.bin --hash-token-file hash_token.bin
+	python preprocess.py --header-file inc/ectf_params.h --ap-priv-key-file ../deployment/ap_priv.bin --cp-pub-key-file ../deployment/cp_pub.bin --hash-key-file hash_key.bin --hash-salt-file hash_salt.bin --hash-pin-file hash_pin.bin --hash-token-file hash_token.bin --aead-key-file ../deployment/aead_key.bin --aead-nonce-file ../deployment/aead_nonce.bin
 
 all: pre
 # 	Extend the functionality of the "all" recipe here
