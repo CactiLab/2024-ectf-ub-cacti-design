@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
     fclose(salt_file);
     crypto_wipe(buf, sizeof(buf));
 
-    // read pin, token plintexts
+    // read pin, token plaintexts
     FILE *param_file = fopen("./inc/ectf_params.h", "r");
     if (param_file == NULL) {
         perror("Failed to open param file");
