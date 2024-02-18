@@ -581,10 +581,10 @@ void boot() {
     // print_hex(buffer, r);
 
     // test 3
-    uint8_t buffer1[] = "abc";
-    uint8_t buffer2[256];
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    secure_receive(0x24, buffer2);
+    // uint8_t buffer1[] = "abc";
+    // uint8_t buffer2[256];
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
     
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
@@ -607,12 +607,29 @@ void boot() {
 
 // Compare the entered PIN to the correct PIN
 int validate_pin() {
-    char buf[50];
+    char buf[HOST_INPUT_BUF_SIZE];
     recv_input("Enter pin: ", buf);
-    if (!strcmp(buf, AP_PIN)) {
+
+    uint8_t hash[HASH_LEN] = {0};
+    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_PIN, NB_PASSES, NB_LANES};
+    uint8_t *workarea = malloc(1024 * cac.nb_blocks);
+    retrive_hash_salt();
+    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
+    retrive_hash_key();
+    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
+    free(workarea);
+    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    retrive_pin_hash();
+    if (!crypto_verify64(hash, flash_status.pin_hash)) {
+        crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+        crypto_wipe(hash, sizeof(hash));
         print_debug("Pin Accepted!\n");
         return SUCCESS_RETURN;
     }
+    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+    crypto_wipe(hash, sizeof(hash));
     print_error("Invalid PIN!\n");
     return ERROR_RETURN;
 }
