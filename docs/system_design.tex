@@ -179,8 +179,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	\subsection{SR4}
 	\textbf{CP Attestation Data should be kept confidential.}
 	\paragraph{How we address it:}
-	Use AES to encrypt the CP Attestation Data with a Python script to replace the plain text with the encrypted text in macros when building a CP.
-	The AES key is generated based on a shared secret between AP and CP.
+	Use a symmetric encryption to encrypt the CP Attestation Data with a Python script to replace the plain text with the encrypted text in macros when building a CP.
+	The key is generated based on a shared secret between AP and CP.
 	A CP does not have the decryption functionality during runtime.
 	When requesting the attestation data,
 	a CP puts the encrypted text in the I2C buffer.
@@ -254,8 +254,10 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	
 	Figure \ref{fig:secret} shows the Deployment Secrets.
 	During the building deployment process,
-	a Global Secret and two pairs of public and private keys will be generated.
-	The Global Secret will be shared among the AP and all the CPs.
+	a hash key (keyed-hash algorithm for pin and replace token),
+	symmetric encryption key (for encrypting the attestation data),
+	and two pairs of public and private keys will be generated.
+	The hash key and symmetric encryption key will be shared among the AP and all the CPs.
 	AP will store the first private key of \texttt{K\_Pri1} and the second public key of \texttt{K\_Pub2}.
 	CP will store the second private key of \texttt{K\_Pri2} and the first public key of \texttt{K\_Pub1}.
 	We generate the Deployment Secrets randomly when building deployment to prevent the attacker from retrieving it through the source code.
@@ -281,9 +283,10 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	\subsubsection{First Booting}
 	Devices will be initialized at the first boot.
 	The AP will store provisioned CP IDs in plain text,
-	the \texttt{K\_Pri1} and \texttt{K\_Pub2} keys in the flash memory.
-	A hash key is generated and stored in the flash based on the Global Secret for the keyed-hash algorithm.
-	An AES key is generated and stored in the flash based on the Global Secret for decrypting attestation data.
+	the \texttt{K\_Pri1} key,
+	\texttt{K\_Pub2} key,
+	hash key,
+	and symmetric key in the flash memory.
 	The CP stores the \texttt{K\_Pri2} and \texttt{K\_Pub1} keys.
 	
 	\subsection{Functionalities}
@@ -424,7 +427,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		and the AP randomly delays up to 5 seconds to prevent brute force and terminate the attestation mode.
 		Otherwise,
 		the CP puts the encrypted attestation data in the I2C buffer waiting for the AP to read.
-		\item The AP decrypts the data using the AES algorithm and sends the plain attestation data to the host computer.
+		\item The AP decrypts the data using the symmetric algorithm and sends the plain attestation data to the host computer.
 	\end{enumerate}
 	
 	\subsubsection{POST-BOOT Communication}
@@ -450,13 +453,13 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The CP generates a nonce as the challenge for the AP.
 		\item The AP signs the sending purpose label,
 		nonce,
-		and the CP ID using the \texttt{K\_Pri1} key as the response for the CP.
+		and the CP I2C address using the \texttt{K\_Pri1} key as the response for the CP.
 		The AP sends the response,
 		a signature of the message (signed using the \texttt{K\_Pri1} key),
 		and message to th CP.
 		\item The CP verifies using the \texttt{K\_Pub1} key the response by checking if the reading purpose label,
 		nonce,
-		and ID is correct to ensure authenticity.
+		and address is correct to ensure authenticity.
 		\item The CP then verifies the message signature by using the \texttt{K\_Pub1} key to ensure the message integrity.
 		\item If the two verifications pass,
 		the CP receives the message.
@@ -474,7 +477,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The AP sends the \texttt{reading} command and a generated nonce to one specific CP.
 		\item The CP signs the reading purpose label,
 		nonce,
-		and the ID with the \texttt{K\_Pri2} key as the response.
+		and the address with the \texttt{K\_Pri2} key as the response.
 		It puts the response,
 		a signature of the message signed using the \texttt{K\_Pri2} key,
 		and message in the I2C buffer,
@@ -482,7 +485,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The AP reads the packet from the CP.
 		\item The AP verifies the response using the \texttt{K\_Pub2} key to and check if the reading purpose label,
 		nonce,
-		and the CP ID are correct.
+		and the CP I2C address are correct.
 		It then verifies the message signature by using the \texttt{K\_Pub2} to ensure the message integrity.
 		If verifications pass,
 		the AP accepts the message.
