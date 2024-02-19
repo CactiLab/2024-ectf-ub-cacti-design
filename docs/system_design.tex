@@ -415,10 +415,10 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The CP generates a nonce and sends it as a challenge to the AP.
 		\item The AP signs the attesting purpose label,
 		nonce,
-		and the CP ID using the \texttt{K\_Pri1} key and sending it as the response back to the CP.
+		and the CP I2C address using the \texttt{K\_Pri1} key and sending it as the response back to the CP.
 		\item The CP verifies the response with the \texttt{K\_Pub1} key to check if the attesting purpose label,
 		nonce,
-		and the ID is correct.
+		and the address is correct.
 		If validation fails,
 		the CP sends the verification failure message to the AP,
 		and the AP randomly delays up to 5 seconds to prevent brute force and terminate the attestation mode.
