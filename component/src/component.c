@@ -60,15 +60,18 @@
 #define PUB_KEY_SIZE 32
 #define CP_PRIV_KEY_OFFSET offsetof(flash_entry, cp_priv_key)
 #define AP_PUB_KEY_OFFSET offsetof(flash_entry, ap_pub_key)
+#define ATTEST_CIPHER_OFFSET offsetof(flash_entry, cipher_attest_data)
 #define NONCE_SIZE 64
 #define SIGNATURE_SIZE 64
 #define MAX_POST_BOOT_MSG_LEN 64
+#define CIPHER_ATTESTATION_DATA_LEN 243
 
 // Datatype for information stored in flash
 typedef struct {
     uint32_t flash_magic;
     uint8_t cp_priv_key[PRIV_KEY_SIZE];
     uint8_t ap_pub_key[PUB_KEY_SIZE];
+    uint8_t cipher_attest_data[CIPHER_ATTESTATION_DATA_LEN];
 } flash_entry;
 
 // Commands received by Component using 32 bit integer
@@ -141,6 +144,19 @@ void retrive_ap_pub_key() {
 }
 
 /**
+ * @brief Retrieves encrypted attestation data from flash memory.
+ * 
+ * This function reads encrypted attestation data from the specified flash address
+ * and stores it in the global `flash_status.cipher_attest_data` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_attest_cipher() {
+    flash_simple_read(FLASH_ADDR + ATTEST_CIPHER_OFFSET, (uint32_t*)flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
+}
+
+
+/**
  * @brief Initialize the device.
  * 
  * This function must be called on startup to initialize the flash and i2c interfaces.
@@ -164,8 +180,10 @@ void init() {
 
         uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
         uint8_t ap_public_key[] = {AP_PUBLIC_KEY};
+        uint8_t attest_cipher[] = {ATTESTATION_CIPHER_DATA};
         memcpy(flash_status.cp_priv_key, cp_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.ap_pub_key, ap_public_key, PUB_KEY_SIZE);
+        memcpy(flash_status.cipher_attest_data, attest_cipher, CIPHER_ATTESTATION_DATA_LEN);
 
         flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
@@ -173,6 +191,7 @@ void init() {
         crypto_wipe(ap_public_key, sizeof(ap_public_key));
         crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
         crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+        crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
     }
     
     // Initialize board link interface
@@ -329,10 +348,10 @@ void boot() {
     #else
 
     // test 1
-    uint8_t buffer[256];
-    int r = secure_receive(buffer);
-    printf("buffer=");
-    print_hex(buffer, r);
+    // uint8_t buffer[256];
+    // int r = secure_receive(buffer);
+    // printf("buffer=");
+    // print_hex(buffer, r);
 
     // test 2
     // printf("starting test 2 post-boot\n");
@@ -418,10 +437,39 @@ void process_validate() {
 }
 
 void process_attest() {
-    // The AP requested attestation. Respond with the attestation data
-    uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
-                ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) + 1;
-    send_packet_and_ack(len, transmit_buffer);
+    uint8_t general_buffer[MAX_I2C_MESSAGE_LEN];
+
+    // generate a challenge (nonce)
+    rng_get_bytes(transmit_buffer, NONCE_SIZE);
+    send_packet_and_ack(NONCE_SIZE, transmit_buffer);
+
+    // receive the response sign(p, nonce, addr)
+    uint8_t len = wait_and_receive_packet(receive_buffer);
+    if (len != SIGNATURE_SIZE) {
+        return;
+    }
+    general_buffer[0] = COMPONENT_CMD_ATTEST;
+    memcpy(general_buffer + 1, transmit_buffer, NONCE_SIZE);
+    general_buffer[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+    retrive_ap_pub_key();
+    if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buffer, SIGNATURE_SIZE + 2)) {
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+        panic();
+        return;
+    }
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+
+    // retrive encrypted attest data
+    retrive_attest_cipher();
+    memcpy(transmit_buffer, flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
+    send_packet_and_ack(CIPHER_ATTESTATION_DATA_LEN, transmit_buffer);
+    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+    crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
+
+    // // The AP requested attestation. Respond with the attestation data
+    // uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
+    //             ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) + 1;
+    // send_packet_and_ack(len, transmit_buffer);
 }
 
 /*********************************** MAIN *************************************/

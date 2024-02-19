@@ -89,6 +89,8 @@ typedef struct {
 #define HASH_SALT_OFFSET offsetof(flash_entry, hash_salt)
 #define PIN_HASH_OFFSET offsetof(flash_entry, pin_hash)
 #define TOKEN_HASH_OFFSET offsetof(flash_entry, token_hash)
+#define AEAD_KEY_OFFSET offsetof(flash_entry, aead_key)
+#define AEAD_NONCE_OFFSET offsetof(flash_entry, aead_nonce)
 #define NONCE_SIZE 64
 #define SIGNATURE_SIZE 64
 #define MAX_POST_BOOT_MSG_LEN 64
@@ -102,6 +104,24 @@ typedef struct {
 #define NB_LANES 1
 #define HASH_LEN 64
 #define HOST_INPUT_BUF_SIZE 64
+// #define CIPHER_ATTESTATION_DATA_LEN 243
+#define AEAD_MAC_SIZE 16
+#define AEAD_NONCE_SIZE 24
+#define AEAD_KEY_SIZE                        32
+#define ATT_DATA_MAX_SIZE               64
+#define ATT_PADDING_SIZE                    16
+#define ATT_FINAL_TEXT_SIZE                 ATT_DATA_MAX_SIZE * 3 + AEAD_MAC_SIZE + 3 + ATT_PADDING_SIZE * 2
+#define ATT_PLAIN_TEXT_SIZE                 ATT_DATA_MAX_SIZE * 3 + 3 + ATT_PADDING_SIZE * 2
+#define ATT_MAC_POS_IN_FINAL_TEXT           0
+#define ATT_CIPHER_POS_IN_FINAL_TEXT        AEAD_MAC_SIZE
+#define ATT_LOC_POS                         0
+#define ATT_PADDING_1_POS                   ATT_DATA_MAX_SIZE
+#define ATT_DATE_POS                        ATT_PADDING_1_POS + ATT_PADDING_SIZE
+#define ATT_PADDING_2_POS                   ATT_DATE_POS + ATT_DATA_MAX_SIZE
+#define ATT_CUSTOMER_POS                    ATT_PADDING_2_POS + ATT_PADDING_SIZE
+#define ATT_LOC_LEN_POS                     ATT_CUSTOMER_POS + ATT_DATA_MAX_SIZE
+#define ATT_DATE_LEN_POS                    ATT_LOC_LEN_POS + 1
+#define ATT_CUSTOMER_LEN_POS                ATT_DATE_LEN_POS + 1
 
 // Datatype for information stored in flash
 typedef struct {
@@ -114,6 +134,9 @@ typedef struct {
     uint8_t hash_salt[HASH_SALT_LEN];
     uint8_t pin_hash[HASH_LEN];
     uint8_t token_hash[HASH_LEN];
+    uint8_t aead_key[AEAD_KEY_SIZE];
+    uint8_t aead_nonce[AEAD_NONCE_SIZE];
+
 } flash_entry;
 
 // Datatype for commands sent to components
@@ -206,6 +229,30 @@ void retrive_token_hash() {
 }
 
 /**
+ * @brief Retrieves AEAD key value from flash memory.
+ * 
+ * This function reads the AEAD key value from the specified flash address
+ * and stores it in the global `flash_status.aead_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_key() {
+    flash_simple_read(FLASH_ADDR + AEAD_KEY_OFFSET, (uint32_t*)flash_status.aead_key, AEAD_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves AEAD nonce value from flash memory.
+ * 
+ * This function reads the AEAD nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_nonce() {
+    flash_simple_read(FLASH_ADDR + AEAD_NONCE_OFFSET, (uint32_t*)flash_status.aead_nonce, AEAD_NONCE_SIZE);
+}
+
+/**
  * @brief Initialize the device.
  * 
  * This function must be called on startup to initialize the flash and i2c interfaces.
@@ -237,12 +284,16 @@ void init() {
         uint8_t ap_hash_salt[] = {AP_HASH_SALT};
         uint8_t ap_hash_pin[] = {AP_HASH_PIN};
         uint8_t ap_hash_token[] = {AP_HASH_TOKEN};
+        uint8_t aead_key[] = {AEAD_KEY};
+        uint8_t aead_nonce[] = {AEAD_NONCE};
         memcpy(flash_status.ap_priv_key, ap_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.cp_pub_key, cp_public_key, PUB_KEY_SIZE);
         memcpy(flash_status.hash_key, ap_hash_key, HASH_KEY_LEN);
         memcpy(flash_status.hash_salt, ap_hash_salt, HASH_SALT_LEN);
         memcpy(flash_status.pin_hash, ap_hash_pin, HASH_LEN);
         memcpy(flash_status.token_hash, ap_hash_token, HASH_LEN);
+        memcpy(flash_status.aead_key, aead_key, AEAD_KEY_SIZE);
+        memcpy(flash_status.aead_nonce, aead_nonce, AEAD_NONCE_SIZE);
 
 
         flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
@@ -259,6 +310,8 @@ void init() {
         crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
         crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
         crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+        crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+        crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
     }
     
     if (rng_init() != E_NO_ERROR) {
@@ -534,27 +587,59 @@ int boot_components() {
 }
 
 int attest_component(uint32_t component_id) {
+    MXC_Delay(50);
+
     // Buffers for board link communication
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t general_buffer[MAX_I2C_MESSAGE_LEN];
 
     // Set the I2C address of the component
     i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
-    // Create command message
-    command_message* command = (command_message*) transmit_buffer;
-    command->opcode = COMPONENT_CMD_ATTEST;
+    // send attestation command
+    transmit_buffer[0] = COMPONENT_CMD_ATTEST;
+    send_packet(addr, NONCE_SIZE + 1, transmit_buffer);
 
-    // Send out command and receive result
-    int len = issue_cmd(addr, transmit_buffer, receive_buffer);
-    if (len == ERROR_RETURN) {
-        print_error("Could not attest component\n");
+    // receive nonce and sign
+    int result = poll_and_receive_packet(addr, receive_buffer);
+    if (result != NONCE_SIZE) {
         return ERROR_RETURN;
     }
+    general_buffer[0] = COMPONENT_CMD_ATTEST;
+    memcpy(general_buffer + 1, receive_buffer, NONCE_SIZE);
+    general_buffer[NONCE_SIZE + 1] = addr;
+    retrive_ap_priv_key();
+    crypto_eddsa_sign(transmit_buffer, flash_status.ap_priv_key, general_buffer, NONCE_SIZE + 2);
+    crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+    send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
+    crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
 
-    // Print out attestation data 
+    // receive the ecnrypted attestation data
+    result = poll_and_receive_packet(addr, receive_buffer);
+    if (result != ATT_FINAL_TEXT_SIZE) {
+        return ERROR_RETURN;
+    }
+    retrive_aead_key();
+    retrive_aead_nonce();
+    if (crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE)) {
+        crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+        crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+        crypto_wipe(receive_buffer, sizeof(receive_buffer));
+        panic();
+        return ERROR_RETURN;
+    }
+    crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+    crypto_wipe(receive_buffer, sizeof(receive_buffer));
+
+    // Print out attestation data
+    general_buffer[ATT_LOC_POS + general_buffer[ATT_LOC_LEN_POS]] = '\0';
+    general_buffer[ATT_DATE_POS + general_buffer[ATT_DATE_LEN_POS]] = '\0';
+    general_buffer[ATT_CUSTOMER_POS + general_buffer[ATT_CUSTOMER_LEN_POS]] = '\0';
     print_info("C>0x%08x\n", component_id);
-    print_info("%s", receive_buffer);
+    print_info("LOC>%s\nDATE>%s\nCUST>%s\n", general_buffer + ATT_LOC_POS, general_buffer + ATT_DATE_POS, general_buffer + ATT_CUSTOMER_POS);
+    crypto_wipe(general_buffer, sizeof(general_buffer));
     return SUCCESS_RETURN;
 }
 
@@ -753,6 +838,8 @@ void attempt_attest() {
     if (validate_pin()) {
         return;
     }
+
+    MXC_Delay(100);
     uint32_t component_id;
     recv_input("Component ID: ", buf);
     sscanf(buf, "%x", &component_id);
