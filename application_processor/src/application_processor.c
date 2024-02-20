@@ -810,6 +810,7 @@ void attempt_boot() {
 }
 
 // Replace a component if the PIN is correct
+// TODO: can we erase 4 bytes of flash instead of a page?
 void attempt_replace() {
     MXC_Delay(HOST_INPUT_BUF_SIZE);
     char buf[HOST_INPUT_BUF_SIZE];
@@ -831,12 +832,27 @@ void attempt_replace() {
         if (flash_status.component_ids[i] == component_id_out) {
             flash_status.component_ids[i] = component_id_in;
 
-            flash_simple_write(FLASH_ADDR + COMPONENT_IDS_OFFSET + i, (uint32_t *) (flash_status.component_ids + i), sizeof(flash_status.component_ids[i]));
-
             // write updated component_ids to flash
-            // flash_simple_erase_page(FLASH_ADDR);
-            // flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
-
+            retrive_ap_priv_key();
+            retrive_cp_pub_key();
+            retrive_hash_key();
+            retrive_hash_salt();
+            retrive_pin_hash();
+            retrive_token_hash();
+            retrive_aead_key();
+            retrive_aead_nonce();
+            flash_simple_erase_page(FLASH_ADDR);
+            flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+            crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+            crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+            crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+            crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+            crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+            crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+            crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+            crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+            
+            // print replace success information
             print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
                     component_id_in);
             print_success("Replace\n");
