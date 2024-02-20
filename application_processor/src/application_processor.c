@@ -370,7 +370,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         return ERROR_RETURN;
     }
 
-    print_info("secure_send 1, sending_buf=");
+    // print_info("secure_send 1, sending_buf=");
+    MXC_Delay(20);
     print_hex(sending_buf, 1);
 
     // receive nonce and sign
@@ -379,9 +380,10 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         return ERROR_RETURN;
     }
 
-    print_info("secure_send 2, receiving_buf=");
-    print_hex(receiving_buf, result);
+    // print_info("secure_send 2, receiving_buf=");
+    // print_hex(receiving_buf, result);
 
+    MXC_Delay(20);
     memcpy(general_buf, receiving_buf, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     general_buf[NONCE_SIZE + 1] = address;
@@ -429,6 +431,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // print_hex(sending_buf, NONCE_SIZE + 1);
 
     // validate nonce
+    MXC_Delay(20);
     result = poll_and_receive_packet(address, receiving_buf);
     if (result <= 0) {
         return result;
@@ -670,6 +673,22 @@ void boot() {
     // uint8_t buffer2[256];
     // secure_send(0x24, buffer1, sizeof(buffer1));
     // secure_receive(0x24, buffer2);
+
+    // test 4
+    // uint8_t buffer1[] = "abc";
+    // uint8_t buffer2[256];
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
     
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
@@ -845,6 +864,8 @@ void attempt_attest() {
     sscanf(buf, "%x", &component_id);
     if(attest_component(component_id) == SUCCESS_RETURN) {
         print_success("Attest\n");
+    } else {
+        print_error("Attest\n");
     }
 }
 

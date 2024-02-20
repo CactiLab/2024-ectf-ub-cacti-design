@@ -246,6 +246,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // print_hex(receiving_buf, result);
 
     // sign nonce and msg
+    MXC_Delay(20);
     memcpy(general_buf, receiving_buf + 1, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     general_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
@@ -293,12 +294,14 @@ int secure_receive(uint8_t* buffer) {
     // printf("securereceive 2.5, sending_buf=");
     // print_hex(sending_buf, NONCE_SIZE);
 
+    MXC_Delay(20);
     send_packet_and_ack(NONCE_SIZE, sending_buf);
 
     // printf("securereceive 3, sending_buf=");
     // print_hex(sending_buf, NONCE_SIZE);
 
     // receive sign(p,nonce,address) + sign(msg) + msg
+    MXC_Delay(20);
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0) {
         return result;
@@ -348,6 +351,7 @@ void boot() {
     #else
 
     // test 1
+    // printf("starting test 1 post-boot\n");
     // uint8_t buffer[256];
     // int r = secure_receive(buffer);
     // printf("buffer=");
@@ -361,6 +365,22 @@ void boot() {
     // test 3
     // uint8_t buffer1[256];
     // uint8_t buffer2[] = "I love you.";
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+
+    // test 4
+    // uint8_t buffer1[256];
+    // uint8_t buffer2[] = "I love you.";
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
     // secure_receive(buffer1);
     // secure_send(buffer2, sizeof(buffer2));
 
@@ -412,11 +432,15 @@ void component_process_cmd() {
 }
 
 void process_boot() {
+    MXC_Delay(50);
+    // printf("process_boot 1 \n");
     // The AP requested a boot. Set `component_boot` for the main loop and
     // respond with the boot message
     uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
     memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
     send_packet_and_ack(len, transmit_buffer);
+    MXC_Delay(50);
+    // printf("process_boot 2 \n");
     // Call the boot function
     // printf("before booting\n");
     boot();
