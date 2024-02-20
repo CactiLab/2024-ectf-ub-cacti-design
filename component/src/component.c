@@ -82,7 +82,8 @@ typedef enum {
     COMPONENT_CMD_BOOT,
     COMPONENT_CMD_ATTEST,
     COMPONENT_CMD_MSG_FROM_AP_TO_CP,
-    COMPONENT_CMD_MSG_FROM_CP_TO_AP
+    COMPONENT_CMD_MSG_FROM_CP_TO_AP,
+    COMPONENT_CMD_BOOT_2
 } component_cmd_t;
 
 /******************************** TYPE DEFINITIONS ********************************/
@@ -407,6 +408,52 @@ void boot() {
     #endif
 }
 
+void process_boot1() {
+    MXC_Delay(50);
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+
+    // receive the `boot` command and nonce from the AP
+    if (receive_buffer[0] != COMPONENT_CMD_BOOT || receive_buffer[NONCE_SIZE + 1] != (COMPONENT_ADDRESS)) {
+        return;
+    }
+    MXC_Delay(50);
+    // sign the AP's nonce
+    retrive_cp_priv_key();
+    crypto_eddsa_sign(transmit_buffer, flash_status.cp_priv_key, receive_buffer, NONCE_SIZE + 2);
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+    // generate a nonce
+    rng_get_bytes(transmit_buffer + SIGNATURE_SIZE, NONCE_SIZE);
+    // send
+    send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
+
+    // receive the response and boot
+    MXC_Delay(50);
+    result = wait_and_receive_packet(receive_buffer);
+    if (result <= 0) {
+        return;
+    }
+    general_buf[0] = COMPONENT_CMD_BOOT_2;
+    memcpy(general_buf + 1, transmit_buffer + SIGNATURE_SIZE, NONCE_SIZE);
+    general_buf[NONCE_SIZE + 1] = (COMPONENT_ADDRESS);
+    retrive_ap_pub_key();
+    if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2)) {
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+        panic();
+    }
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+
+    // respond with the boot message
+    MXC_Delay(50);
+    uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
+    memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
+    send_packet_and_ack(len, transmit_buffer);
+    MXC_Delay(50);
+
+    // Call the boot function
+    boot();
+}
+
 // Handle a transaction from the AP
 void component_process_cmd() {
     command_message* command = (command_message*) receive_buffer;
@@ -414,13 +461,13 @@ void component_process_cmd() {
     // Output to application processor dependent on command received
     switch (command->opcode) {
     case COMPONENT_CMD_BOOT:
-        process_boot();
+        process_boot1();
         break;
     case COMPONENT_CMD_SCAN:
         process_scan();
         break;
     case COMPONENT_CMD_VALIDATE:
-        process_validate();
+        // process_validate();
         break;
     case COMPONENT_CMD_ATTEST:
         process_attest();

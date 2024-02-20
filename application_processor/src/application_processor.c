@@ -147,7 +147,8 @@ typedef enum {
     COMPONENT_CMD_BOOT,
     COMPONENT_CMD_ATTEST,
     COMPONENT_CMD_MSG_FROM_AP_TO_CP,
-    COMPONENT_CMD_MSG_FROM_CP_TO_AP
+    COMPONENT_CMD_MSG_FROM_CP_TO_AP,
+    COMPONENT_CMD_BOOT_2
 } component_cmd_t;
 
 /********************************* GLOBAL VARIABLES **********************************/
@@ -809,6 +810,76 @@ void attempt_boot() {
     boot();
 }
 
+void attempt_boot1() {
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+    uint8_t *signatures = malloc(SIGNATURE_SIZE * flash_status.component_cnt);
+
+    // send `boot` command + challenge to each provisioned component
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
+        sending_buf[0] = COMPONENT_CMD_BOOT;
+        rng_get_bytes(sending_buf + 1, NONCE_SIZE);
+        sending_buf[NONCE_SIZE + 1] = addr;
+        result = send_packet(addr, NONCE_SIZE + 2, sending_buf);
+        if (result == ERROR_RETURN) {
+            free(signatures);
+            return;
+        }
+        MXC_Delay(50);
+        // receive response + challenge
+        result = poll_and_receive_packet(addr, receiving_buf);
+        if (result != SIGNATURE_SIZE + NONCE_SIZE) {
+            free(signatures);
+            return;
+        }
+        // verify the signature
+        retrive_cp_pub_key();
+        if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 2)) {
+            crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+            free(signatures);
+            panic();
+        }
+        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+        // sign CP's challenge
+        general_buf[0] = COMPONENT_CMD_BOOT_2;
+        memcpy(general_buf + 1, receiving_buf + SIGNATURE_SIZE, NONCE_SIZE);
+        general_buf[NONCE_SIZE + 1] = addr;
+        retrive_ap_priv_key();
+        crypto_eddsa_sign(signatures + SIGNATURE_SIZE * i, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);
+        crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+        MXC_Delay(50);
+    }
+
+    // boot each provisioned component
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
+        result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
+        if (result == ERROR_RETURN) {
+            free(signatures);
+            return;
+        }
+        result = poll_and_receive_packet(addr, receiving_buf);
+        if (result < 0) {
+            free(signatures);
+            return;
+        }
+        print_info("0x%08x>%s\n", flash_status.component_ids[i], receiving_buf);
+        MXC_Delay(50);
+    }
+    free(signatures);
+
+    // Print boot message
+    // This always needs to be printed when booting
+    print_info("AP>%s\n", AP_BOOT_MSG);
+    print_success("Boot\n");
+
+    // Boot
+    boot();
+}
+
 // Replace a component if the PIN is correct
 // TODO: can we erase 4 bytes of flash instead of a page?
 void attempt_replace() {
@@ -890,8 +961,8 @@ void attempt_attest() {
 // #define PRIVKEY 0x6f, 0x05, 0xeb, 0xe4, 0xd6, 0x38, 0x35, 0x46, 0x64, 0x73, 0x30, 0xf9, 0xf9, 0x43, 0x0f, 0x6b, 0x5d, 0xdd, 0x56, 0x57, 0xc1, 0xc1, 0x03, 0xb7, 0xfd, 0x35, 0xa7, 0x1d, 0x21, 0x6e, 0x63, 0x25, 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
 // #define PUBKEY 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
 
-// TODO: how to use panic? double-if, mode
-
+// TODO: how to use panic? double-if, mode, timeout
+// TODO: inline functions? like boot?
 int main() {
     // Initialize board
     init();
@@ -961,7 +1032,7 @@ int main() {
         if (!strcmp(buf, "list")) {
             scan_components();
         } else if (!strcmp(buf, "boot")) {
-            attempt_boot();
+            attempt_boot1();
         } else if (!strcmp(buf, "replace")) {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
