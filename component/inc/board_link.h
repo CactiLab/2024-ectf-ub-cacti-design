@@ -23,7 +23,7 @@
 #define SUCCESS_RETURN 0
 #define ERROR_RETURN -1
 
-#define COMPONENT_ADDRESS (uint8_t) COMPONENT_ID & COMPONENT_ADDR_MASK;
+#define COMPONENT_ADDRESS (uint8_t) COMPONENT_ID & COMPONENT_ADDR_MASK
 
 /******************************** FUNCTION PROTOTYPES ********************************/
 
