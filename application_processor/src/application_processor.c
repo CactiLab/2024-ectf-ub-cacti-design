@@ -1100,7 +1100,7 @@ int main() {
     print_info("Application Processor Started\n");
 
     // Handle commands forever
-    char buf[100];
+    char buf[HOST_INPUT_BUF_SIZE];
     while (1) {
         recv_input("Enter Command: ", buf);
 
