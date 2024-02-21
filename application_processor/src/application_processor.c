@@ -593,6 +593,17 @@ int boot_components() {
 int attest_component(uint32_t component_id) {
     MXC_Delay(50);
 
+    int r = 0;
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        if (flash_status.component_ids[i] == component_id) {
+            r = 1;
+            break;
+        }
+    }
+    if (r == 0) {
+        return ERROR_RETURN;
+    }
+
     // Buffers for board link communication
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
