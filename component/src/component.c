@@ -65,13 +65,21 @@
 #define SIGNATURE_SIZE 64
 #define MAX_POST_BOOT_MSG_LEN 64
 #define CIPHER_ATTESTATION_DATA_LEN 243
+#define CIPHER_ATTESTATION_DATA_LEN_ROUND 244
+
+// system mode
+typedef enum {
+    SYS_MODE_NORMAL,
+    SYS_MODE_DEFENSE
+} system_modes;
 
 // Datatype for information stored in flash
 typedef struct {
     uint32_t flash_magic;
     uint8_t cp_priv_key[PRIV_KEY_SIZE];
     uint8_t ap_pub_key[PUB_KEY_SIZE];
-    uint8_t cipher_attest_data[CIPHER_ATTESTATION_DATA_LEN];
+    uint8_t cipher_attest_data[CIPHER_ATTESTATION_DATA_LEN_ROUND];
+    uint32_t mode;   // 0: normal, 1: defense
 } flash_entry;
 
 // Commands received by Component using 32 bit integer
@@ -156,6 +164,29 @@ void retrive_attest_cipher() {
     flash_simple_read(FLASH_ADDR + ATTEST_CIPHER_OFFSET, (uint32_t*)flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
 }
 
+#define WRITE_FLASH_MEMORY  \
+    retrive_ap_pub_key();   \
+    retrive_cp_priv_key();  \
+    retrive_attest_cipher();    \
+    flash_simple_erase_page(FLASH_ADDR);    \
+    flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));  \
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));    \
+    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+
+/**
+ * When the system detects a possible attack, go to the defense mode
+ * delay 4 seconds
+*/
+void defense_mode() {
+    // LED_On(LED1);
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+    MXC_Delay(4000000); // 4 seconds
+    flash_status.mode = SYS_MODE_NORMAL;
+    WRITE_FLASH_MEMORY;
+    // LED_Off(LED1);
+}
 
 /**
  * @brief Initialize the device.
@@ -315,8 +346,14 @@ int secure_receive(uint8_t* buffer) {
     sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
     retrive_ap_pub_key();
-    int r1 = crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2);
-    int r2 = crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len);
+    if (crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2)) {
+        defense_mode();
+        return 0;
+    }
+    if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
+        defense_mode();
+        return 0;
+    }
     // printf("securereceive 5, ap_pub_key=");
     // print_hex(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     // printf("securereceive 6, s1=");
@@ -329,10 +366,10 @@ int secure_receive(uint8_t* buffer) {
     // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     // printf("securereceive 10, ap_pub_key=");
     // print_hex(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-    if (r1 != 0 || r2 != 0) {
-        panic();
-        return 0;
-    }
+    // if (r1 != 0 || r2 != 0) {
+    //     panic();
+    //     return 0;
+    // }
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
     MXC_Delay(500);
@@ -344,7 +381,7 @@ int secure_receive(uint8_t* buffer) {
 // Example boot sequence
 // Your design does not need to change this
 void boot() {
-    MXC_Delay(50);
+    MXC_Delay(100);
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
@@ -409,7 +446,7 @@ void boot() {
 }
 
 void process_boot1() {
-    MXC_Delay(50);
+    MXC_Delay(200);
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
@@ -439,7 +476,9 @@ void process_boot1() {
     retrive_ap_pub_key();
     if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2)) {
         crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        panic();
+        // panic();
+        defense_mode();
+        return;
     }
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
@@ -466,9 +505,9 @@ void component_process_cmd() {
     case COMPONENT_CMD_SCAN:
         process_scan();
         break;
-    case COMPONENT_CMD_VALIDATE:
-        // process_validate();
-        break;
+    // case COMPONENT_CMD_VALIDATE:
+    //     // process_validate();
+    //     break;
     case COMPONENT_CMD_ATTEST:
         process_attest();
         break;
@@ -478,20 +517,20 @@ void component_process_cmd() {
     }
 }
 
-void process_boot() {
-    MXC_Delay(50);
-    // printf("process_boot 1 \n");
-    // The AP requested a boot. Set `component_boot` for the main loop and
-    // respond with the boot message
-    uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
-    memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
-    send_packet_and_ack(len, transmit_buffer);
-    MXC_Delay(50);
-    // printf("process_boot 2 \n");
-    // Call the boot function
-    // printf("before booting\n");
-    boot();
-}
+// void process_boot() {
+//     MXC_Delay(50);
+//     // printf("process_boot 1 \n");
+//     // The AP requested a boot. Set `component_boot` for the main loop and
+//     // respond with the boot message
+//     uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
+//     memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
+//     send_packet_and_ack(len, transmit_buffer);
+//     MXC_Delay(50);
+//     // printf("process_boot 2 \n");
+//     // Call the boot function
+//     // printf("before booting\n");
+//     boot();
+// }
 
 void process_scan() {
     // The AP requested a scan. Respond with the Component ID
@@ -500,12 +539,12 @@ void process_scan() {
     send_packet_and_ack(sizeof(scan_message), transmit_buffer);
 }
 
-void process_validate() {
-    // The AP requested a validation. Respond with the Component ID
-    validate_message* packet = (validate_message*) transmit_buffer;
-    packet->component_id = COMPONENT_ID;
-    send_packet_and_ack(sizeof(validate_message), transmit_buffer);
-}
+// void process_validate() {
+//     // The AP requested a validation. Respond with the Component ID
+//     validate_message* packet = (validate_message*) transmit_buffer;
+//     packet->component_id = COMPONENT_ID;
+//     send_packet_and_ack(sizeof(validate_message), transmit_buffer);
+// }
 
 void process_attest() {
     uint8_t general_buffer[MAX_I2C_MESSAGE_LEN];
@@ -525,7 +564,8 @@ void process_attest() {
     retrive_ap_pub_key();
     if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buffer, SIGNATURE_SIZE + 2)) {
         crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        panic();
+        // panic();
+        defense_mode();
         return;
     }
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
