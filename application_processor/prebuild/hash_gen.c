@@ -19,7 +19,7 @@
 #define KEY_LEN 128
 #define SALT_LEN 128
 #define NB_BLOCKS_PIN 108
-#define NB_BLOCKS_TOKEN 65
+#define NB_BLOCKS_TOKEN 108
 #define HASH_LEN 64
 
 struct options {

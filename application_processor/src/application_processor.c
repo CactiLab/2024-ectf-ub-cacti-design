@@ -99,7 +99,7 @@ typedef struct {
 #define HASH_KEY_LEN 128
 #define HASH_SALT_LEN 128
 #define NB_BLOCKS_PIN 108
-#define NB_BLOCKS_TOKEN 65
+#define NB_BLOCKS_TOKEN 108
 #define NB_PASSES 3
 #define NB_LANES 1
 #define HASH_LEN 64
@@ -958,7 +958,7 @@ void attempt_boot1() {
 // Replace a component if the PIN is correct
 // TODO: can we erase 4 bytes of flash instead of a page?
 void attempt_replace() {
-    MXC_Delay(HOST_INPUT_BUF_SIZE);
+    MXC_Delay(200);
     char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_token()) {
