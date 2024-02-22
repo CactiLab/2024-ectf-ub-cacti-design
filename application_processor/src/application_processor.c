@@ -31,6 +31,8 @@
 #include "host_messaging.h"
 
 #include "monocypher.h"
+#include "timer.h"
+extern int timer_count_limit;
 
 #ifdef POST_BOOT
 #include <stdint.h>
@@ -959,9 +961,16 @@ void attempt_boot1() {
 // TODO: can we erase 4 bytes of flash instead of a page?
 void attempt_replace() {
     MXC_Delay(200);
+
+    timer_count_limit = TIMER_LIMIT_REPLACE;
+    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
+    NVIC_EnableIRQ(TMR1_IRQn);
+    continuous_timer();
+
     char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_token()) {
+        cancel_continuous_timer();
         return;
     }
 
@@ -1003,6 +1012,7 @@ void attempt_replace() {
             print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
                     component_id_in);
             print_success("Replace\n");
+            cancel_continuous_timer();
             return;
         }
     }
@@ -1010,6 +1020,7 @@ void attempt_replace() {
     // Component Out was not found
     print_error("Component 0x%08x is not provisioned for the system\r\n",
             component_id_out);
+    cancel_continuous_timer();
 }
 
 // Attest a component if the PIN is correct
