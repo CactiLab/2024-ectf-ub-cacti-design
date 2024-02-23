@@ -885,6 +885,11 @@ int validate_token() {
 // }
 
 void attempt_boot1() {
+    timer_count_limit = TIMER_LIMIT_ATTEST;
+    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
+    NVIC_EnableIRQ(TMR1_IRQn);
+    continuous_timer();
+
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -900,6 +905,7 @@ void attempt_boot1() {
         result = send_packet(addr, NONCE_SIZE + 2, sending_buf);
         if (result == ERROR_RETURN) {
             free(signatures);
+            cancel_continuous_timer();
             return;
         }
         MXC_Delay(50);
@@ -908,6 +914,7 @@ void attempt_boot1() {
         if (result != SIGNATURE_SIZE + NONCE_SIZE) {
             free(signatures);
             defense_mode();
+            cancel_continuous_timer();
             return;
         }
         // verify the signature
@@ -935,17 +942,20 @@ void attempt_boot1() {
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
         if (result == ERROR_RETURN) {
             free(signatures);
+            cancel_continuous_timer();
             return;
         }
         result = poll_and_receive_packet(addr, receiving_buf);
         if (result < 0) {
             free(signatures);
             defense_mode();
+            cancel_continuous_timer();
             return;
         }
         print_info("0x%08x>%s\n", flash_status.component_ids[i], receiving_buf);
         MXC_Delay(50);
     }
+    cancel_continuous_timer();
     free(signatures);
 
     // Print boot message
@@ -1026,9 +1036,16 @@ void attempt_replace() {
 // Attest a component if the PIN is correct
 void attempt_attest() {
     MXC_Delay(50);
+
+    timer_count_limit = TIMER_LIMIT_ATTEST;
+    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
+    NVIC_EnableIRQ(TMR1_IRQn);
+    continuous_timer();
+
     char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_pin()) {
+        cancel_continuous_timer();
         return;
     }
 
@@ -1041,6 +1058,7 @@ void attempt_attest() {
     } else {
         print_error("Attest\n");
     }
+    cancel_continuous_timer();
 }
 
 /*********************************** MAIN *************************************/
