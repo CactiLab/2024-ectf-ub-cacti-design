@@ -287,6 +287,7 @@ void retrive_aead_nonce() {
 */
 void defense_mode() {
     // LED_On(LED1);
+    cancel_continuous_timer();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
     MXC_Delay(4000000); // 4 seconds
@@ -404,6 +405,11 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
+    timer_count_limit = TIMER_LIMIT_I2C_COMMUNICATION;
+    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
+    NVIC_EnableIRQ(TMR1_IRQn);
+    continuous_timer();
+
     if (len > MAX_POST_BOOT_MSG_LEN) {
         panic();
     }
@@ -416,6 +422,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     result = send_packet(address, sizeof(uint8_t), sending_buf);
     if (result == ERROR_RETURN) {
+        cancel_continuous_timer();
         return ERROR_RETURN;
     }
 
@@ -444,8 +451,10 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
     result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
     if (result == ERROR_RETURN) {
+        cancel_continuous_timer();
         return ERROR_RETURN;
     }
+    cancel_continuous_timer();
 
     MXC_Delay(500);
     return SUCCESS_RETURN;
@@ -463,6 +472,11 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+    timer_count_limit = TIMER_LIMIT_I2C_COMMUNICATION;
+    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
+    NVIC_EnableIRQ(TMR1_IRQn);
+    continuous_timer();
+
     MXC_Delay(50);
 
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -484,6 +498,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(20);
     result = poll_and_receive_packet(address, receiving_buf);
     if (result <= 0) {
+        cancel_continuous_timer();
         return result;
     }
     // printf("secure_receive 4, receiving_buf=\n");
@@ -527,6 +542,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     //     return 0;
     // }
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
+    cancel_continuous_timer();
 
     MXC_Delay(500);
     return len;
