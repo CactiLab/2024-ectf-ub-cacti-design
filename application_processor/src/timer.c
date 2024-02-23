@@ -37,6 +37,13 @@ void continuous_timer()
     }
 }
 
+void start_continuous_timer(int limit) {
+    timer_count_limit = limit;
+    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
+    NVIC_EnableIRQ(TMR1_IRQn);
+    continuous_timer();
+}
+
 void cancel_continuous_timer() {
     MXC_TMR_Shutdown(CONT_TIMER);
     timer_count = 0;

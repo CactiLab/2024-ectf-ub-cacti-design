@@ -263,11 +263,6 @@ void print_hex(uint8_t *buf, size_t len) {
 void secure_send(uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
-    timer_count_limit = TIMER_LIMIT_I2C_COMMUNICATION;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     if (len > MAX_I2C_MESSAGE_LEN) {
         panic();
     }
@@ -281,7 +276,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // receive reading command and nonce
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
-        cancel_continuous_timer();
         return;
     }
 
@@ -299,7 +293,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
     send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
-    cancel_continuous_timer();
     
     MXC_Delay(500);
 
@@ -320,11 +313,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 int secure_receive(uint8_t* buffer) {
     MXC_Delay(50);
 
-    timer_count_limit = TIMER_LIMIT_I2C_COMMUNICATION;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
@@ -333,7 +321,6 @@ int secure_receive(uint8_t* buffer) {
     // printf("securereceive 1\n");
     result = wait_and_receive_packet(receiving_buf);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
-        cancel_continuous_timer();
         return result;
     }
     // printf("securereceive 2, receiving_buf=");
@@ -354,7 +341,6 @@ int secure_receive(uint8_t* buffer) {
     MXC_Delay(50);
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0) {
-        cancel_continuous_timer();
         return result;
     }
 
@@ -390,7 +376,6 @@ int secure_receive(uint8_t* buffer) {
     //     return 0;
     // }
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
-    cancel_continuous_timer();
 
     MXC_Delay(500);
     return len;
@@ -468,17 +453,11 @@ void boot() {
 void process_boot1() {
     MXC_Delay(200);
 
-    timer_count_limit = TIMER_LIMIT_BOOT;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
     // receive the `boot` command and nonce from the AP
     if (receive_buffer[0] != COMPONENT_CMD_BOOT || receive_buffer[NONCE_SIZE + 1] != (COMPONENT_ADDRESS)) {
-        cancel_continuous_timer();
         return;
     }
     MXC_Delay(50);
@@ -495,7 +474,6 @@ void process_boot1() {
     MXC_Delay(50);
     result = wait_and_receive_packet(receive_buffer);
     if (result <= 0) {
-        cancel_continuous_timer();
         return;
     }
     general_buf[0] = COMPONENT_CMD_BOOT_2;
@@ -515,7 +493,6 @@ void process_boot1() {
     uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
     memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
     send_packet_and_ack(len, transmit_buffer);
-    cancel_continuous_timer();
     MXC_Delay(50);
 
     // Call the boot function
@@ -576,19 +553,16 @@ void process_scan() {
 // }
 
 void process_attest() {
-    timer_count_limit = TIMER_LIMIT_ATTEST;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     uint8_t general_buffer[MAX_I2C_MESSAGE_LEN];
 
     // generate a challenge (nonce)
     rng_get_bytes(transmit_buffer, NONCE_SIZE);
     send_packet_and_ack(NONCE_SIZE, transmit_buffer);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     // receive the response sign(p, nonce, addr)
     uint8_t len = wait_and_receive_packet(receive_buffer);
+    cancel_continuous_timer();
     if (len != SIGNATURE_SIZE) {
         cancel_continuous_timer();
         return;
@@ -611,7 +585,6 @@ void process_attest() {
     send_packet_and_ack(CIPHER_ATTESTATION_DATA_LEN, transmit_buffer);
     crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
-    cancel_continuous_timer();
 
     // // The AP requested attestation. Respond with the attestation data
     // uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",

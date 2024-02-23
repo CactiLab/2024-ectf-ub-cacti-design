@@ -405,11 +405,6 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
-    timer_count_limit = TIMER_LIMIT_I2C_COMMUNICATION;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     if (len > MAX_POST_BOOT_MSG_LEN) {
         panic();
     }
@@ -422,7 +417,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     result = send_packet(address, sizeof(uint8_t), sending_buf);
     if (result == ERROR_RETURN) {
-        cancel_continuous_timer();
         return ERROR_RETURN;
     }
 
@@ -451,10 +445,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
     result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
     if (result == ERROR_RETURN) {
-        cancel_continuous_timer();
         return ERROR_RETURN;
     }
-    cancel_continuous_timer();
 
     MXC_Delay(500);
     return SUCCESS_RETURN;
@@ -473,11 +465,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(50);
-
-    timer_count_limit = TIMER_LIMIT_I2C_COMMUNICATION;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
 
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -498,7 +485,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(50);
     result = poll_and_receive_packet(address, receiving_buf);
     if (result <= 0) {
-        cancel_continuous_timer();
         return result;
     }
     // printf("secure_receive 4, receiving_buf=\n");
@@ -542,7 +528,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     //     return 0;
     // }
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
-    cancel_continuous_timer();
 
     MXC_Delay(500);
     return len;
@@ -690,9 +675,11 @@ int attest_component(uint32_t component_id) {
     // send attestation command
     transmit_buffer[0] = COMPONENT_CMD_ATTEST;
     send_packet(addr, NONCE_SIZE + 1, transmit_buffer);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     // receive nonce and sign
     int result = poll_and_receive_packet(addr, receive_buffer);
+    cancel_continuous_timer();
     if (result != NONCE_SIZE) {
         return ERROR_RETURN;
     }
@@ -704,9 +691,11 @@ int attest_component(uint32_t component_id) {
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
     send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     // receive the ecnrypted attestation data
     result = poll_and_receive_packet(addr, receive_buffer);
+    cancel_continuous_timer();
     if (result != ATT_FINAL_TEXT_SIZE) {
         defense_mode();
         return ERROR_RETURN;
@@ -904,11 +893,6 @@ int validate_token() {
 // }
 
 void attempt_boot1() {
-    timer_count_limit = TIMER_LIMIT_ATTEST;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -924,7 +908,6 @@ void attempt_boot1() {
         result = send_packet(addr, NONCE_SIZE + 2, sending_buf);
         if (result == ERROR_RETURN) {
             free(signatures);
-            cancel_continuous_timer();
             return;
         }
         MXC_Delay(50);
@@ -933,7 +916,6 @@ void attempt_boot1() {
         if (result != SIGNATURE_SIZE + NONCE_SIZE) {
             free(signatures);
             defense_mode();
-            cancel_continuous_timer();
             return;
         }
         // verify the signature
@@ -943,6 +925,7 @@ void attempt_boot1() {
             free(signatures);
             // panic();
             defense_mode();
+            return;
         }
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
         // sign CP's challenge
@@ -961,20 +944,17 @@ void attempt_boot1() {
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
         if (result == ERROR_RETURN) {
             free(signatures);
-            cancel_continuous_timer();
             return;
         }
         result = poll_and_receive_packet(addr, receiving_buf);
         if (result < 0) {
             free(signatures);
             defense_mode();
-            cancel_continuous_timer();
             return;
         }
         print_info("0x%08x>%s\n", flash_status.component_ids[i], receiving_buf);
         MXC_Delay(50);
     }
-    cancel_continuous_timer();
     free(signatures);
 
     // Print boot message
@@ -991,15 +971,9 @@ void attempt_boot1() {
 void attempt_replace() {
     MXC_Delay(200);
 
-    timer_count_limit = TIMER_LIMIT_REPLACE;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_token()) {
-        cancel_continuous_timer();
         return;
     }
 
@@ -1056,15 +1030,9 @@ void attempt_replace() {
 void attempt_attest() {
     MXC_Delay(50);
 
-    timer_count_limit = TIMER_LIMIT_ATTEST;
-    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    NVIC_EnableIRQ(TMR1_IRQn);
-    continuous_timer();
-
     char buf[HOST_INPUT_BUF_SIZE];
 
     if (validate_pin()) {
-        cancel_continuous_timer();
         return;
     }
 
@@ -1077,7 +1045,6 @@ void attempt_attest() {
     } else {
         print_error("Attest\n");
     }
-    cancel_continuous_timer();
 }
 
 /*********************************** MAIN *************************************/
