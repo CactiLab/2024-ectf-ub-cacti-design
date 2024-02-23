@@ -427,8 +427,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     }
 
     // print_info("secure_send 1, sending_buf=");
-    MXC_Delay(20);
-    print_hex(sending_buf, 1);
+    MXC_Delay(50);
+    // print_hex(sending_buf, 1);
 
     // receive nonce and sign
     result = poll_and_receive_packet(address, receiving_buf);
@@ -440,7 +440,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // print_info("secure_send 2, receiving_buf=");
     // print_hex(receiving_buf, result);
 
-    MXC_Delay(20);
+    MXC_Delay(50);
     memcpy(general_buf, receiving_buf, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     general_buf[NONCE_SIZE + 1] = address;
@@ -472,12 +472,12 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+    MXC_Delay(50);
+
     timer_count_limit = TIMER_LIMIT_I2C_COMMUNICATION;
     MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
     NVIC_EnableIRQ(TMR1_IRQn);
     continuous_timer();
-
-    MXC_Delay(50);
 
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -495,7 +495,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // print_hex(sending_buf, NONCE_SIZE + 1);
 
     // validate nonce
-    MXC_Delay(20);
+    MXC_Delay(50);
     result = poll_and_receive_packet(address, receiving_buf);
     if (result <= 0) {
         cancel_continuous_timer();
@@ -760,8 +760,11 @@ void boot() {
     // test 3
     // uint8_t buffer1[] = "abc";
     // uint8_t buffer2[256];
+    // printf("1\n");
     // secure_send(0x24, buffer1, sizeof(buffer1));
+    // printf("2\n");
     // secure_receive(0x24, buffer2);
+    // printf("3\n");
 
     // test 4
     // uint8_t buffer1[] = "abc";

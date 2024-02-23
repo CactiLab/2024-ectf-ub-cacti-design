@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "trng.h"
+#include "timer.h"
 
 #include "common.h"
 
@@ -46,6 +47,7 @@ int get_current_cpu_cycle() {
  * This function is called when a critical error occurs. It disables interrupts and enters an infinite loop.
  */
 void __attribute__((noreturn)) panic(void) {
+    cancel_continuous_timer();
     printf("panic!!!!!!\n");
     __disable_irq();
 
