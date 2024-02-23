@@ -471,7 +471,7 @@ void process_boot1() {
     rng_get_bytes(transmit_buffer + SIGNATURE_SIZE, NONCE_SIZE);
     // send
     send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_3);
 
     // receive the response and boot
     MXC_Delay(50);
