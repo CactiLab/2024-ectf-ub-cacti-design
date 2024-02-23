@@ -416,6 +416,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // sending command
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     result = send_packet(address, sizeof(uint8_t), sending_buf);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result == ERROR_RETURN) {
         return ERROR_RETURN;
     }
@@ -426,6 +427,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // receive nonce and sign
     result = poll_and_receive_packet(address, receiving_buf);
+    cancel_continuous_timer();
     if (result != NONCE_SIZE) {
         defense_mode();
         return ERROR_RETURN;
@@ -478,12 +480,14 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     rng_get_bytes(sending_buf + 1, NONCE_SIZE);
     // printf("secure_receive 2\n");
     send_packet(address, NONCE_SIZE + 1, sending_buf);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
     // printf("secure_receive 3, sending_buf=\n");
     // print_hex(sending_buf, NONCE_SIZE + 1);
 
     // validate nonce
     MXC_Delay(50);
     result = poll_and_receive_packet(address, receiving_buf);
+    cancel_continuous_timer();
     if (result <= 0) {
         return result;
     }
@@ -906,6 +910,7 @@ void attempt_boot1() {
         rng_get_bytes(sending_buf + 1, NONCE_SIZE);
         sending_buf[NONCE_SIZE + 1] = addr;
         result = send_packet(addr, NONCE_SIZE + 2, sending_buf);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -913,6 +918,7 @@ void attempt_boot1() {
         MXC_Delay(50);
         // receive response + challenge
         result = poll_and_receive_packet(addr, receiving_buf);
+        cancel_continuous_timer();
         if (result != SIGNATURE_SIZE + NONCE_SIZE) {
             free(signatures);
             defense_mode();
@@ -942,11 +948,13 @@ void attempt_boot1() {
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
         }
         result = poll_and_receive_packet(addr, receiving_buf);
+        cancel_continuous_timer();
         if (result < 0) {
             free(signatures);
             defense_mode();
@@ -1015,7 +1023,6 @@ void attempt_replace() {
             print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
                     component_id_in);
             print_success("Replace\n");
-            cancel_continuous_timer();
             return;
         }
     }
@@ -1023,7 +1030,6 @@ void attempt_replace() {
     // Component Out was not found
     print_error("Component 0x%08x is not provisioned for the system\r\n",
             component_id_out);
-    cancel_continuous_timer();
 }
 
 // Attest a component if the PIN is correct

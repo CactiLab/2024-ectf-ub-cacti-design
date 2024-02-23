@@ -333,6 +333,7 @@ int secure_receive(uint8_t* buffer) {
 
     MXC_Delay(50);
     send_packet_and_ack(NONCE_SIZE, sending_buf);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     // printf("securereceive 3, sending_buf=");
     // print_hex(sending_buf, NONCE_SIZE);
@@ -340,6 +341,7 @@ int secure_receive(uint8_t* buffer) {
     // receive sign(p,nonce,address) + sign(msg) + msg
     MXC_Delay(50);
     result = wait_and_receive_packet(receiving_buf);
+    cancel_continuous_timer();
     if (result <= 0) {
         return result;
     }
@@ -469,10 +471,12 @@ void process_boot1() {
     rng_get_bytes(transmit_buffer + SIGNATURE_SIZE, NONCE_SIZE);
     // send
     send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     // receive the response and boot
     MXC_Delay(50);
     result = wait_and_receive_packet(receive_buffer);
+    cancel_continuous_timer();
     if (result <= 0) {
         return;
     }
