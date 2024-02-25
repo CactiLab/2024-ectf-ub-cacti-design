@@ -368,6 +368,7 @@ allows better collaboration through the comments system.
 * Alex Eastman (Team Leader)
 * Gaoxiang Liu (Team Leader)
 * Zheyuan Ma
+* Dylan Miler-Cruz
 * Sagar Mohan
 * Rumaizi Mopuri
 * Barani Rajendran
