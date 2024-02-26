@@ -42,6 +42,10 @@ extern int timer_count_limit;
 // Includes from containerized build
 #include "ectf_params.h"
 
+// glaobal variables
+volatile uint8_t if_val_1;
+volatile uint8_t if_val_2;
+
 /********************************* CONSTANTS **********************************/
 
 // Passed in through ectf-params.h
@@ -61,6 +65,7 @@ extern int timer_count_limit;
 // Library call return types
 #define SUCCESS_RETURN 0
 #define ERROR_RETURN -1
+#define ERR_VALUE -15
 
 /******************************** TYPE DEFINITIONS ********************************/
 // Data structure for sending commands to component
@@ -502,15 +507,19 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // int r1 = crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2);
     // int r2 = crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len);
 
-    if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2)) {
-        defense_mode();
-        return 0;
-    }
+    // if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
     
-    if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
-        defense_mode();
-        return 0;
-    }
+    // if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
 
     // printf("secure_receive 5, s1=");
     // print_hex(receiving_buf, SIGNATURE_SIZE);
@@ -813,12 +822,14 @@ int validate_pin() {
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
     retrive_pin_hash();
-    if (!crypto_verify64(hash, flash_status.pin_hash)) {
-        crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
-        crypto_wipe(hash, sizeof(hash));
-        print_debug("Pin Accepted!\n");
-        return SUCCESS_RETURN;
-    }
+    // if (!crypto_verify64(hash, flash_status.pin_hash)) {
+    CONDITION_EQ_BRANCH(crypto_verify64(hash, flash_status.pin_hash), 0, ERR_VALUE);
+    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+    crypto_wipe(hash, sizeof(hash));
+    print_debug("Pin Accepted!\n");
+    return SUCCESS_RETURN;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
     print_error("Invalid PIN!\n");
@@ -860,12 +871,14 @@ int validate_token() {
     // print_hex(flash_status.token_hash, sizeof(flash_status.token_hash));
     // print_info("\nCalculated Token:");
     // print_hex(hash, sizeof(hash));
-    if (!crypto_verify64(hash, flash_status.token_hash)) {
-        crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-        crypto_wipe(hash, sizeof(hash));
-        print_debug("Token Accepted!\n");
-        return SUCCESS_RETURN;
-    }
+    // if (!crypto_verify64(hash, flash_status.token_hash)) {
+    CONDITION_EQ_BRANCH(crypto_verify64(hash, flash_status.token_hash), 0, ERR_VALUE);
+    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    crypto_wipe(hash, sizeof(hash));
+    print_debug("Token Accepted!\n");
+    return SUCCESS_RETURN;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     crypto_wipe(hash, sizeof(hash));
     print_error("Invalid Token!\n");
@@ -926,13 +939,15 @@ void attempt_boot1() {
         }
         // verify the signature
         retrive_cp_pub_key();
-        if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 2)) {
-            crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-            free(signatures);
-            // panic();
-            defense_mode();
-            return;
-        }
+        // if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 2)) {
+        CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+        free(signatures);
+        // panic();
+        defense_mode();
+        return;
+        CONDITION_BRANCH_ENDING(ERR_VALUE);
+        // }
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
         // sign CP's challenge
         general_buf[0] = COMPONENT_CMD_BOOT_2;
@@ -1116,6 +1131,10 @@ int main() {
     // print_hex(kkey, sizeof(kkey));
     // print_info("\nSalt: ");
     // print_hex(salt, sizeof(salt));
+
+    // CONDITION_NEQ_BRANCH(0, 1, -2);
+    // printf("aaaaaaa");
+    // CONDITION_BRANCH_ENDING(-2);
 
 
     print_info("Application Processor Started\n");
