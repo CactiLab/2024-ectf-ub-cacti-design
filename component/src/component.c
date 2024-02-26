@@ -34,6 +34,12 @@
 // Includes from containerized build
 #include "ectf_params.h"
 
+// glaobal variables
+volatile uint8_t if_val_1;
+volatile uint8_t if_val_2;
+
+#define ERR_VALUE -15
+
 #ifdef POST_BOOT
 #include "led.h"
 #include <stdint.h>
@@ -353,14 +359,18 @@ int secure_receive(uint8_t* buffer) {
     sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
     retrive_ap_pub_key();
-    if (crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2)) {
-        defense_mode();
-        return 0;
-    }
-    if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
-        defense_mode();
-        return 0;
-    }
+    // if (crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
+    // if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
     // printf("securereceive 5, ap_pub_key=");
     // print_hex(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     // printf("securereceive 6, s1=");
@@ -484,12 +494,14 @@ void process_boot1() {
     memcpy(general_buf + 1, transmit_buffer + SIGNATURE_SIZE, NONCE_SIZE);
     general_buf[NONCE_SIZE + 1] = (COMPONENT_ADDRESS);
     retrive_ap_pub_key();
-    if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2)) {
-        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        // panic();
-        defense_mode();
-        return;
-    }
+    // if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    // panic();
+    defense_mode();
+    return;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
     // respond with the boot message
@@ -575,12 +587,14 @@ void process_attest() {
     memcpy(general_buffer + 1, transmit_buffer, NONCE_SIZE);
     general_buffer[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
     retrive_ap_pub_key();
-    if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buffer, SIGNATURE_SIZE + 2)) {
-        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        // panic();
-        defense_mode();
-        return;
-    }
+    // if (crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buffer, SIGNATURE_SIZE + 2)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receive_buffer, flash_status.ap_pub_key, general_buffer, SIGNATURE_SIZE + 2), 0, ERR_VALUE);
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    // panic();
+    defense_mode();
+    return;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
     // retrive encrypted attest data
