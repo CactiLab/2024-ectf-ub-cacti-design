@@ -305,7 +305,9 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	
 	The I2C address of a CP derives from the CP ID.
 	
-	
+	A timeout (usually less than 0.2 seconds) is applied for I2C communications involving a response (e.g., challenge-response or sending a request package and waiting for a response package).
+	After the timeout,
+	the sender will terminate the current functionality. (e.g., attest, boot, ...)
 	
 	\subsubsection{Listing}
 	The Listing functionality checks the provisioned CP IDs in the AP and the IDs of all the presented CPs.
