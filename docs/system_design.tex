@@ -179,7 +179,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	\subsection{SR4}
 	\textbf{CP Attestation Data should be kept confidential.}
 	\paragraph{How we address it:}
-	Use a symmetric encryption to encrypt the CP Attestation Data with a Python script to replace the plain text with the encrypted text in macros when building a CP.
+	Use symmetric encryption to encrypt the CP Attestation Data with a Python script to replace the plain text with the encrypted text in macros when building a CP.
 	The key is generated based on a shared secret between AP and CP.
 	A CP does not have the decryption functionality during runtime.
 	When requesting the attestation data,
@@ -254,10 +254,10 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	
 	Figure \ref{fig:secret} shows the Deployment Secrets.
 	During the building deployment process,
-	a hash key (keyed-hash algorithm for pin and replace token),
-	symmetric encryption key (for encrypting the attestation data),
+	a hash key (keyed-hash algorithm for PIN and replace token),
+	a symmetric encryption key (for encrypting the attestation data),
 	and two pairs of public and private keys will be generated.
-	The hash key and symmetric encryption key will be shared among the AP and all the CPs.
+	The hash key and symmetric encryption key (containing salt and nonce) will be shared among the AP and all the CPs.
 	AP will store the first private key of \texttt{K\_Pri1} and the second public key of \texttt{K\_Pub2}.
 	CP will store the second private key of \texttt{K\_Pri2} and the first public key of \texttt{K\_Pub1}.
 	We generate the Deployment Secrets randomly when building deployment to prevent the attacker from retrieving it through the source code.
@@ -268,12 +268,22 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	provisioned CP IDs,
 	attestation PIN code,
 	and replace Token need to be provided.
+	The AP firmware contains \texttt{K\_Pri1},
+	\texttt{K\_Pub2},
+	Argon2 hash key and salt,
+	AEAD key and nonce,
+	hashed PIN,
+	and hashed replaced token.
+	
 	
 	To build the CP firmware,
 	the CP ID and attestation data need to be provided.
 	The attestation data includes location,
 	date,
 	and customer name.
+	The CP firmware contains \texttt{K\_Pri2},
+	\texttt{K\_Pub1},
+	and cipher text of attestation data.
 	
 	\subsection{Load Devices and Booting}
 	\subsubsection{Load AP and CP Firmware}
@@ -292,6 +302,10 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	\subsection{Functionalities}
 	The term \textit{packet} refers to all the communication data either the AP sends to a CP,
 	or the AP reads from a CP.
+	
+	The I2C address of a CP derives from the CP ID.
+	
+	
 	
 	\subsubsection{Listing}
 	The Listing functionality checks the provisioned CP IDs in the AP and the IDs of all the presented CPs.
@@ -336,19 +350,21 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The AP checks all the provisioned CPs one by one to make sure they are present and valid.
 		\item For each provisioned CP,
 		the AP generates a nonce as the challenge.
-		It then sends the \texttt{boot} command and the challenge to the corresponding CP.
+		It then sends the \texttt{boot} command,
+		challenge,
+		and the corresponding CP address to the corresponding CP.
 		\item After receiving the boot command and the challenge,
 		the CP makes up the response by signing a boot purpose label,
 		the challenge,
-		along with the CP ID using the \texttt{K\_Pri2} key.
+		along with the CP address using the \texttt{K\_Pri2} key.
 		It then creates a new challenge by generating a nonce and puts the response and new challenge to the I2C buffer waiting for the AP to read.
 		\item The AP reads the response from the CP and verifies the response using the \texttt{K\_Pub2}.
 		It checks if the purpose label is for booting,
 		the nonce is the same as the originally generated one,
-		and the CP ID are correct.
+		and the CP ID is correct.
 		The AP also records the challenge from this CP.
 		\item For a validation failure,
-		the AP will randomly delay for up to 5 seconds to mitigate a brute force attack and terminate the booting process.
+		the AP will delay for 4 seconds to mitigate a brute force attack and terminate the booting process.
 		\item If all the CPs are present,
 		the AP then tries to boot them all.
 		\item To boot a CP,
@@ -456,10 +472,10 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		and the CP I2C address using the \texttt{K\_Pri1} key as the response for the CP.
 		The AP sends the response,
 		a signature of the message (signed using the \texttt{K\_Pri1} key),
-		and message to th CP.
+		and message to the CP.
 		\item The CP verifies using the \texttt{K\_Pub1} key the response by checking if the reading purpose label,
 		nonce,
-		and address is correct to ensure authenticity.
+		and the address is correct to ensure authenticity.
 		\item The CP then verifies the message signature by using the \texttt{K\_Pub1} key to ensure the message integrity.
 		\item If the two verifications pass,
 		the CP receives the message.
@@ -483,7 +499,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		and message in the I2C buffer,
 		waiting for the AP to read.
 		\item The AP reads the packet from the CP.
-		\item The AP verifies the response using the \texttt{K\_Pub2} key to and check if the reading purpose label,
+		\item The AP verifies the response using the \texttt{K\_Pub2} key and checks if the reading purpose label,
 		nonce,
 		and the CP I2C address are correct.
 		It then verifies the message signature by using the \texttt{K\_Pub2} to ensure the message integrity.
