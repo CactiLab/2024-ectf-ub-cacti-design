@@ -87,33 +87,33 @@ typedef struct {
     uint32_t component_id;
 } scan_message;
 
-#define PRIV_KEY_SIZE 64
-#define PUB_KEY_SIZE 32
-#define COMPONENT_IDS_OFFSET offsetof(flash_entry, component_ids)
-#define AP_PRIV_KEY_OFFSET offsetof(flash_entry, ap_priv_key)
-#define CP_PUB_KEY_OFFSET offsetof(flash_entry, cp_pub_key)
-#define HASH_KEY_OFFSET offsetof(flash_entry, hash_key)
-#define HASH_SALT_OFFSET offsetof(flash_entry, hash_salt)
-#define PIN_HASH_OFFSET offsetof(flash_entry, pin_hash)
-#define TOKEN_HASH_OFFSET offsetof(flash_entry, token_hash)
-#define AEAD_KEY_OFFSET offsetof(flash_entry, aead_key)
-#define AEAD_NONCE_OFFSET offsetof(flash_entry, aead_nonce)
-#define NONCE_SIZE 64
-#define SIGNATURE_SIZE 64
-#define MAX_POST_BOOT_MSG_LEN 64
-#define PIN_LEN 6
-#define TOKEN_LEN 16
-#define HASH_KEY_LEN 128
-#define HASH_SALT_LEN 128
-#define NB_BLOCKS_PIN 108
-#define NB_BLOCKS_TOKEN 108
-#define NB_PASSES 3
-#define NB_LANES 1
-#define HASH_LEN 64
-#define HOST_INPUT_BUF_SIZE 64
+#define PRIV_KEY_SIZE       64
+#define PUB_KEY_SIZE        32
+#define COMPONENT_IDS_OFFSET    offsetof(flash_entry, component_ids)
+#define AP_PRIV_KEY_OFFSET      offsetof(flash_entry, ap_priv_key)
+#define CP_PUB_KEY_OFFSET       offsetof(flash_entry, cp_pub_key)
+#define HASH_KEY_OFFSET         offsetof(flash_entry, hash_key)
+#define HASH_SALT_OFFSET        offsetof(flash_entry, hash_salt)
+#define PIN_HASH_OFFSET         offsetof(flash_entry, pin_hash)
+#define TOKEN_HASH_OFFSET       offsetof(flash_entry, token_hash)
+#define AEAD_KEY_OFFSET         offsetof(flash_entry, aead_key)
+#define AEAD_NONCE_OFFSET       offsetof(flash_entry, aead_nonce)
+#define NONCE_SIZE              64
+#define SIGNATURE_SIZE          64
+#define MAX_POST_BOOT_MSG_LEN   64
+#define PIN_LEN                 6
+#define TOKEN_LEN               16
+#define HASH_KEY_LEN            128
+#define HASH_SALT_LEN           128
+#define NB_BLOCKS_PIN           108
+#define NB_BLOCKS_TOKEN         108
+#define NB_PASSES               3
+#define NB_LANES                1
+#define HASH_LEN                64
+#define HOST_INPUT_BUF_SIZE     64
 // #define CIPHER_ATTESTATION_DATA_LEN 243
-#define AEAD_MAC_SIZE 16
-#define AEAD_NONCE_SIZE 24
+#define AEAD_MAC_SIZE           16
+#define AEAD_NONCE_SIZE         24
 #define AEAD_KEY_SIZE                        32
 #define ATT_DATA_MAX_SIZE               64
 #define ATT_PADDING_SIZE                    16
@@ -426,9 +426,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         return ERROR_RETURN;
     }
 
-    // print_info("secure_send 1, sending_buf=");
     MXC_Delay(50);
-    // print_hex(sending_buf, 1);
 
     // receive nonce and sign
     result = poll_and_receive_packet(address, receiving_buf);
@@ -437,9 +435,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         defense_mode();
         return ERROR_RETURN;
     }
-
-    // print_info("secure_send 2, receiving_buf=");
-    // print_hex(receiving_buf, result);
 
     MXC_Delay(50);
     memcpy(general_buf, receiving_buf, NONCE_SIZE);
@@ -478,16 +473,11 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = 0;
 
-    // printf("secure_receive 1\n");
-
     // send reading command, generate nonce
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     rng_get_bytes(sending_buf + 1, NONCE_SIZE);
-    // printf("secure_receive 2\n");
     send_packet(address, NONCE_SIZE + 1, sending_buf);
     start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
-    // printf("secure_receive 3, sending_buf=\n");
-    // print_hex(sending_buf, NONCE_SIZE + 1);
 
     // validate nonce
     MXC_Delay(50);
@@ -496,16 +486,12 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     if (result <= 0) {
         return result;
     }
-    // printf("secure_receive 4, receiving_buf=\n");
-    // print_hex(receiving_buf, result);
 
     int len = result - SIGNATURE_SIZE * 2;
     memcpy(general_buf, sending_buf + 1, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     general_buf[NONCE_SIZE + 1] = address;
     retrive_cp_pub_key();
-    // int r1 = crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2);
-    // int r2 = crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len);
 
     // if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2)) {
     CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
@@ -520,26 +506,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
     // }
-
-    // printf("secure_receive 5, s1=");
-    // print_hex(receiving_buf, SIGNATURE_SIZE);
-
-    // printf("secure_receive 6, s2=");
-    // print_hex(receiving_buf + SIGNATURE_SIZE, SIGNATURE_SIZE);
-
-    // printf("secure_receive 7, msg=");
-    // print_hex(receiving_buf + SIGNATURE_SIZE * 2, len);
-
-    // printf("secure_receive 8, flash_status.cp_pub_key=");
-    // print_hex(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-
-    // printf("secure_receive 9, r1=%d, r2=%d\n", r1, r2);
-
     crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-    // if (r1 != 0 || r2 != 0) {
-    //     panic();
-    //     return 0;
-    // }
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
     MXC_Delay(500);
@@ -603,65 +570,6 @@ int scan_components() {
     print_success("List\n");
     return SUCCESS_RETURN;
 }
-
-// int validate_components() {
-//     // Buffers for board link communication
-//     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-//     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
-
-//     // Send validate command to each component
-//     // TODO: Fix the component count to 2
-//     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
-//         // Set the I2C address of the component
-//         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
-
-//         // Create command message
-//         command_message* command = (command_message*) transmit_buffer;
-//         command->opcode = COMPONENT_CMD_VALIDATE;
-        
-//         // Send out command and receive result
-//         int len = issue_cmd(addr, transmit_buffer, receive_buffer);
-//         if (len == ERROR_RETURN) {
-//             print_error("Could not validate component\n");
-//             return ERROR_RETURN;
-//         }
-
-//         validate_message* validate = (validate_message*) receive_buffer;
-//         // Check that the result is correct
-//         if (validate->component_id != flash_status.component_ids[i]) {
-//             print_error("Component ID: 0x%08x invalid\n", flash_status.component_ids[i]);
-//             return ERROR_RETURN;
-//         }
-//     }
-//     return SUCCESS_RETURN;
-// }
-
-// int boot_components() {
-//     // Buffers for board link communication
-//     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-//     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
-
-//     // Send boot command to each component
-//     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
-//         // Set the I2C address of the component
-//         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
-        
-//         // Create command message
-//         command_message* command = (command_message*) transmit_buffer;
-//         command->opcode = COMPONENT_CMD_BOOT;
-        
-//         // Send out command and receive result
-//         int len = issue_cmd(addr, transmit_buffer, receive_buffer);
-//         if (len == ERROR_RETURN) {
-//             print_error("Could not boot component\n");
-//             return ERROR_RETURN;
-//         }
-
-//         // Print boot message from component
-//         print_info("0x%08x>%s\n", flash_status.component_ids[i], receive_buffer);
-//     }
-//     return SUCCESS_RETURN;
-// }
 
 int attest_component(uint32_t component_id) {
     MXC_Delay(50);
@@ -858,19 +766,11 @@ int validate_token() {
     retrive_hash_key();
     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
-    // print_info("Key: ");
-    // print_hex(flash_status.hash_key, HASH_KEY_LEN);
-    // print_info("\nSalt: ");
-    // print_hex(flash_status.hash_salt, HASH_SALT_LEN);
     free(workarea);
     MXC_Delay(50);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
     retrive_token_hash();
-    // print_info("\nSaved Token:");
-    // print_hex(flash_status.token_hash, sizeof(flash_status.token_hash));
-    // print_info("\nCalculated Token:");
-    // print_hex(hash, sizeof(hash));
     // if (!crypto_verify64(hash, flash_status.token_hash)) {
     CONDITION_EQ_BRANCH(crypto_verify64(hash, flash_status.token_hash), 0, ERR_VALUE);
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
@@ -885,29 +785,6 @@ int validate_token() {
     defense_mode();
     return ERROR_RETURN;
 }
-
-// Boot the components and board if the components validate
-// void attempt_boot() {
-//     volatile int ret = -1;
-//     ret = validate_components();
-//     if (ret != SUCCESS_RETURN) {
-//         print_error("Components could not be validated\n");
-//         return;
-//     }
-//     print_debug("All Components validated\n");
-//     ret = boot_components();
-//     if (ret != SUCCESS_RETURN) {
-//         print_error("Failed to boot all components\n");
-//         return;
-//     }
-
-//     // Print boot message
-//     // This always needs to be printed when booting
-//     print_info("AP>%s\n", AP_BOOT_MSG);
-//     print_success("Boot\n");
-//     // Boot
-//     boot();
-// }
 
 void attempt_boot1() {
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -1012,26 +889,7 @@ void attempt_replace() {
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         if (flash_status.component_ids[i] == component_id_out) {
             flash_status.component_ids[i] = component_id_in;
-
-            // write updated component_ids to flash
-            // retrive_ap_priv_key();
-            // retrive_cp_pub_key();
-            // retrive_hash_key();
-            // retrive_hash_salt();
-            // retrive_pin_hash();
-            // retrive_token_hash();
-            // retrive_aead_key();
-            // retrive_aead_nonce();
-            // flash_simple_erase_page(FLASH_ADDR);
-            // flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
-            // crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
-            // crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-            // crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
-            // crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
-            // crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
-            // crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-            // crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
-            // crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+            
             WRITE_FLASH_MEMORY;
             
             // print replace success information
@@ -1069,73 +927,12 @@ void attempt_attest() {
 }
 
 /*********************************** MAIN *************************************/
-// remove
-// #define PRIVKEY 0x6f, 0x05, 0xeb, 0xe4, 0xd6, 0x38, 0x35, 0x46, 0x64, 0x73, 0x30, 0xf9, 0xf9, 0x43, 0x0f, 0x6b, 0x5d, 0xdd, 0x56, 0x57, 0xc1, 0xc1, 0x03, 0xb7, 0xfd, 0x35, 0xa7, 0x1d, 0x21, 0x6e, 0x63, 0x25, 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
-// #define PUBKEY 0x0a, 0x6e, 0x7d, 0xdd, 0x7e, 0xac, 0x9e, 0x3f, 0xad, 0x0b, 0x74, 0x31, 0xd1, 0x9c, 0x13, 0x9a, 0x4e, 0xda, 0xf1, 0x7c, 0xac, 0xcf, 0x0a, 0xda, 0xf6, 0xce, 0x04, 0xac, 0x88, 0x33, 0x38, 0x99
 
 // TODO: how to use panic? double-if, timeout
 // TODO: inline functions? like boot?
 int main() {
     // Initialize board
     init();
-    
-    // uint8_t delay_result;
-    // RANDOM_DELAY_TINY(delay_result);
-    // if (delay_result == 0) {
-    //     print_error("TRNG failure\n");
-    //     panic();
-    // }
-
-    // remove
-    // unsigned int cycle1, cycle2;
-    // cycle1 = get_current_cpu_cycle();
-    // RANDOM_DELAY_TINY_2;
-    // cycle2 = get_current_cpu_cycle();
-    // print_info("after tiny delay, cycle1=%u, cycle2=%u, cycle difference=%u\n", cycle1, cycle2, cycle2 - cycle1);
-
-    // uint8_t message[64] = "I love you.";
-    // uint8_t privkey[] = {PRIVKEY};
-    // uint8_t pubkey[] = {PUBKEY};
-    // uint8_t signature[64];
-    // crypto_eddsa_sign(signature, privkey, message, 12);
-    // print_info("private key: ");
-    // print_hex(privkey, sizeof(privkey));
-    // print_info("\n");
-    // print_info("signature: ");
-    // print_hex(signature, 64);
-    // print_info("\n");
-    // int r = crypto_eddsa_check(signature, pubkey, message, 12);
-    // print_info("check result 1: =%d\n", r);
-    // message[0] = 65;
-    // r = crypto_eddsa_check(signature, pubkey, message, 12);
-    // print_info("check result 2: =%d\n", r);
-    
-    // uint8_t pass[] = "123456";
-    // uint8_t salt[] = {AP_HASH_SALT};
-    // uint8_t kkey[] = {AP_HASH_KEY};
-    // uint8_t hash[64];
-    // uint8_t *workarea = malloc(1024 * 115);
-    // crypto_argon2_config cac = {CRYPTO_ARGON2_ID, 115, 3, 1};
-    // crypto_argon2_inputs cai = {pass, salt, 6, sizeof(salt)};
-    // crypto_argon2_extras cae = {kkey, NULL, sizeof(kkey), 0};
-    // crypto_argon2(hash, 64, workarea, cac, cai, cae);
-    // print_info("hash=");
-    // print_hex(hash, 64);
-    // print_info("\n");
-    // uint8_t hash_pin[] = {AP_HASH_PIN};
-    // r = crypto_verify64(hash, hash_pin);
-    // print_info("r=%d\n", r);
-    // print_info("PIN: ");
-    // print_hex(pass, 6);
-    // print_info("\nKey: ");
-    // print_hex(kkey, sizeof(kkey));
-    // print_info("\nSalt: ");
-    // print_hex(salt, sizeof(salt));
-
-    // CONDITION_NEQ_BRANCH(0, 1, -2);
-    // printf("aaaaaaa");
-    // CONDITION_BRANCH_ENDING(-2);
-
 
     print_info("Application Processor Started\n");
 

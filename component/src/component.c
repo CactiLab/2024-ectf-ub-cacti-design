@@ -66,14 +66,14 @@ extern int timer_count_limit;
 #define FLASH_MAGIC 0xDEADBEEF
 
 /******************************** TYPE DEFINITIONS ********************************/
-#define PRIV_KEY_SIZE 64
-#define PUB_KEY_SIZE 32
-#define CP_PRIV_KEY_OFFSET offsetof(flash_entry, cp_priv_key)
-#define AP_PUB_KEY_OFFSET offsetof(flash_entry, ap_pub_key)
-#define ATTEST_CIPHER_OFFSET offsetof(flash_entry, cipher_attest_data)
-#define NONCE_SIZE 64
-#define SIGNATURE_SIZE 64
-#define MAX_POST_BOOT_MSG_LEN 64
+#define PRIV_KEY_SIZE           64
+#define PUB_KEY_SIZE            32
+#define CP_PRIV_KEY_OFFSET      offsetof(flash_entry, cp_priv_key)
+#define AP_PUB_KEY_OFFSET       offsetof(flash_entry, ap_pub_key)
+#define ATTEST_CIPHER_OFFSET    offsetof(flash_entry, cipher_attest_data)
+#define NONCE_SIZE              64
+#define SIGNATURE_SIZE          64
+#define MAX_POST_BOOT_MSG_LEN   64
 #define CIPHER_ATTESTATION_DATA_LEN 243
 #define CIPHER_ATTESTATION_DATA_LEN_ROUND 244
 
@@ -285,9 +285,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
         return;
     }
 
-    // printf("secure_send 2, receiving_buf=");
-    // print_hex(receiving_buf, result);
-
     // sign nonce and msg
     MXC_Delay(50);
     memcpy(general_buf, receiving_buf + 1, NONCE_SIZE);
@@ -301,9 +298,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
     
     MXC_Delay(500);
-
-    // printf("secure_send 3, sending_buf=");
-    // print_hex(sending_buf, SIGNATURE_SIZE * 2 + len);
 }
 
 /**
@@ -323,26 +317,17 @@ int secure_receive(uint8_t* buffer) {
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
-    // receive sending command
-    // printf("securereceive 1\n");
     result = wait_and_receive_packet(receiving_buf);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
         return result;
     }
-    // printf("securereceive 2, receiving_buf=");
-    // print_hex(receiving_buf, result);
 
     // generate a challenge (nonce)
     rng_get_bytes(sending_buf, NONCE_SIZE);
-    // printf("securereceive 2.5, sending_buf=");
-    // print_hex(sending_buf, NONCE_SIZE);
 
     MXC_Delay(50);
     send_packet_and_ack(NONCE_SIZE, sending_buf);
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
-
-    // printf("securereceive 3, sending_buf=");
-    // print_hex(sending_buf, NONCE_SIZE);
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     MXC_Delay(50);
@@ -351,9 +336,6 @@ int secure_receive(uint8_t* buffer) {
     if (result <= 0) {
         return result;
     }
-
-    // printf("securereceive 4, receiving_buf=");
-    // print_hex(receiving_buf, result);
 
     int len = result - SIGNATURE_SIZE * 2;
     sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
@@ -371,22 +353,7 @@ int secure_receive(uint8_t* buffer) {
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
     // }
-    // printf("securereceive 5, ap_pub_key=");
-    // print_hex(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-    // printf("securereceive 6, s1=");
-    // print_hex(receiving_buf, SIGNATURE_SIZE);
-    // printf("securereceive 7, s2=");
-    // print_hex(receiving_buf + SIGNATURE_SIZE, SIGNATURE_SIZE);
-    // printf("securereceive 8, msg=");
-    // print_hex(receiving_buf + SIGNATURE_SIZE * 2, len);
-    // printf("securereceive 9, len=%d\n", len);
-    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-    // printf("securereceive 10, ap_pub_key=");
-    // print_hex(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-    // if (r1 != 0 || r2 != 0) {
-    //     panic();
-    //     return 0;
-    // }
+
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
     MXC_Delay(500);
@@ -539,34 +506,12 @@ void component_process_cmd() {
     }
 }
 
-// void process_boot() {
-//     MXC_Delay(50);
-//     // printf("process_boot 1 \n");
-//     // The AP requested a boot. Set `component_boot` for the main loop and
-//     // respond with the boot message
-//     uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
-//     memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
-//     send_packet_and_ack(len, transmit_buffer);
-//     MXC_Delay(50);
-//     // printf("process_boot 2 \n");
-//     // Call the boot function
-//     // printf("before booting\n");
-//     boot();
-// }
-
 void process_scan() {
     // The AP requested a scan. Respond with the Component ID
     scan_message* packet = (scan_message*) transmit_buffer;
     packet->component_id = COMPONENT_ID;
     send_packet_and_ack(sizeof(scan_message), transmit_buffer);
 }
-
-// void process_validate() {
-//     // The AP requested a validation. Respond with the Component ID
-//     validate_message* packet = (validate_message*) transmit_buffer;
-//     packet->component_id = COMPONENT_ID;
-//     send_packet_and_ack(sizeof(validate_message), transmit_buffer);
-// }
 
 void process_attest() {
     uint8_t general_buffer[MAX_I2C_MESSAGE_LEN];
@@ -603,11 +548,6 @@ void process_attest() {
     send_packet_and_ack(CIPHER_ATTESTATION_DATA_LEN, transmit_buffer);
     crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
-
-    // // The AP requested attestation. Respond with the attestation data
-    // uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
-    //             ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) + 1;
-    // send_packet_and_ack(len, transmit_buffer);
 }
 
 /*********************************** MAIN *************************************/
