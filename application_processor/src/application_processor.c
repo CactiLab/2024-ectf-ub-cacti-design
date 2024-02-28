@@ -302,6 +302,21 @@ void defense_mode() {
     // LED_Off(LED1);
 }
 
+/** 
+ * Convert an uint32_t to an array of uint8_t
+ * @param buf at least 4 elements
+ * @param i the uint32_t variable
+*/
+void convert_32_to_8(uint8_t *buf, uint32_t i) {
+    if (!buf)
+        return;
+    buf[0] = i & 0xff;
+    buf[1] = (i >> 8) & 0xff;
+    buf[2] = (i >> 16) & 0xff;
+    buf[3] = (i >> 24) & 0xff;
+}
+
+
 /**
  * @brief Initialize the device.
  * 
@@ -767,13 +782,13 @@ void boot() {
     // print_hex(buffer, r);
 
     // test 3
-    uint8_t buffer1[] = "abc";
-    uint8_t buffer2[256];
-    printf("1\n");
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    printf("2\n");
-    secure_receive(0x24, buffer2);
-    printf("3\n");
+    // uint8_t buffer1[] = "ectf{testing_1afa95d5de6bea59}";
+    // uint8_t buffer2[256];
+    // printf("1\n");
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // printf("2\n");
+    // secure_receive(0x24, buffer2);
+    // printf("3\n");
 
     // test 4
     // uint8_t buffer1[] = "abc";
@@ -973,10 +988,47 @@ void attempt_replace() {
     MXC_Delay(200);
 
     char buf[HOST_INPUT_BUF_SIZE];
-    // TODO: Put inside
-    if (validate_token()) {
+
+    recv_input("Enter token: ", buf);
+    if (strlen(buf) != TOKEN_LEN) {
+        // TODO: Defense mode
+        print_error("Invalid Token!\n");
+        defense_mode();
         return;
     }
+    // print_info("\nInputted Token: \n");
+    // print_hex(buf, TOKEN_LEN);
+    MXC_Delay(50);
+
+    uint8_t hash[HASH_LEN] = {0};
+    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_TOKEN, NB_PASSES, NB_LANES};
+    uint8_t *workarea = malloc(1024 * cac.nb_blocks);
+    retrive_hash_salt();
+    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
+    retrive_hash_key();
+    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
+    free(workarea);
+    MXC_Delay(50);
+    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    retrive_token_hash();
+    CONDITION_NEQ_BRANCH(crypto_verify64(hash, flash_status.token_hash), 0, ERR_VALUE);
+    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    crypto_wipe(hash, sizeof(hash));
+    print_error("Invalid Token!\n");
+    defense_mode();
+    return;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+
+    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    crypto_wipe(hash, sizeof(hash));
+    print_debug("Token Accepted!\n");
+
+
+    // if (validate_token()) {
+    //     return;
+    // }
 
     uint32_t component_id_in = 0;
     uint32_t component_id_out = 0;
@@ -1004,6 +1056,7 @@ void attempt_replace() {
     // Component Out was not found
     print_error("Component 0x%08x is not provisioned for the system\r\n",
             component_id_out);
+    defense_mode();
 }
 
 // Attest a component if the PIN is correct
@@ -1012,10 +1065,42 @@ void attempt_attest() {
 
     char buf[HOST_INPUT_BUF_SIZE];
 
-    // TODO: Put inside
-    if (validate_pin()) {
+    recv_input("Enter pin: ", buf);
+    if (strlen(buf) != 6) {
+        print_error("Invalid PIN!\n");
+        defense_mode();
         return;
     }
+    MXC_Delay(50);
+
+    uint8_t hash[HASH_LEN] = {0};
+    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_PIN, NB_PASSES, NB_LANES};
+    uint8_t *workarea = malloc(1024 * NB_BLOCKS_PIN);
+    retrive_hash_salt();
+    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, PIN_LEN, sizeof(flash_status.hash_salt)};
+    retrive_hash_key();
+    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
+    // TODO: random delay
+    MXC_Delay(100);
+    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    free(workarea);
+    retrive_pin_hash();
+    CONDITION_NEQ_BRANCH(crypto_verify64(hash, flash_status.pin_hash), 0, ERR_VALUE);
+    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+    crypto_wipe(hash, sizeof(hash));
+    print_error("Invalid PIN!\n");
+    defense_mode();
+    return;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+    crypto_wipe(hash, sizeof(hash));
+    print_debug("Pin Accepted!\n");
+
+    // if (validate_pin()) {
+    //     return;
+    // }
 
     MXC_Delay(100);
     uint32_t component_id;

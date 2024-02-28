@@ -200,6 +200,20 @@ void defense_mode() {
     // LED_Off(LED1);
 }
 
+/** 
+ * Convert an uint32_t to an array of uint8_t
+ * @param buf at least 4 elements
+ * @param i the uint32_t variable
+*/
+void convert_32_to_8(uint8_t *buf, uint32_t i) {
+    if (!buf)
+        return;
+    buf[0] = i & 0xff;
+    buf[1] = (i >> 8) & 0xff;
+    buf[2] = (i >> 16) & 0xff;
+    buf[3] = (i >> 24) & 0xff;
+}
+
 /**
  * @brief Initialize the device.
  * 
@@ -472,10 +486,10 @@ void boot() {
     // secure_send(buffer, sizeof(buffer));
 
     // test 3
-    uint8_t buffer1[256];
-    uint8_t buffer2[] = "I love you.";
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
+    // uint8_t buffer1[256];
+    // uint8_t buffer2[] = "I love you.";
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
 
     // test 4
     // uint8_t buffer1[256];
