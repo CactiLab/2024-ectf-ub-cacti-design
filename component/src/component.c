@@ -501,6 +501,7 @@ void component_process_cmd() {
         process_attest();
         break;
     default:
+        // TODO: Defense mode
         printf("Error: Unrecognized command received %d\n", command->opcode);
         break;
     }

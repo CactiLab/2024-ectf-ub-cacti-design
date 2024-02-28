@@ -726,6 +726,7 @@ int validate_pin() {
     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
     free(workarea);
+    // TODO: random delay
     MXC_Delay(100);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
@@ -751,6 +752,7 @@ int validate_token() {
     char buf[HOST_INPUT_BUF_SIZE];
     recv_input("Enter token: ", buf);
     if (strlen(buf) != TOKEN_LEN) {
+        // TODO: Defense mode
         print_error("Invalid Token!\n");
         return ERROR_RETURN;
     }
@@ -872,7 +874,7 @@ void attempt_replace() {
     MXC_Delay(200);
 
     char buf[HOST_INPUT_BUF_SIZE];
-
+    // TODO: Put inside
     if (validate_token()) {
         return;
     }
@@ -911,6 +913,7 @@ void attempt_attest() {
 
     char buf[HOST_INPUT_BUF_SIZE];
 
+    // TODO: Put inside
     if (validate_pin()) {
         return;
     }
