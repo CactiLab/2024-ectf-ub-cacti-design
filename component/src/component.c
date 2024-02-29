@@ -342,7 +342,7 @@ typedef struct __attribute__((packed)) {
  * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-void secure_send(uint8_t* buffer, uint8_t len) {
+void secure_send_1(uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     if (len > MAX_I2C_MESSAGE_LEN) {
@@ -386,7 +386,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive(uint8_t* buffer) {
+int secure_receive_1(uint8_t* buffer) {
     MXC_Delay(50);
 
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -447,7 +447,7 @@ int secure_receive(uint8_t* buffer) {
  * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-void secure_send_1(uint8_t* buffer, uint8_t len) {
+void secure_send(uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     print_debug("cpsend - start, address=%x, id=%x, len=%d, buffer = \n", COMPONENT_ADDRESS, COMPONENT_ID, len);
@@ -536,7 +536,7 @@ void secure_send_1(uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive_1(uint8_t* buffer) {
+int secure_receive(uint8_t* buffer) {
     MXC_Delay(50);
 
     print_debug("cprecv - start, id=%x, address=%x\n", COMPONENT_ID, COMPONENT_ADDRESS);
@@ -655,10 +655,10 @@ void boot() {
     // print_hex(buffer, r);
 
     // test 2
-    printf("starting test 2 post-boot\n");
-    // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
-    uint8_t buffer[1] = {0};
-    secure_send(buffer, sizeof(buffer));
+    // printf("starting test 2 post-boot\n");
+    // // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
+    // uint8_t buffer[1] = {0};
+    // secure_send(buffer, sizeof(buffer));
 
     // test 3
     // uint8_t buffer1[256];
