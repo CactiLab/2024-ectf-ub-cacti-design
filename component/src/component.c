@@ -562,20 +562,20 @@ void boot() {
     // secure_send(buffer2, sizeof(buffer2));
 
     // test 4
-    uint8_t buffer1[256];
-    uint8_t buffer2[] = "ectf{testing_1afa95d5de6bea59}";
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
-    secure_receive(buffer1);
-    secure_send(buffer2, sizeof(buffer2));
+    // uint8_t buffer1[256];
+    // uint8_t buffer2[] = "ectf{testing_1afa95d5de6bea59}";
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
+    // secure_receive(buffer1);
+    // secure_send(buffer2, sizeof(buffer2));
 
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems

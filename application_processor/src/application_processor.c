@@ -859,20 +859,20 @@ void boot() {
     // printf("3\n");
 
     // test 4
-    uint8_t buffer1[] = "ectf{testing_1afa95d5de6bea59}";
-    uint8_t buffer2[256];
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    secure_receive(0x24, buffer2);
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    secure_receive(0x24, buffer2);
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    secure_receive(0x24, buffer2);
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    secure_receive(0x24, buffer2);
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    secure_receive(0x24, buffer2);
-    secure_send(0x24, buffer1, sizeof(buffer1));
-    secure_receive(0x24, buffer2);
+    // uint8_t buffer1[] = "ectf{testing_1afa95d5de6bea59}";
+    // uint8_t buffer2[256];
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
+    // secure_send(0x24, buffer1, sizeof(buffer1));
+    // secure_receive(0x24, buffer2);
     
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
