@@ -453,7 +453,7 @@ typedef struct __attribute__((packed)) {
     uint8_t nonce[NONCE_SIZE];
 } packet_boot_1_cp_to_ap;
 
-/******************************* POST BOOT FUNCTIONALITY *********************************/
+
 /**
  * @brief Secure Send 
  * 
@@ -466,6 +466,124 @@ typedef struct __attribute__((packed)) {
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
+    MXC_Delay(50);
+
+    if (len > MAX_POST_BOOT_MSG_LEN) {
+        panic();
+    }
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+
+    // sending command
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    result = send_packet(address, sizeof(uint8_t), sending_buf);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    if (result == ERROR_RETURN) {
+        return ERROR_RETURN;
+    }
+
+    MXC_Delay(50);
+
+    // receive nonce and sign
+    result = poll_and_receive_packet(address, receiving_buf);
+    cancel_continuous_timer();
+    if (result != NONCE_SIZE) {
+        defense_mode();
+        return ERROR_RETURN;
+    }
+
+    MXC_Delay(50);
+    memcpy(general_buf, receiving_buf, NONCE_SIZE);
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    general_buf[NONCE_SIZE + 1] = address;
+    retrive_ap_priv_key();
+    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);
+    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, buffer, len);
+    crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+    memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
+    result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
+    if (result == ERROR_RETURN) {
+        return ERROR_RETURN;
+    }
+
+    MXC_Delay(500);
+    return SUCCESS_RETURN;
+}
+
+/**
+ * @brief Secure Receive
+ * 
+ * @param address: i2c_addr_t, I2C address of sender
+ * @param buffer: uint8_t*, pointer to buffer to receive data to
+ * 
+ * @return int: number of bytes received, negative if error
+ * 
+ * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+*/
+int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+    MXC_Delay(50);
+
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = 0;
+
+    // send reading command, generate nonce
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    rng_get_bytes(sending_buf + 1, NONCE_SIZE);
+    send_packet(address, NONCE_SIZE + 1, sending_buf);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+
+    // validate nonce
+    MXC_Delay(50);
+    result = poll_and_receive_packet(address, receiving_buf);
+    cancel_continuous_timer();
+    if (result <= 0) {
+        return result;
+    }
+
+    int len = result - SIGNATURE_SIZE * 2;
+    memcpy(general_buf, sending_buf + 1, NONCE_SIZE);
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    general_buf[NONCE_SIZE + 1] = address;
+    retrive_cp_pub_key();
+
+    // if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
+    
+    // if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
+    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+    memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
+
+    MXC_Delay(500);
+    return len;
+}
+
+/******************************* POST BOOT FUNCTIONALITY *********************************/
+/**
+ * @brief Secure Send 
+ * 
+ * @param address: i2c_addr_t, I2C address of recipient
+ * @param buffer: uint8_t*, pointer to data to be send
+ * @param len: uint8_t, size of data to be sent 
+ * 
+ * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+
+*/
+int secure_send_1(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     print_debug("apsend - start, addr=%x, len=%d,buffer=\n", address, len);
@@ -572,7 +690,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+int secure_receive_1(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(50);
 
     print_debug("aprecv - start, address=%x\n", address);
@@ -841,6 +959,7 @@ void boot() {
     #else
     // test 1
     // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
+    // uint8_t buffer[1] = {0};
     // secure_send(0x24, buffer, sizeof(buffer));
 
     // test 2

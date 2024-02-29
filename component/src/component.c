@@ -333,7 +333,6 @@ typedef struct __attribute__((packed)) {
 } packet_read_msg;
 
 
-/******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
  * @brief Secure Send 
  * 
@@ -344,6 +343,111 @@ typedef struct __attribute__((packed)) {
  * This function must be implemented by your team to align with the security requirements.
 */
 void secure_send(uint8_t* buffer, uint8_t len) {
+    MXC_Delay(50);
+
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+
+    // printf("secure_send 1\n");
+
+    // receive reading command and nonce
+    result = wait_and_receive_packet(receiving_buf);
+    if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
+        return;
+    }
+
+    // sign nonce and msg
+    MXC_Delay(50);
+    memcpy(general_buf, receiving_buf + 1, NONCE_SIZE);
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    general_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+    retrive_cp_priv_key();
+    crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf, NONCE_SIZE + 2);
+    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.cp_priv_key, buffer, len);
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+    memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
+    send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
+    
+    MXC_Delay(500);
+}
+
+/**
+ * @brief Secure Receive
+ * 
+ * @param buffer: uint8_t*, pointer to buffer to receive data to
+ * 
+ * @return int: number of bytes received, negative if error
+ * 
+ * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+*/
+int secure_receive(uint8_t* buffer) {
+    MXC_Delay(50);
+
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    int result = ERROR_RETURN;
+
+    result = wait_and_receive_packet(receiving_buf);
+    if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
+        return result;
+    }
+
+    // generate a challenge (nonce)
+    rng_get_bytes(sending_buf, NONCE_SIZE);
+
+    MXC_Delay(50);
+    send_packet_and_ack(NONCE_SIZE, sending_buf);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+
+    // receive sign(p,nonce,address) + sign(msg) + msg
+    MXC_Delay(50);
+    result = wait_and_receive_packet(receiving_buf);
+    cancel_continuous_timer();
+    if (result <= 0) {
+        return result;
+    }
+
+    int len = result - SIGNATURE_SIZE * 2;
+    sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+    retrive_ap_pub_key();
+    // if (crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
+    // if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len), 0, ERR_VALUE);
+    defense_mode();
+    return 0;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // }
+
+    memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
+
+    MXC_Delay(500);
+    return len;
+}
+
+
+/******************************* POST BOOT FUNCTIONALITY *********************************/
+/**
+ * @brief Secure Send 
+ * 
+ * @param buffer: uint8_t*, pointer to data to be send
+ * @param len: uint8_t, size of data to be sent 
+ * 
+ * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+*/
+void secure_send_1(uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     print_debug("cpsend - start, address=%x, id=%x, len=%d, buffer = \n", COMPONENT_ADDRESS, COMPONENT_ID, len);
@@ -432,7 +536,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive(uint8_t* buffer) {
+int secure_receive_1(uint8_t* buffer) {
     MXC_Delay(50);
 
     print_debug("cprecv - start, id=%x, address=%x\n", COMPONENT_ID, COMPONENT_ADDRESS);
@@ -551,9 +655,10 @@ void boot() {
     // print_hex(buffer, r);
 
     // test 2
-    // printf("starting test 2 post-boot\n");
+    printf("starting test 2 post-boot\n");
     // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
-    // secure_send(buffer, sizeof(buffer));
+    uint8_t buffer[1] = {0};
+    secure_send(buffer, sizeof(buffer));
 
     // test 3
     // uint8_t buffer1[256];
