@@ -502,7 +502,7 @@ int secure_send_1(uint8_t address, uint8_t* buffer, uint8_t len) {
     general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     general_buf_2[1] = address;
     memcpy(general_buf_2 + 2, receiving_buf, NONCE_SIZE);
-    memcpy(gene);
+    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);
     retrive_ap_priv_key();
     crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);
     crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, buffer, len);
