@@ -4,6 +4,7 @@
 #include <string.h>
 #include "trng.h"
 #include "timer.h"
+#include "mxc_delay.h"
 
 #include "common.h"
 
@@ -32,7 +33,11 @@ int rng_init(void) {
  * @return Success/Fail, see MXC_Error_Codes for a list of return codes.
  */
 int rng_get_bytes(uint8_t* buffer, int size) {
-    return MXC_TRNG_Random(buffer, size);
+    int r = MXC_TRNG_Random(buffer, size);
+    if (r != 0) {
+        panic();
+    }
+    return r;
 }
 
 /**
@@ -69,4 +74,14 @@ void __attribute__((noreturn)) panic(void) {
 */
 unsigned int get_current_cpu_cycle() {
     return STCVR;
+}
+
+/**
+ * random delay for up to @param limit useconds
+*/
+void random_delay_us(uint32_t limit) {
+    uint32_t i;
+    uint32_t *p = &i;
+    rng_get_bytes((uint8_t *) p, sizeof(uint32_t));
+    MXC_Delay(i % limit);
 }

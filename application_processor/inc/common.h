@@ -12,6 +12,7 @@ int rng_init(void);
 int rng_get_bytes(uint8_t* buffer, int size);
 void panic(void);
 unsigned int get_current_cpu_cycle();
+void random_delay_us(uint32_t);
 
 #define RANDOM_DELAY_TINY(result) do { \
     uint8_t non_volatile_delay_cycles; \

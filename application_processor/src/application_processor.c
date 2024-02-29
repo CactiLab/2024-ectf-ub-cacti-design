@@ -89,6 +89,7 @@ typedef struct {
 
 #define PRIV_KEY_SIZE       64
 #define PUB_KEY_SIZE        32
+#define COMPONENT_ID_SIZE   4
 #define COMPONENT_IDS_OFFSET    offsetof(flash_entry, component_ids)
 #define AP_PRIV_KEY_OFFSET      offsetof(flash_entry, ap_priv_key)
 #define CP_PUB_KEY_OFFSET       offsetof(flash_entry, cp_pub_key)
@@ -417,11 +418,11 @@ typedef struct __attribute__((packed)) {
     uint8_t address;
 } packet_plain_with_addr;
 
-// typedef struct {
-//     uint8_t cmd_label;
-//     uint8_t nonce[NONCE_SIZE];
-//     uint32_t id;
-// } packet_plain_with_id;
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_plain_with_id;
 
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
@@ -440,6 +441,17 @@ typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
 } packet_read_msg;
+
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_boot_1_ap_to_cp;
+
+typedef struct __attribute__((packed)) {
+    uint8_t sig_auth[SIGNATURE_SIZE];
+    uint8_t nonce[NONCE_SIZE];
+} packet_boot_1_cp_to_ap;
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
@@ -529,7 +541,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // printf("sending_buf, len=%d\n", SIGNATURE_SIZE * 2 + len);
     // print_hex(sending_buf, SIGNATURE_SIZE * 2 + len);
 
-    MXC_Delay(500);
+    MXC_Delay(100);
     return SUCCESS_RETURN;
 }
 
@@ -623,7 +635,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // printf("receiving_buf\n");
     // print_hex(receiving_buf, receive_len);
 
-    MXC_Delay(500);
+    MXC_Delay(100);
     return msg_len;
 }
 
@@ -696,8 +708,11 @@ int attest_component(uint32_t component_id) {
         }
     }
     if (r == 0) {
+        defense_mode();
         return ERROR_RETURN;
     }
+
+    int result = ERROR_RETURN;
 
     // Buffers for board link communication
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
@@ -709,42 +724,62 @@ int attest_component(uint32_t component_id) {
 
     // send attestation command
     transmit_buffer[0] = COMPONENT_CMD_ATTEST;
-    send_packet(addr, NONCE_SIZE + 1, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
-
-    // receive nonce and sign
-    int result = poll_and_receive_packet(addr, receive_buffer);
-    cancel_continuous_timer();
-    if (result != NONCE_SIZE) {
+    result = send_packet(addr, 1, transmit_buffer);
+    if (result == ERROR_RETURN) {
+        panic();
         return ERROR_RETURN;
     }
-    general_buffer[0] = COMPONENT_CMD_ATTEST;
-    memcpy(general_buffer + 1, receive_buffer, NONCE_SIZE);
-    general_buffer[NONCE_SIZE + 1] = addr;
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+
+    // receive nonce
+    int recv_len = poll_and_receive_packet(addr, receive_buffer);
+    cancel_continuous_timer();
+    if (recv_len != NONCE_SIZE) {
+        return ERROR_RETURN;
+    }
+
+    MXC_Delay(20);
+
+    // construct the plain to sign
+    packet_plain_with_id *plain_auth = (packet_plain_with_id *)general_buffer;
+    plain_auth->cmd_label = COMPONENT_CMD_ATTEST;
+    memcpy(plain_auth->nonce, receive_buffer, NONCE_SIZE);
+    convert_32_to_8(plain_auth->id, component_id);
+    // general_buffer[0] = COMPONENT_CMD_ATTEST;
+    // memcpy(general_buffer + 1, receive_buffer, NONCE_SIZE);
+    // general_buffer[NONCE_SIZE + 1] = addr;
+    // printf("size =%d, %d\n", sizeof(packet_plain_with_id), NONCE_SIZE + 5);
+    // print_hex(general_buffer, NONCE_SIZE + 5);
+
+    MXC_Delay(50);
+
+    // sign and send
     retrive_ap_priv_key();
-    crypto_eddsa_sign(transmit_buffer, flash_status.ap_priv_key, general_buffer, NONCE_SIZE + 2);
+    crypto_eddsa_sign(transmit_buffer, flash_status.ap_priv_key, general_buffer, NONCE_SIZE + 5);
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
     send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
+    MXC_Delay(20);
+
     // receive the ecnrypted attestation data
-    result = poll_and_receive_packet(addr, receive_buffer);
+    recv_len = poll_and_receive_packet(addr, receive_buffer);
     cancel_continuous_timer();
-    if (result != ATT_FINAL_TEXT_SIZE) {
+    if (recv_len != ATT_FINAL_TEXT_SIZE) {
         defense_mode();
         return ERROR_RETURN;
     }
     retrive_aead_key();
     retrive_aead_nonce();
-    if (crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE)) {
-        crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
-        crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
-        crypto_wipe(receive_buffer, sizeof(receive_buffer));
-        // panic();
-        defense_mode();
-        return ERROR_RETURN;
-    }
+    CONDITION_NEQ_BRANCH(crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
+    crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+    crypto_wipe(receive_buffer, sizeof(receive_buffer));
+    // panic();
+    defense_mode();
+    return ERROR_RETURN;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
     crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
     crypto_wipe(receive_buffer, sizeof(receive_buffer));
@@ -772,7 +807,7 @@ void boot() {
         POST_BOOT
     #else
     // test 1
-    // uint8_t buffer[] = "abc";
+    // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
     // secure_send(0x24, buffer, sizeof(buffer));
 
     // test 2
@@ -826,114 +861,127 @@ void boot() {
 }
 
 // Compare the entered PIN to the correct PIN
-int validate_pin() {
-    char buf[HOST_INPUT_BUF_SIZE];
-    recv_input("Enter pin: ", buf);
-    MXC_Delay(50);
+// int validate_pin() {
+//     char buf[HOST_INPUT_BUF_SIZE];
+//     recv_input("Enter pin: ", buf);
+//     MXC_Delay(50);
 
-    uint8_t hash[HASH_LEN] = {0};
-    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_PIN, NB_PASSES, NB_LANES};
-    uint8_t *workarea = malloc(1024 * cac.nb_blocks);
-    retrive_hash_salt();
-    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, PIN_LEN, sizeof(flash_status.hash_salt)};
-    retrive_hash_key();
-    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
-    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
-    free(workarea);
-    // TODO: random delay
-    MXC_Delay(100);
-    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
-    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
-    retrive_pin_hash();
-    // if (!crypto_verify64(hash, flash_status.pin_hash)) {
-    CONDITION_EQ_BRANCH(crypto_verify64(hash, flash_status.pin_hash), 0, ERR_VALUE);
-    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
-    crypto_wipe(hash, sizeof(hash));
-    print_debug("Pin Accepted!\n");
-    return SUCCESS_RETURN;
-    CONDITION_BRANCH_ENDING(ERR_VALUE);
-    // }
-    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
-    crypto_wipe(hash, sizeof(hash));
-    print_error("Invalid PIN!\n");
-    defense_mode();
-    return ERROR_RETURN;
-}
+//     uint8_t hash[HASH_LEN] = {0};
+//     crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_PIN, NB_PASSES, NB_LANES};
+//     uint8_t *workarea = malloc(1024 * cac.nb_blocks);
+//     retrive_hash_salt();
+//     crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, PIN_LEN, sizeof(flash_status.hash_salt)};
+//     retrive_hash_key();
+//     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+//     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
+//     free(workarea);
+//     // TODO: random delay
+//     MXC_Delay(100);
+//     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+//     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+//     retrive_pin_hash();
+//     // if (!crypto_verify64(hash, flash_status.pin_hash)) {
+//     CONDITION_EQ_BRANCH(crypto_verify64(hash, flash_status.pin_hash), 0, ERR_VALUE);
+//     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+//     crypto_wipe(hash, sizeof(hash));
+//     print_debug("Pin Accepted!\n");
+//     return SUCCESS_RETURN;
+//     CONDITION_BRANCH_ENDING(ERR_VALUE);
+//     // }
+//     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+//     crypto_wipe(hash, sizeof(hash));
+//     print_error("Invalid PIN!\n");
+//     defense_mode();
+//     return ERROR_RETURN;
+// }
 
 // Function to validate the replacement token
 // TODO: short panic mode, remove debug info
-int validate_token() {
-    char buf[HOST_INPUT_BUF_SIZE];
-    recv_input("Enter token: ", buf);
-    if (strlen(buf) != TOKEN_LEN) {
-        // TODO: Defense mode
-        print_error("Invalid Token!\n");
-        return ERROR_RETURN;
-    }
-    // print_info("\nInputted Token: \n");
-    // print_hex(buf, TOKEN_LEN);
-    MXC_Delay(50);
+// int validate_token() {
+//     char buf[HOST_INPUT_BUF_SIZE];
+//     recv_input("Enter token: ", buf);
+//     if (strlen(buf) != TOKEN_LEN) {
+//         // TODO: Defense mode
+//         print_error("Invalid Token!\n");
+//         return ERROR_RETURN;
+//     }
+//     // print_info("\nInputted Token: \n");
+//     // print_hex(buf, TOKEN_LEN);
+//     MXC_Delay(50);
 
-    uint8_t hash[HASH_LEN] = {0};
-    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_TOKEN, NB_PASSES, NB_LANES};
-    uint8_t *workarea = malloc(1024 * cac.nb_blocks);
-    retrive_hash_salt();
-    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
-    retrive_hash_key();
-    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
-    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
-    free(workarea);
-    MXC_Delay(50);
-    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
-    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
-    retrive_token_hash();
-    // if (!crypto_verify64(hash, flash_status.token_hash)) {
-    CONDITION_EQ_BRANCH(crypto_verify64(hash, flash_status.token_hash), 0, ERR_VALUE);
-    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-    crypto_wipe(hash, sizeof(hash));
-    print_debug("Token Accepted!\n");
-    return SUCCESS_RETURN;
-    CONDITION_BRANCH_ENDING(ERR_VALUE);
-    // }
-    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-    crypto_wipe(hash, sizeof(hash));
-    print_error("Invalid Token!\n");
-    defense_mode();
-    return ERROR_RETURN;
-}
+//     uint8_t hash[HASH_LEN] = {0};
+//     crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_TOKEN, NB_PASSES, NB_LANES};
+//     uint8_t *workarea = malloc(1024 * cac.nb_blocks);
+//     retrive_hash_salt();
+//     crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
+//     retrive_hash_key();
+//     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+//     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
+//     free(workarea);
+//     MXC_Delay(50);
+//     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+//     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+//     retrive_token_hash();
+//     // if (!crypto_verify64(hash, flash_status.token_hash)) {
+//     CONDITION_EQ_BRANCH(crypto_verify64(hash, flash_status.token_hash), 0, ERR_VALUE);
+//     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+//     crypto_wipe(hash, sizeof(hash));
+//     print_debug("Token Accepted!\n");
+//     return SUCCESS_RETURN;
+//     CONDITION_BRANCH_ENDING(ERR_VALUE);
+//     // }
+//     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+//     crypto_wipe(hash, sizeof(hash));
+//     print_error("Invalid Token!\n");
+//     defense_mode();
+//     return ERROR_RETURN;
+// }
 
 void attempt_boot1() {
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
+    int recv_len = 0;
     uint8_t *signatures = malloc(SIGNATURE_SIZE * flash_status.component_cnt);
 
-    // send `boot` command + challenge to each provisioned component
+    // send `boot` command + challenge + ID to each provisioned component
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
-        sending_buf[0] = COMPONENT_CMD_BOOT;
-        rng_get_bytes(sending_buf + 1, NONCE_SIZE);
-        sending_buf[NONCE_SIZE + 1] = addr;
-        result = send_packet(addr, NONCE_SIZE + 2, sending_buf);
+
+        // construct sending pakcet (boot command + nonce + id)
+        packet_boot_1_ap_to_cp *pkt_send_1 = (packet_boot_1_ap_to_cp *) sending_buf;
+        pkt_send_1->cmd_label = COMPONENT_CMD_BOOT;
+        rng_get_bytes(pkt_send_1->nonce, NONCE_SIZE);
+        convert_32_to_8(pkt_send_1->id, flash_status.component_ids[i]);
+        // sending_buf[0] = COMPONENT_CMD_BOOT;
+        // rng_get_bytes(sending_buf + 1, NONCE_SIZE);
+        // sending_buf[NONCE_SIZE + 1] = addr;
+
+        // send
+        result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
         start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
             free(signatures);
+            panic();
             return;
         }
         MXC_Delay(50);
-        // receive response + challenge
-        result = poll_and_receive_packet(addr, receiving_buf);
+
+        // receive response + cp's nonce
+        recv_len = poll_and_receive_packet(addr, receiving_buf);
         cancel_continuous_timer();
-        if (result != SIGNATURE_SIZE + NONCE_SIZE) {
+        if (recv_len != SIGNATURE_SIZE + NONCE_SIZE) {
             free(signatures);
             defense_mode();
             return;
         }
+        packet_boot_1_cp_to_ap *pkt_recv_1 = (packet_boot_1_cp_to_ap *) receiving_buf;
+
         // verify the signature
         retrive_cp_pub_key();
         // if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 2)) {
-        CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+        CONDITION_NEQ_BRANCH(crypto_eddsa_check(pkt_recv_1->sig_auth, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 5), 0, ERR_VALUE);
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
         free(signatures);
         // panic();
@@ -942,28 +990,34 @@ void attempt_boot1() {
         CONDITION_BRANCH_ENDING(ERR_VALUE);
         // }
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-        // sign CP's challenge
-        general_buf[0] = COMPONENT_CMD_BOOT_2;
-        memcpy(general_buf + 1, receiving_buf + SIGNATURE_SIZE, NONCE_SIZE);
-        general_buf[NONCE_SIZE + 1] = addr;
+
+        // sign CP's challenge and save it
+        packet_plain_with_id * plain_cp_resp = (packet_plain_with_id *) general_buf;
+        plain_cp_resp->cmd_label = COMPONENT_CMD_BOOT_2;
+        memcpy(plain_cp_resp->nonce, pkt_recv_1->nonce, NONCE_SIZE);
+        convert_32_to_8(plain_cp_resp->id, flash_status.component_ids[i]);
+        // general_buf[0] = COMPONENT_CMD_BOOT_2;
+        // memcpy(general_buf + 1, receiving_buf + SIGNATURE_SIZE, NONCE_SIZE);
+        // general_buf[NONCE_SIZE + 1] = addr;
         retrive_ap_priv_key();
-        crypto_eddsa_sign(signatures + SIGNATURE_SIZE * i, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);
+        crypto_eddsa_sign(signatures + SIGNATURE_SIZE * i, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 5);
         crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
         MXC_Delay(50);
     }
 
-    // boot each provisioned component
+    // boot each provisioned component (send signature)
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
         start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
             free(signatures);
+            defense_mode();
             return;
         }
-        result = poll_and_receive_packet(addr, receiving_buf);
+        recv_len = poll_and_receive_packet(addr, receiving_buf);
         cancel_continuous_timer();
-        if (result < 0) {
+        if (recv_len < 0) {
             free(signatures);
             defense_mode();
             return;
@@ -1009,9 +1063,10 @@ void attempt_replace() {
     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
     free(workarea);
-    MXC_Delay(50);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    random_delay_us(2500000);
+    MXC_Delay(50);
     retrive_token_hash();
     CONDITION_NEQ_BRANCH(crypto_verify64(hash, flash_status.token_hash), 0, ERR_VALUE);
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
@@ -1081,11 +1136,11 @@ void attempt_attest() {
     retrive_hash_key();
     crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
-    // TODO: random delay
-    MXC_Delay(100);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
     free(workarea);
+    random_delay_us(1200000);
+    MXC_Delay(100);
     retrive_pin_hash();
     CONDITION_NEQ_BRANCH(crypto_verify64(hash, flash_status.pin_hash), 0, ERR_VALUE);
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));

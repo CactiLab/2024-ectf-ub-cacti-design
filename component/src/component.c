@@ -76,6 +76,7 @@ extern int timer_count_limit;
 #define MAX_POST_BOOT_MSG_LEN   64
 #define CIPHER_ATTESTATION_DATA_LEN 243
 #define CIPHER_ATTESTATION_DATA_LEN_ROUND 244
+#define COMPONENT_ID_SIZE       4
 
 // system mode
 typedef enum {
@@ -111,6 +112,12 @@ typedef struct {
     uint8_t params[MAX_I2C_MESSAGE_LEN-1];
 } command_message;
 
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[4];
+} packet_plain_with_id;
+
 typedef struct {
     uint32_t component_id;
 } validate_message;
@@ -118,6 +125,17 @@ typedef struct {
 typedef struct {
     uint32_t component_id;
 } scan_message;
+
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_boot_1_ap_to_cp;
+
+typedef struct __attribute__((packed)) {
+    uint8_t sig_auth[SIGNATURE_SIZE];
+    uint8_t nonce[NONCE_SIZE];
+} packet_boot_1_cp_to_ap;
 
 /********************************* FUNCTION DECLARATIONS **********************************/
 // Core function definitions
@@ -212,6 +230,21 @@ void convert_32_to_8(uint8_t *buf, uint32_t i) {
     buf[1] = (i >> 8) & 0xff;
     buf[2] = (i >> 16) & 0xff;
     buf[3] = (i >> 24) & 0xff;
+}
+
+/**
+ * compare an integer @param i with the array of uint8_t array @param buf (4 elements)
+ * @return 0 if they are the same
+*/
+int compare_32_and_8(uint8_t *buf, uint32_t i) {
+    uint8_t tarray[4] = {0};
+    convert_32_to_8(tarray, i);
+    int r = 0;
+    r += (tarray[0] - buf[0]);
+    r += (tarray[1] - buf[1]);
+    r += (tarray[2] - buf[2]);
+    r += (tarray[3] - buf[3]);
+    return r;
 }
 
 /**
@@ -368,7 +401,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // printf("receiving_buf\n");
     // print_hex(receiving_buf, NONCE_SIZE + 1);
 
-    MXC_Delay(500);
+    MXC_Delay(100);
 }
 
 /**
@@ -402,7 +435,7 @@ int secure_receive(uint8_t* buffer) {
     // send the challenge
     MXC_Delay(50);
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     MXC_Delay(50);
@@ -457,7 +490,7 @@ int secure_receive(uint8_t* buffer) {
     // printf("general_buf_2\n");
     // print_hex(general_buf_2, NONCE_SIZE + 2 + len);
 
-    MXC_Delay(500);
+    MXC_Delay(100);
     return len;
 }
 
@@ -532,38 +565,62 @@ void boot() {
 
 void process_boot1() {
     MXC_Delay(200);
+    uint32_t component_id = COMPONENT_ID;
 
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
-    // receive the `boot` command and nonce from the AP
-    if (global_buffer_recv[0] != COMPONENT_CMD_BOOT || global_buffer_recv[NONCE_SIZE + 1] != (COMPONENT_ADDRESS)) {
+    // receive the `boot` command and nonce from the AP (already in the global_buffer_recv)
+    // check the cmd label
+    packet_boot_1_ap_to_cp *pkt_receive_1 = (packet_boot_1_ap_to_cp *) global_buffer_recv;
+    if (pkt_receive_1->cmd_label != COMPONENT_CMD_BOOT) {
+        defense_mode();
         return;
     }
+    // check the component id
+    CONDITION_NEQ_BRANCH(compare_32_and_8(pkt_receive_1->id, component_id), 0, ERR_VALUE);
+    defense_mode();
+    return;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+
     MXC_Delay(50);
+
+    // the whole sending packet
+    packet_boot_1_cp_to_ap *pkt_send_1 = (packet_boot_1_cp_to_ap *) transmit_buffer;
+
+    // construct the plain text of the auth signature
+    packet_plain_with_id *plain_auth = (packet_plain_with_id *) general_buf;
+    plain_auth->cmd_label = COMPONENT_CMD_BOOT;
+    convert_32_to_8(plain_auth->id, component_id);
+    memcpy(plain_auth->nonce, pkt_receive_1->nonce, NONCE_SIZE);
+
     // sign the AP's nonce
     retrive_cp_priv_key();
-    crypto_eddsa_sign(transmit_buffer, flash_status.cp_priv_key, global_buffer_recv, NONCE_SIZE + 2);
+    crypto_eddsa_sign(pkt_send_1->sig_auth, flash_status.cp_priv_key, global_buffer_recv, NONCE_SIZE + 5);
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
     // generate a nonce
-    rng_get_bytes(transmit_buffer + SIGNATURE_SIZE, NONCE_SIZE);
+    rng_get_bytes(pkt_send_1->nonce, NONCE_SIZE);
     // send
     send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
     start_continuous_timer(TIMER_LIMIT_I2C_MSG_3);
 
-    // receive the response and boot
+    // receive the response
     MXC_Delay(50);
     result = wait_and_receive_packet(global_buffer_recv);
     cancel_continuous_timer();
     if (result <= 0) {
         return;
     }
-    general_buf[0] = COMPONENT_CMD_BOOT_2;
-    memcpy(general_buf + 1, transmit_buffer + SIGNATURE_SIZE, NONCE_SIZE);
-    general_buf[NONCE_SIZE + 1] = (COMPONENT_ADDRESS);
+
+    // construct the plaintext for verifying the auth signature
+    packet_plain_with_id *plain_auth_2 = (packet_plain_with_id *) general_buf;
+    plain_auth_2->cmd_label = COMPONENT_CMD_BOOT_2;
+    convert_32_to_8(plain_auth_2->id, component_id);
+    memcpy(plain_auth_2->nonce, pkt_send_1->nonce, NONCE_SIZE);
+
     retrive_ap_pub_key();
     // if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2)) {
-    CONDITION_NEQ_BRANCH(crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 5), 0, ERR_VALUE);
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     // panic();
     defense_mode();
@@ -623,19 +680,33 @@ void process_attest() {
     send_packet_and_ack(NONCE_SIZE, transmit_buffer);
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
-    // receive the response sign(p, nonce, addr)
+    // receive the response sign(p, nonce, id)
     uint8_t len = wait_and_receive_packet(global_buffer_recv);
     cancel_continuous_timer();
     if (len != SIGNATURE_SIZE) {
         cancel_continuous_timer();
         return;
     }
-    general_buffer[0] = COMPONENT_CMD_ATTEST;
-    memcpy(general_buffer + 1, transmit_buffer, NONCE_SIZE);
-    general_buffer[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+
+    // construct the plain text for verifying the auth signature
+    uint32_t component_id = COMPONENT_ID;
+    packet_plain_with_id *plain_auth = (packet_plain_with_id *)general_buffer;
+    plain_auth->cmd_label = COMPONENT_CMD_ATTEST;
+    memcpy(plain_auth->nonce, transmit_buffer, NONCE_SIZE);
+    convert_32_to_8(plain_auth->id, component_id);
+    // printf("size =%d, %d\n", sizeof(packet_plain_with_id), NONCE_SIZE + 5);
+    // print_hex(general_buffer, NONCE_SIZE + 5);
+
+    // general_buffer[0] = COMPONENT_CMD_ATTEST;
+    // memcpy(general_buffer + 1, transmit_buffer, NONCE_SIZE);
+    // general_buffer[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+
+    MXC_Delay(50);
+
+    // verify
     retrive_ap_pub_key();
     // if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buffer, SIGNATURE_SIZE + 2)) {
-    CONDITION_NEQ_BRANCH(crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buffer, SIGNATURE_SIZE + 2), 0, ERR_VALUE);
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buffer, NONCE_SIZE + 5), 0, ERR_VALUE);
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     // panic();
     defense_mode();
@@ -644,7 +715,7 @@ void process_attest() {
     // }
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
-    // retrive encrypted attest data
+    // retrive encrypted attest data and send
     retrive_attest_cipher();
     memcpy(transmit_buffer, flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
     send_packet_and_ack(CIPHER_ATTESTATION_DATA_LEN, transmit_buffer);
