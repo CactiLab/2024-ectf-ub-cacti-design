@@ -342,7 +342,7 @@ typedef struct __attribute__((packed)) {
  * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-void secure_send_1(uint8_t* buffer, uint8_t len) {
+void secure_send(uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     if (len > MAX_I2C_MESSAGE_LEN) {
@@ -351,6 +351,7 @@ void secure_send_1(uint8_t* buffer, uint8_t len) {
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
     // printf("secure_send 1\n");
@@ -366,9 +367,15 @@ void secure_send_1(uint8_t* buffer, uint8_t len) {
     memcpy(general_buf, receiving_buf + 1, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     general_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    general_buf_2[1] = COMPONENT_ADDRESS;
+    memcpy(general_buf_2 + 2, receiving_buf + 1, NONCE_SIZE);
+    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);
+
     retrive_cp_priv_key();
     crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf, NONCE_SIZE + 2);
-    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.cp_priv_key, buffer, len);
+    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len);
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
     send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
@@ -386,11 +393,12 @@ void secure_send_1(uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive_1(uint8_t* buffer) {
+int secure_receive(uint8_t* buffer) {
     MXC_Delay(50);
 
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = ERROR_RETURN;
 
     result = wait_and_receive_packet(receiving_buf);
@@ -416,6 +424,12 @@ int secure_receive_1(uint8_t* buffer) {
     int len = result - SIGNATURE_SIZE * 2;
     sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
+
+    general_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    general_buf[1] = COMPONENT_ADDRESS;
+    memcpy(general_buf + 2, sending_buf, NONCE_SIZE);
+    memcpy(general_buf + 2 + NONCE_SIZE, receiving_buf + SIGNATURE_SIZE * 2, len);
+
     retrive_ap_pub_key();
     // if (crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2)) {
     CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
@@ -424,7 +438,7 @@ int secure_receive_1(uint8_t* buffer) {
     CONDITION_BRANCH_ENDING(ERR_VALUE);
     // }
     // if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
-    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len), 0, ERR_VALUE);
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len), 0, ERR_VALUE);
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -447,7 +461,7 @@ int secure_receive_1(uint8_t* buffer) {
  * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-void secure_send(uint8_t* buffer, uint8_t len) {
+void secure_send_1(uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     print_debug("cpsend - start, address=%x, id=%x, len=%d, buffer = \n", COMPONENT_ADDRESS, COMPONENT_ID, len);
@@ -536,7 +550,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive(uint8_t* buffer) {
+int secure_receive_1(uint8_t* buffer) {
     MXC_Delay(50);
 
     print_debug("cprecv - start, id=%x, address=%x\n", COMPONENT_ID, COMPONENT_ADDRESS);
@@ -656,8 +670,8 @@ void boot() {
 
     // test 2
     // printf("starting test 2 post-boot\n");
-    // // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
-    // uint8_t buffer[1] = {0};
+    // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
+    // // uint8_t buffer[1] = {0};
     // secure_send(buffer, sizeof(buffer));
 
     // test 3
@@ -667,20 +681,20 @@ void boot() {
     // secure_send(buffer2, sizeof(buffer2));
 
     // test 4
-    // uint8_t buffer1[256];
-    // uint8_t buffer2[] = "ectf{testing_1afa95d5de6bea59}";
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
+    uint8_t buffer1[256];
+    uint8_t buffer2[] = "ectf{testing_1afa95d5de6bea59}";
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
 
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems

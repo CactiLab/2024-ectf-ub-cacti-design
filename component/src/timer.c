@@ -13,7 +13,7 @@ void continuous_timer_handler()
     ++timer_count;
     if (timer_count >= timer_count_limit) {
         timer_count = 0;
-        // NVIC_SystemReset();
+        NVIC_SystemReset();
     }
 }
 

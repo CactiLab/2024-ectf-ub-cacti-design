@@ -15,7 +15,7 @@ void continuous_timer_handler()
     if (timer_count >= timer_count_limit) {
         print_debug("Timer overflow\n");
         timer_count = 0;
-        // NVIC_SystemReset();
+        NVIC_SystemReset();
     }
 }
 

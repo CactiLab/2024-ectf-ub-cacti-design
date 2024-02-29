@@ -465,7 +465,7 @@ typedef struct __attribute__((packed)) {
  * This function must be implemented by your team to align with the security requirements.
 
 */
-int secure_send_1(uint8_t address, uint8_t* buffer, uint8_t len) {
+int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     if (len > MAX_POST_BOOT_MSG_LEN) {
@@ -499,13 +499,15 @@ int secure_send_1(uint8_t address, uint8_t* buffer, uint8_t len) {
     memcpy(general_buf, receiving_buf, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     general_buf[NONCE_SIZE + 1] = address;
+
     general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     general_buf_2[1] = address;
     memcpy(general_buf_2 + 2, receiving_buf, NONCE_SIZE);
     memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);
+
     retrive_ap_priv_key();
     crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);
-    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, buffer, len);
+    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len);
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
     result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
@@ -528,11 +530,12 @@ int secure_send_1(uint8_t address, uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive_1(i2c_addr_t address, uint8_t* buffer) {
+int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(50);
 
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     int result = 0;
 
@@ -554,6 +557,12 @@ int secure_receive_1(i2c_addr_t address, uint8_t* buffer) {
     memcpy(general_buf, sending_buf + 1, NONCE_SIZE);
     general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     general_buf[NONCE_SIZE + 1] = address;
+
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
+    general_buf_2[1] = address;
+    memcpy(general_buf_2 + 2, sending_buf + 1, NONCE_SIZE);
+    memcpy(general_buf_2 + NONCE_SIZE + 2, receiving_buf + SIGNATURE_SIZE * 2, len);
+
     retrive_cp_pub_key();
 
     // if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2)) {
@@ -564,7 +573,7 @@ int secure_receive_1(i2c_addr_t address, uint8_t* buffer) {
     // }
     
     // if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
-    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len), 0, ERR_VALUE);
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len), 0, ERR_VALUE);
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -588,7 +597,7 @@ int secure_receive_1(i2c_addr_t address, uint8_t* buffer) {
  * This function must be implemented by your team to align with the security requirements.
 
 */
-int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
+int secure_send_1(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     print_debug("apsend - start, addr=%x, len=%d,buffer=\n", address, len);
@@ -695,7 +704,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
  * This function must be implemented by your team to align with the security requirements.
 */
-int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+int secure_receive_1(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(50);
 
     print_debug("aprecv - start, address=%x\n", address);
@@ -964,7 +973,7 @@ void boot() {
     #else
     // test 1
     // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
-    // uint8_t buffer[1] = {0};
+    // // uint8_t buffer[1] = {0};
     // secure_send(0x24, buffer, sizeof(buffer));
 
     // test 2
@@ -983,20 +992,20 @@ void boot() {
     // printf("3\n");
 
     // test 4
-    // uint8_t buffer1[] = "ectf{testing_1afa95d5de6bea59}";
-    // uint8_t buffer2[256];
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
+    uint8_t buffer1[] = "ectf{testing_1afa95d5de6bea59}";
+    uint8_t buffer2[256];
+    secure_send(0x24, buffer1, sizeof(buffer1));
+    secure_receive(0x24, buffer2);
+    secure_send(0x24, buffer1, sizeof(buffer1));
+    secure_receive(0x24, buffer2);
+    secure_send(0x24, buffer1, sizeof(buffer1));
+    secure_receive(0x24, buffer2);
+    secure_send(0x24, buffer1, sizeof(buffer1));
+    secure_receive(0x24, buffer2);
+    secure_send(0x24, buffer1, sizeof(buffer1));
+    secure_receive(0x24, buffer2);
+    secure_send(0x24, buffer1, sizeof(buffer1));
+    secure_receive(0x24, buffer2);
     
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
