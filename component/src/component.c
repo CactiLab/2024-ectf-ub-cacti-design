@@ -304,6 +304,10 @@ void print_hex(uint8_t *buf, size_t len) {
     printf("\n");
 }
 
+#define print_debug(...) printf("%%debug: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
+#define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
+#define print_hex_debug(...) printf("%%debug: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
+
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
@@ -342,7 +346,11 @@ typedef struct __attribute__((packed)) {
 void secure_send(uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
+    print_debug("cpsend - start, address=%x, id=%x, len=%d, buffer = \n", COMPONENT_ADDRESS, COMPONENT_ID, len);
+    print_hex_debug(buffer, len);
+
     if (len > MAX_I2C_MESSAGE_LEN) {
+        print_debug("cpsend - 1 - len check failed, len = %d\n", len);
         panic();
     }
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -357,14 +365,20 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     recv_len = wait_and_receive_packet(receiving_buf);
     packet_read_msg *pkt_recv = (packet_read_msg *)receiving_buf;
     if (recv_len <= 0 || pkt_recv->cmd_label != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
+        print_debug("cpsend - 2 - receive cmd failed, len=%d, receiving_buf[0]=%x\n", recv_len, receiving_buf[0]);
+        panic();
         return;
     }
+    print_debug("cpsend - 3 - receive cmd succeed, len=%d, receiving_buf = \n", recv_len);
+    print_hex_debug(receiving_buf, recv_len);
 
     // construct the plain text for auth signature
     packet_plain_with_addr *plain_auth = (packet_plain_with_addr *) general_buf;
     plain_auth->address = COMPONENT_ADDRESS;
     plain_auth->cmd_label = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     memcpy(plain_auth->nonce, pkt_recv->nonce, NONCE_SIZE);
+    print_debug("cpsend - 4 - general_buf = \n");
+    print_hex_debug(general_buf, NONCE_SIZE + 2);
 
     // construct the plain text for msg signature
     packet_plain_msg *plain_msg = (packet_plain_msg *) general_buf_2;
@@ -372,6 +386,8 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     plain_msg->cmd_label = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
     memcpy(plain_msg->msg, buffer, len);
     memcpy(plain_msg->nonce, pkt_recv->nonce, NONCE_SIZE);
+    print_debug("cpsend - 5 - general_buf_2 = \n");
+    print_hex_debug(general_buf_2, NONCE_SIZE + 2 + len);
 
     // the whole sending pakcet buffer
     packet_sign_sign_msg *pkt_send = (packet_sign_sign_msg *) sending_buf;
@@ -391,6 +407,8 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
     // memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
     send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
+    print_debug("cpsend - 6 - Everything's fine, sending_buf = \n");
+    print_hex_debug(sending_buf, SIGNATURE_SIZE * 2 + len);
     
     // printf("general_buf\n");
     // print_hex(general_buf, NONCE_SIZE + 2);
@@ -401,7 +419,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // printf("receiving_buf\n");
     // print_hex(receiving_buf, NONCE_SIZE + 1);
 
-    MXC_Delay(100);
+    MXC_Delay(300);
 }
 
 /**
@@ -417,6 +435,8 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 int secure_receive(uint8_t* buffer) {
     MXC_Delay(50);
 
+    print_debug("cprecv - start, id=%x, address=%x\n", COMPONENT_ID, COMPONENT_ADDRESS);
+
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -426,24 +446,31 @@ int secure_receive(uint8_t* buffer) {
     // receive the `sending command`
     receive_len = wait_and_receive_packet(receiving_buf);
     if (receive_len != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
+        print_debug("cprecv - 1 - receive 1 wrong, len=%d, receiving_buf[0]=%x\n", receive_len, receiving_buf[0]);
         defense_mode();
         return receive_len;
     }
-
+    print_debug("cprecv - 2 - receive 1 ok, len=%d, receiving_buf[0]=%x\n", receive_len, receiving_buf[0]);
+    
     // generate a challenge (nonce)
     rng_get_bytes(sending_buf, NONCE_SIZE);
     // send the challenge
     MXC_Delay(50);
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+    print_debug("cprecv - 3 - sent nonce, sending_buf = \n");
+    print_hex_debug(sending_buf, NONCE_SIZE);
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     MXC_Delay(50);
     receive_len = wait_and_receive_packet(receiving_buf);
-    // cancel_continuous_timer();
+    cancel_continuous_timer();
     if (receive_len <= 0) {
+        print_debug("cprecv - 4 - receive response failed, len=%d\n", receive_len);
         return receive_len;
     }
+    print_debug("cprecv - 5 - receive response succeed, len=%d, receiving_buf = \n", receive_len);
+    print_hex_debug(receiving_buf, receive_len);
     packet_sign_sign_msg *pkt_receive = (packet_sign_sign_msg *) receiving_buf;
     int len = receive_len - SIGNATURE_SIZE * 2;         // message length
     // printf("receiving_buf, len=%d\n", receive_len);
@@ -454,6 +481,8 @@ int secure_receive(uint8_t* buffer) {
     plain_auth->address = COMPONENT_ADDRESS;
     plain_auth->cmd_label = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     memcpy(plain_auth->nonce, sending_buf, NONCE_SIZE);
+    print_debug("cprecv - 6 - general_buf = \n");
+    print_hex_debug(general_buf, NONCE_SIZE + 2);
 
     // construct the plain text for the msg signature
     packet_plain_msg *plain_msg = (packet_plain_msg *) general_buf_2;
@@ -462,35 +491,43 @@ int secure_receive(uint8_t* buffer) {
     memcpy(plain_msg->nonce, sending_buf, NONCE_SIZE);
     memcpy(plain_msg->msg, pkt_receive->msg, len);
     // printf("1\n");
+    print_debug("cprecv - 7 - general_buf_2 = \n");
+    print_hex_debug(general_buf_2, NONCE_SIZE + 2 + len);
     
     // sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     // sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;
     retrive_ap_pub_key();
-    // if (crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2)) {
+
     CONDITION_NEQ_BRANCH(crypto_eddsa_check(pkt_receive->sig_auth, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    print_debug("cprecv - 8 - check auth fail = \n");
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
+    print_debug("cprecv - 9 - check auth succeed = \n");
+
     // printf("2\n");
-    // }
-    // if (crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, receiving_buf + SIGNATURE_SIZE * 2, len)) {
     CONDITION_NEQ_BRANCH(crypto_eddsa_check(pkt_receive->sig_msg, flash_status.ap_pub_key, general_buf_2, NONCE_SIZE + 2 + len), 0, ERR_VALUE);
+    print_debug("cprecv - 10 - check msg fail = \n");
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
+    print_debug("cprecv - 10 - check msg succeed = \n");
+
     // printf("3\n");
     // }
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
+    print_debug("cprecv - 11 - Ev;eryting's fine, len=%d, buffer = %s\n", len, buffer);
+    print_hex_debug(buffer, len);
     // printf("4\n");
     // printf("general_buf\n");
     // print_hex(general_buf, NONCE_SIZE + 2);
     // printf("general_buf_2\n");
     // print_hex(general_buf_2, NONCE_SIZE + 2 + len);
 
-    MXC_Delay(100);
+    MXC_Delay(300);
     return len;
 }
 
@@ -510,12 +547,12 @@ void boot() {
     // printf("starting test 1 post-boot\n");
     // uint8_t buffer[256];
     // int r = secure_receive(buffer);
-    // printf("buffer=");
+    // printf("buffer=%s\n", buffer);
     // print_hex(buffer, r);
 
     // test 2
     // printf("starting test 2 post-boot\n");
-    // uint8_t buffer[] = "I love you.";
+    // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
     // secure_send(buffer, sizeof(buffer));
 
     // test 3
@@ -525,20 +562,20 @@ void boot() {
     // secure_send(buffer2, sizeof(buffer2));
 
     // test 4
-    // uint8_t buffer1[256];
-    // uint8_t buffer2[] = "I love you.";
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
+    uint8_t buffer1[256];
+    uint8_t buffer2[] = "ectf{testing_1afa95d5de6bea59}";
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
+    secure_receive(buffer1);
+    secure_send(buffer2, sizeof(buffer2));
 
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems

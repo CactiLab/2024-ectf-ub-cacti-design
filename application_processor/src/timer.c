@@ -4,6 +4,7 @@
 static int timer_count = 0;
 int timer_count_limit = 1;
 
+#include "host_messaging.h"
 
 // Toggles GPIO when continuous timer repeats
 void continuous_timer_handler()
@@ -12,8 +13,9 @@ void continuous_timer_handler()
     MXC_TMR_ClearFlags(CONT_TIMER);
     ++timer_count;
     if (timer_count >= timer_count_limit) {
+        print_debug("Timer overflow\n");
         timer_count = 0;
-        NVIC_SystemReset();
+        // NVIC_SystemReset();
     }
 }
 
