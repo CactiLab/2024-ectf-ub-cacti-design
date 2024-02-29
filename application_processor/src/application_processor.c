@@ -481,7 +481,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // send the `sending` command
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
     send_result = send_packet(address, sizeof(uint8_t), sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (send_result == ERROR_RETURN) {
         panic();
         return ERROR_RETURN;
@@ -491,7 +491,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // receive challenge (nonce)
     receive_len = poll_and_receive_packet(address, receiving_buf);
-    cancel_continuous_timer();
+    // cancel_continuous_timer();
     if (receive_len != NONCE_SIZE) {
         defense_mode();
         return ERROR_RETURN;
@@ -577,12 +577,12 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
         panic();
         return ERROR_RETURN;
     }
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
 
     // receive sign(p, nonce, addr) + sign(p, addr, nonce, msg) + msg
     MXC_Delay(50);
     receive_len = poll_and_receive_packet(address, receiving_buf);
-    cancel_continuous_timer();
+    // cancel_continuous_timer();
     if (receive_len <= 0) {
         return receive_len;
     }

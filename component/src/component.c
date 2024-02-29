@@ -435,12 +435,12 @@ int secure_receive(uint8_t* buffer) {
     // send the challenge
     MXC_Delay(50);
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     MXC_Delay(50);
     receive_len = wait_and_receive_packet(receiving_buf);
-    cancel_continuous_timer();
+    // cancel_continuous_timer();
     if (receive_len <= 0) {
         return receive_len;
     }
