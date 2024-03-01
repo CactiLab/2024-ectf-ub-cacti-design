@@ -419,8 +419,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(uint8_t* buffer) {
-    print_info("cprecv - start\n");
-    MXC_Delay(10);
+      MXC_Delay(50);
 
     // define variables
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -432,8 +431,7 @@ int secure_receive(uint8_t* buffer) {
     result = wait_and_receive_packet(receiving_buf);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
         // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        print_info("cprecv - 1\n");
-        panic();
+        // panic();
         return result;
     }
 
@@ -453,8 +451,7 @@ int secure_receive(uint8_t* buffer) {
     if (result <= 0) {
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        print_info("cprecv - 2\n");
-        panic();
+        // panic();
         return result;
     }
 
@@ -476,7 +473,6 @@ int secure_receive(uint8_t* buffer) {
     // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    print_info("cprecv - 3\n");
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -487,7 +483,6 @@ int secure_receive(uint8_t* buffer) {
     // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    print_info("cprecv - 4\n");
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -505,8 +500,6 @@ int secure_receive(uint8_t* buffer) {
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
     MXC_Delay(500);
-    print_info("cprecv - 5\n");
-    print_hex_info(buffer, len);
     return len;
 }
 
