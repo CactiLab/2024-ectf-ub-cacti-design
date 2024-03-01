@@ -496,7 +496,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     if (result == ERROR_RETURN) {
         print_info("apsend - 2\n");
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // panic();
         return ERROR_RETURN;
     }
 
