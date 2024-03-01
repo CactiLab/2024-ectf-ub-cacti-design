@@ -473,7 +473,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // check the given sending lenth
     if (len > MAX_POST_BOOT_MSG_LEN) {
         panic();
-        return ERROR_RETURN;
+        // return ERROR_RETURN;
     }
 
     // define variables
@@ -491,8 +491,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     result = send_packet(address, sizeof(uint8_t), sending_buf);
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result == ERROR_RETURN) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
         return ERROR_RETURN;
     }
 
@@ -502,8 +502,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     cancel_continuous_timer();
     if (recv_len != NONCE_SIZE) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         defense_mode();
         return ERROR_RETURN;
     }
@@ -531,18 +531,19 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // send the packet (sign(auth), sign(msg), msg)
     result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
     if (result == ERROR_RETURN) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
         return ERROR_RETURN;
     }
 
-    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // clear buffers
+    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     MXC_Delay(500);
     return SUCCESS_RETURN;
 }
@@ -575,11 +576,11 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
 
     // send the packet (cmd label, nonce)
     result = send_packet(address, NONCE_SIZE + 1, sending_buf);
-    if (result == ERROR_RETURN) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
-        return ERROR_RETURN;
-    }
+    // if (result == ERROR_RETURN) {
+    //     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    //     panic();
+    //     return ERROR_RETURN;
+    // }
     start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
 
     MXC_Delay(50);
@@ -588,9 +589,9 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     cancel_continuous_timer();
     if (recv_len <= 0) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
         return recv_len;
     }
     int len = recv_len - SIGNATURE_SIZE * 2;  // plain message length
@@ -610,10 +611,10 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     retrive_cp_pub_key();
     CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
     // verification failed - auth
-    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -621,24 +622,24 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
 
     CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len), 0, ERR_VALUE);
     // verification failed - msg
-    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
-    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
     // verification passed - msg
+    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
 
     // save the plain message
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
     // clear the buffers
-    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
     MXC_Delay(500);
     return len;
