@@ -468,10 +468,12 @@ typedef struct __attribute__((packed)) {
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
+    print_info("apsend - start\n");
     MXC_Delay(50);
 
     // check the given sending lenth
     if (len > MAX_POST_BOOT_MSG_LEN) {
+        print_info("apsend - 1\n");
         panic();
         // return ERROR_RETURN;
     }
@@ -491,6 +493,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     result = send_packet(address, sizeof(uint8_t), sending_buf);
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result == ERROR_RETURN) {
+        print_info("apsend - 2\n");
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // panic();
         return ERROR_RETURN;
@@ -502,6 +505,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     cancel_continuous_timer();
     if (recv_len != NONCE_SIZE) {
+        print_info("apsend - 3\n");
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         defense_mode();
@@ -531,6 +535,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // send the packet (sign(auth), sign(msg), msg)
     result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
     if (result == ERROR_RETURN) {
+        print_info("apsend - 4\n");
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
@@ -545,6 +550,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     MXC_Delay(500);
+    print_info("apsend - End\n");
     return SUCCESS_RETURN;
 }
 
@@ -560,6 +566,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+    print_info("aprecv - start\n");
     MXC_Delay(50);
 
     // define variables
@@ -576,11 +583,12 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
 
     // send the packet (cmd label, nonce)
     result = send_packet(address, NONCE_SIZE + 1, sending_buf);
-    // if (result == ERROR_RETURN) {
+    if (result == ERROR_RETURN) {
+    print_info("aprecv - 1\n");
     //     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     //     panic();
     //     return ERROR_RETURN;
-    // }
+    }
     start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
 
     MXC_Delay(50);
@@ -589,6 +597,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     cancel_continuous_timer();
     if (recv_len <= 0) {
+        print_info("aprecv - 2\n");
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         // panic();
@@ -615,6 +624,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    print_info("aprecv - 3\n");
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -626,6 +636,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    print_info("aprecv - 4\n");
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -642,6 +653,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
     MXC_Delay(500);
+    print_info("aprecv - End\n");
     return len;
 }
 
