@@ -496,7 +496,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     if (result == ERROR_RETURN) {
         print_info("apsend - 2\n");
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
+        panic();
         return ERROR_RETURN;
     }
 
@@ -550,7 +550,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-    MXC_Delay(200);
+    MXC_Delay(500);
     print_info("apsend - End\n");
     return SUCCESS_RETURN;
 }
@@ -653,7 +653,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
-    MXC_Delay(200);
+    MXC_Delay(500);
     print_info("aprecv - End\n");
     print_hex_info(buffer, len);
     return len;

@@ -350,7 +350,7 @@ typedef struct __attribute__((packed)) {
 void secure_send(uint8_t* buffer, uint8_t len) {
     print_info("cpsend - start\n");
     print_hex_info(buffer, len);
-    MXC_Delay(50);
+    MXC_Delay(10);
 
     // check the message length
     if (len > MAX_I2C_MESSAGE_LEN) {
@@ -420,7 +420,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 */
 int secure_receive(uint8_t* buffer) {
     print_info("cprecv - start\n");
-    MXC_Delay(50);
+    MXC_Delay(10);
 
     // define variables
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -504,7 +504,7 @@ int secure_receive(uint8_t* buffer) {
     // save the plain message
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
 
-    MXC_Delay(200);
+    MXC_Delay(500);
     print_info("cprecv - 5\n");
     print_hex_info(buffer, len);
     return len;
