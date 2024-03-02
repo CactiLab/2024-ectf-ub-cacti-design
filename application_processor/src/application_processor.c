@@ -492,9 +492,12 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // send the cmd label packet
     result = send_packet(address, sizeof(uint8_t), sending_buf);
+    print_info("apsend - 1.5\n");
+    print_hex_info(sending_buf, sizeof(uint8_t));
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result == ERROR_RETURN) {
         print_info("apsend - 2\n");
+        print_hex_info(sending_buf, sizeof(uint8_t));
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         panic();
         return ERROR_RETURN;
