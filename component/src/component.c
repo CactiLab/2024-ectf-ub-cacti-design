@@ -429,10 +429,10 @@ int secure_receive(uint8_t* buffer) {
 
     // receive AP's packet (cmd label)
     result = wait_and_receive_packet(receiving_buf);
-    MXC_Delay(20);
+    // MXC_Delay(20);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // panic();
         return result;
     }
 
