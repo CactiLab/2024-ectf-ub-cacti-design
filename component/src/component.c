@@ -369,7 +369,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // receive AP's packet of the `reading` command and nonce
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
-        // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         panic();
         print_info("cpsend - 2\n");
         return;
@@ -399,10 +399,10 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
 
     // clear the buffers
-    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     
     MXC_Delay(200);
     print_info("cpsend - End\n");
