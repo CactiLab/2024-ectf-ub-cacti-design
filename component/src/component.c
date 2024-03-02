@@ -452,7 +452,7 @@ int secure_receive(uint8_t* buffer) {
     if (result <= 0) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // panic();
         return result;
     }
 
