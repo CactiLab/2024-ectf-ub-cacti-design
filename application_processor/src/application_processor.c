@@ -294,7 +294,6 @@ void retrive_aead_nonce() {
 */
 void defense_mode() {
     // LED_On(LED1);
-    printf("defense\n");
     __disable_irq();
     cancel_continuous_timer();
     flash_status.mode = SYS_MODE_DEFENSE;

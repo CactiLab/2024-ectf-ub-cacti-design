@@ -80,8 +80,8 @@ extern int timer_count_limit;
 #define CIPHER_ATTESTATION_DATA_LEN_ROUND 244
 #define COMPONENT_ID_SIZE       4
 
-#define print_info(...) printf("%%info: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
-#define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
+// #define print_info(...) printf("%%info: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
+// #define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
 
 // system mode
 typedef enum {
@@ -213,7 +213,7 @@ void retrive_attest_cipher() {
 */
 void defense_mode() {
     // LED_On(LED1);
-    printf("defense\n");
+    // printf("defense\n");
     __disable_irq();
     cancel_continuous_timer();
     flash_status.mode = SYS_MODE_DEFENSE;
@@ -279,7 +279,7 @@ void init() {
 
     // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {
-        printf("First boot, setting flash!\n");
+        // printf("First boot, setting flash!\n");
 
         flash_status.flash_magic = FLASH_MAGIC;
 
@@ -317,15 +317,15 @@ void init() {
     // LED_On(LED2);
 }
 
-void print_hex(uint8_t *buf, size_t len) {
-    for (int i = 0; i < len; i++)
-    	printf("%02x", buf[i]);
-    printf("\n");
-}
+// void print_hex(uint8_t *buf, size_t len) {
+//     for (int i = 0; i < len; i++)
+//     	printf("%02x", buf[i]);
+//     printf("\n");
+// }
 
-#define print_debug(...) printf("%%debug: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
-#define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
-#define print_hex_debug(...) printf("%%debug: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
+// #define print_debug(...) printf("%%debug: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
+// #define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
+// #define print_hex_debug(...) printf("%%debug: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
 
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
@@ -703,7 +703,7 @@ void component_process_cmd() {
         process_attest();
         break;
     default:
-        printf("Error: Unrecognized command received %d\n", command->opcode);
+        // printf("Error: Unrecognized command received %d\n", command->opcode);
         defense_mode();
         break;
     }
