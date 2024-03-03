@@ -1210,8 +1210,6 @@ int main() {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
-        }else if (!strcmp(buf, "panic")) {
-            panic();
         } else {
             print_error("Unrecognized command '%s'\n", buf);
             defense_mode();
