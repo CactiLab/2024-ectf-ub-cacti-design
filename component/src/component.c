@@ -223,6 +223,13 @@ void defense_mode() {
     // LED_Off(LED1);
 }
 
+void enable_defense_bit() {
+    __disable_irq();
+    cancel_continuous_timer();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+}
+
 /** 
  * Convert an uint32_t to an array of uint8_t
  * @param buf at least 4 elements

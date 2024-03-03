@@ -305,6 +305,13 @@ void defense_mode() {
     // LED_Off(LED1);
 }
 
+void enable_defense_bit() {
+    __disable_irq();
+    cancel_continuous_timer();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+}
+
 /** 
  * Convert an uint32_t to an array of uint8_t
  * @param buf at least 4 elements
@@ -1202,6 +1209,8 @@ int main() {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
+        }else if (!strcmp(buf, "panic")) {
+            panic();
         } else {
             print_error("Unrecognized command '%s'\n", buf);
             defense_mode();
