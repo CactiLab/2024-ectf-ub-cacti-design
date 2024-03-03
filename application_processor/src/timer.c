@@ -13,7 +13,6 @@ void continuous_timer_handler()
     MXC_TMR_ClearFlags(CONT_TIMER);
     ++timer_count;
     if (timer_count >= timer_count_limit) {
-        print_debug("Timer overflow\n");
         timer_count = 0;
         NVIC_SystemReset();
     }

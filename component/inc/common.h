@@ -30,7 +30,6 @@ void enable_defense_bit();       // defined in component.c
         dummy_var_2 |= i;   \
     } \
     if ((dummy_var | dummy_var_2) == 0) { \
-        printf("TRNG failure\n");  \
         panic();    \
     }   \
 } while(0)

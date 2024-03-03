@@ -906,8 +906,8 @@ void attempt_boot1() {
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    int result = ERROR_RETURN;
-    int recv_len = 0;
+    volatile int result = ERROR_RETURN;
+    volatile int recv_len = 0;
     uint8_t *signatures = malloc(SIGNATURE_SIZE * flash_status.component_cnt);  // store signatures for each CP
 
     // send `boot` command + challenge + ID to each provisioned component

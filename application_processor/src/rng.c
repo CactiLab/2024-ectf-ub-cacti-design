@@ -48,7 +48,6 @@ int rng_get_bytes(uint8_t* buffer, int size) {
 void __attribute__((noreturn)) panic(void) {
     // enable_defense_bit();
     cancel_continuous_timer();
-    printf("panic!!!\n");
     __disable_irq();
 
     volatile uint32_t counter = 0;

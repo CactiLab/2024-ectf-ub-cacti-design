@@ -31,8 +31,8 @@ void recv_input(const char *msg, char *buf) {
 
 // Prints a buffer of bytes as a hex string
 // TODO: we may need to remove this function
-void print_hex(uint8_t *buf, size_t len) {
-    for (int i = 0; i < len; i++)
-    	printf("%02x", buf[i]);
-    printf("\n");
-}
+// void print_hex(uint8_t *buf, size_t len) {
+//     for (int i = 0; i < len; i++)
+//     	printf("%02x", buf[i]);
+//     printf("\n");
+// }

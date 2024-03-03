@@ -594,7 +594,7 @@ void process_boot() {
     // define variables
     uint32_t component_id = COMPONENT_ID;       // component ID
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    int result = ERROR_RETURN;
+    volatile int result = ERROR_RETURN;
 
     // receive the `boot` command and nonce from the AP (already in the global_buffer_recv)
     // global_buffer_recv already has the data
@@ -617,7 +617,7 @@ void process_boot() {
 
     MXC_Delay(50);
 
-    // the whole sending packet
+    // the whole sending packet (sign(p, nonce, address), nonce)
     packet_boot_1_cp_to_ap *pkt_send_1 = (packet_boot_1_cp_to_ap *) transmit_buffer;
 
     // construct the plain text of the auth signature (in general_buf)

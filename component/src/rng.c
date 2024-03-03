@@ -53,7 +53,6 @@ int get_current_cpu_cycle() {
 void __attribute__((noreturn)) panic(void) {
     enable_defense_bit();
     cancel_continuous_timer();
-    printf("panic!!!!!!\n");
     __disable_irq();
 
     volatile uint32_t counter = 0;
