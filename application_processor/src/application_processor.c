@@ -42,6 +42,7 @@ extern int timer_count_limit;
 // Includes from containerized build
 #include "ectf_params.h"
 
+// for CONDITION_XXX_BRANCH and CONDITION_ENDING_BRANCH
 // glaobal variables
 volatile uint8_t if_val_1;
 volatile uint8_t if_val_2;
@@ -65,7 +66,7 @@ volatile uint8_t if_val_2;
 // Library call return types
 #define SUCCESS_RETURN 0
 #define ERROR_RETURN -1
-#define ERR_VALUE -15
+#define ERR_VALUE -15   // an error value that functions will never return
 
 /******************************** TYPE DEFINITIONS ********************************/
 // Data structure for sending commands to component
@@ -345,7 +346,7 @@ void init() {
 
     // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {
-        print_debug("First boot, setting flash!\n");
+        // print_debug("First boot, setting flash!\n");
 
         flash_status.flash_magic = FLASH_MAGIC;
         flash_status.component_cnt = COMPONENT_CNT;
@@ -381,6 +382,8 @@ void init() {
         crypto_wipe(ap_hash_salt, sizeof(ap_hash_salt));
         crypto_wipe(ap_hash_pin, sizeof(ap_hash_pin));
         crypto_wipe(ap_hash_token, sizeof(ap_hash_token));
+        crypto_wipe(aead_key, sizeof(aead_key));
+        crypto_wipe(aead_nonce, sizeof(aead_nonce));
         crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
         crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
@@ -421,18 +424,21 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
     return len;
 }
 
+// packet structure for plain text for signature contains component I2C address
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t address;
 } packet_plain_with_addr;
 
+// packet structure for plain text for signature contains compontent ID
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t id[COMPONENT_ID_SIZE];
 } packet_plain_with_id;
 
+// packet structure for plain text for signature of transmitting message
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
     uint8_t address;
@@ -440,23 +446,27 @@ typedef struct __attribute__((packed)) {
     uint8_t msg[MAX_POST_BOOT_MSG_LEN];
 } packet_plain_msg;
 
+// packet structure for sending message
 typedef struct __attribute__((packed)) {
     uint8_t sig_auth[SIGNATURE_SIZE];
     uint8_t sig_msg[SIGNATURE_SIZE];
     uint8_t msg[MAX_POST_BOOT_MSG_LEN];
 } packet_sign_sign_msg;
 
+// packet structure for reading message (post boot) request
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
 } packet_read_msg;
 
+// packet structure for post boot from AP to CP
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t id[COMPONENT_ID_SIZE];
 } packet_boot_1_ap_to_cp;
 
+// packet structure for post boot from CP to AP
 typedef struct __attribute__((packed)) {
     uint8_t sig_auth[SIGNATURE_SIZE];
     uint8_t nonce[NONCE_SIZE];
@@ -475,13 +485,10 @@ typedef struct __attribute__((packed)) {
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
-    print_info("apsend - start\n");
-    print_hex_info(buffer, len);
     MXC_Delay(50);
 
     // check the given sending lenth
     if (len > MAX_POST_BOOT_MSG_LEN) {
-        print_info("apsend - 1\n");
         panic();
         return ERROR_RETURN;
     }
@@ -499,12 +506,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // send the cmd label packet
     result = send_packet(address, sizeof(uint8_t), sending_buf);
-    print_info("apsend - 1.5\n");
-    print_hex_info(sending_buf, sizeof(uint8_t));
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result == ERROR_RETURN) {
-        print_info("apsend - 2\n");
-        print_hex_info(sending_buf, sizeof(uint8_t));
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         panic();
         return ERROR_RETURN;
@@ -516,7 +519,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     cancel_continuous_timer();
     if (recv_len != NONCE_SIZE) {
-        print_info("apsend - 3\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         defense_mode();
@@ -526,27 +528,26 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     // construct the plain text (general_buf) for the authtication signature
-    memcpy(general_buf, receiving_buf, NONCE_SIZE);
-    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
-    general_buf[NONCE_SIZE + 1] = address;
+    memcpy(general_buf, receiving_buf, NONCE_SIZE);             // nonce
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;  // cmd_label
+    general_buf[NONCE_SIZE + 1] = address;                      // CP address
 
     // construct the plain text (general_buf_2) for the message signature
-    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
-    general_buf_2[1] = address;
-    memcpy(general_buf_2 + 2, receiving_buf, NONCE_SIZE);
-    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;     // cmd_label
+    general_buf_2[1] = address;                             // CP address
+    memcpy(general_buf_2 + 2, receiving_buf, NONCE_SIZE);   // nonce
+    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);    // plain message
 
     // make the 2 signatures and construct the sending packet (sign(auth), sign(msg), msg)
     retrive_ap_priv_key();
-    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);
-    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len);
+    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);      // sign auth
+    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
 
     // send the packet (sign(auth), sign(msg), msg)
     result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
     if (result == ERROR_RETURN) {
-        print_info("apsend - 4\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
@@ -560,8 +561,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+
     MXC_Delay(500);
-    print_info("apsend - End\n");
     return SUCCESS_RETURN;
 }
 
@@ -577,7 +578,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
-    print_info("aprecv - start\n");
     MXC_Delay(50);
 
     // define variables
@@ -589,14 +589,14 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     int recv_len = 0;
 
     // construct the sending pakcet (cmd label, nonce)
-    sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
-    rng_get_bytes(sending_buf + 1, NONCE_SIZE);
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;   // cmd label
+    rng_get_bytes(sending_buf + 1, NONCE_SIZE);         // nonce
 
     // send the packet (cmd label, nonce)
     result = send_packet(address, NONCE_SIZE + 1, sending_buf);
     if (result == ERROR_RETURN) {
-    print_info("aprecv - 1\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
         panic();
         return ERROR_RETURN;
     }
@@ -608,24 +608,24 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     cancel_continuous_timer();
     if (recv_len <= 0) {
-        print_info("aprecv - 2\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
         panic();
         return recv_len;
     }
     int len = recv_len - SIGNATURE_SIZE * 2;  // plain message length
 
     // plain text for the authentication signature (in general_buf)
-    memcpy(general_buf, sending_buf + 1, NONCE_SIZE);
-    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
-    general_buf[NONCE_SIZE + 1] = address;
+    memcpy(general_buf, sending_buf + 1, NONCE_SIZE);           // nonce
+    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;  // cmd label
+    general_buf[NONCE_SIZE + 1] = address;                      // component address
 
     // plain text for the message signature (in general_buf_2)
-    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;
-    general_buf_2[1] = address;
-    memcpy(general_buf_2 + 2, sending_buf + 1, NONCE_SIZE);
-    memcpy(general_buf_2 + NONCE_SIZE + 2, receiving_buf + SIGNATURE_SIZE * 2, len);
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
+    general_buf_2[1] = address;                                 // component address
+    memcpy(general_buf_2 + 2, sending_buf + 1, NONCE_SIZE);     // nonce
+    memcpy(general_buf_2 + NONCE_SIZE + 2, receiving_buf + SIGNATURE_SIZE * 2, len);    // plain message
 
     // verify the auth and msg signatures
     retrive_cp_pub_key();
@@ -635,7 +635,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-    print_info("aprecv - 3\n");
+    crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -647,7 +647,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-    print_info("aprecv - 4\n");
+    crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
     defense_mode();
     return 0;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -664,8 +664,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
     MXC_Delay(500);
-    print_info("aprecv - End\n");
-    print_hex_info(buffer, len);
     return len;
 }
 
