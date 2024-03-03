@@ -375,7 +375,7 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    int result = ERROR_RETURN;
+    volatile int result = ERROR_RETURN;
 
     // receive AP's packet of the `reading` command and nonce
     result = wait_and_receive_packet(receiving_buf);
@@ -434,7 +434,7 @@ int secure_receive(uint8_t* buffer) {
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    int result = ERROR_RETURN;
+    volatile int result = ERROR_RETURN;
 
     // receive AP's packet (cmd label)
     result = wait_and_receive_packet(receiving_buf);
@@ -728,7 +728,7 @@ void process_attest() {
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     // receive the response sign(p, nonce, id)
-    uint8_t len = wait_and_receive_packet(global_buffer_recv);
+    volatile uint8_t len = wait_and_receive_packet(global_buffer_recv);
     cancel_continuous_timer();
     if (len != SIGNATURE_SIZE) {
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
@@ -778,7 +778,7 @@ int main(void) {
     // Initialize board
     init();
 
-    printf("Component Started\n");
+    // printf("Component Started\n");
 
     while (1) {
         wait_and_receive_packet(global_buffer_recv);

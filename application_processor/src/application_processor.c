@@ -498,8 +498,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    int result = ERROR_RETURN;
-    int recv_len = 0;
+    volatile int result = ERROR_RETURN;
+    volatile int recv_len = 0;
 
     // construct the sending packet (cmd label of `sending`)
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
@@ -585,8 +585,8 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    int result = 0;
-    int recv_len = 0;
+    volatile int result = 0;
+    volatile int recv_len = 0;
 
     // construct the sending pakcet (cmd label, nonce)
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;   // cmd label
@@ -731,7 +731,7 @@ int attest_component(uint32_t component_id) {
     MXC_Delay(50);
 
     // check if component_id exists in the flash memory
-    int r = 0;
+    volatile int r = 0;
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         if (flash_status.component_ids[i] == component_id) {
             r = 1;
@@ -744,14 +744,14 @@ int attest_component(uint32_t component_id) {
     }
 
     // define variables
-    int result = ERROR_RETURN;
+    volatile int result = ERROR_RETURN;
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN + 1];
     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN + 1];
     uint8_t general_buffer[MAX_I2C_MESSAGE_LEN + 1];
     i2c_addr_t addr = component_id_to_i2c_addr(component_id);    // Set the I2C address of the component
 
     // construct sending packet (attestation command)
-    transmit_buffer[0] = COMPONENT_CMD_ATTEST;
+    transmit_buffer[0] = COMPONENT_CMD_ATTEST;  // cmd label
 
     // send the attestation command
     result = send_packet(addr, 1, transmit_buffer);
@@ -763,7 +763,7 @@ int attest_component(uint32_t component_id) {
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     // receive nonce from CP
-    int recv_len = poll_and_receive_packet(addr, receive_buffer);
+    volatile int recv_len = poll_and_receive_packet(addr, receive_buffer);
     cancel_continuous_timer();
     if (recv_len != NONCE_SIZE) {
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
@@ -1123,7 +1123,7 @@ void attempt_attest() {
 
     // length check
     if (strlen(buf) != PIN_LEN) {
-        print_error("Invalid PIN!\n");
+        // print_error("Invalid PIN!\n");
         crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
         defense_mode();
         return;
@@ -1161,7 +1161,7 @@ void attempt_attest() {
     // an invalid PIN
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
-    print_error("Invalid PIN!\n");
+    // print_error("Invalid PIN!\n");
     defense_mode();
     return;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -1169,7 +1169,7 @@ void attempt_attest() {
     // a valid PIN
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
-    print_debug("Pin Accepted!\n");
+    // print_debug("Pin Accepted!\n");
 
     MXC_Delay(100);
     
@@ -1183,7 +1183,7 @@ void attempt_attest() {
     if(attest_component(component_id) == SUCCESS_RETURN) {
         print_success("Attest\n");
     } else {
-        print_error("Attest\n");
+        // print_error("Attest\n");
     }
 }
 
@@ -1195,7 +1195,7 @@ int main() {
     // Initialize board
     init();
 
-    print_info("Application Processor Started\n");
+    // print_info("Application Processor Started\n");
 
     // Handle commands forever
     char buf[HOST_INPUT_BUF_SIZE];
@@ -1212,7 +1212,7 @@ int main() {
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
         } else {
-            print_error("Unrecognized command '%s'\n", buf);
+            // print_error("Unrecognized command '%s'\n", buf);
             defense_mode();
         }
     }
