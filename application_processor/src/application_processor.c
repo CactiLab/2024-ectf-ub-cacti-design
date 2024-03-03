@@ -1062,6 +1062,7 @@ void attempt_replace() {
     free(workarea);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
 
     // mitigate brute-force
     random_delay_us(2500000);
@@ -1073,14 +1074,14 @@ void attempt_replace() {
     // invalid token
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     crypto_wipe(hash, sizeof(hash));
-    print_error("Invalid Token!\n");
+    // print_error("Invalid Token!\n");
     defense_mode();
     return;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
     // valid token
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     crypto_wipe(hash, sizeof(hash));
-    print_debug("Token Accepted!\n");
+    // print_debug("Token Accepted!\n");
 
     // input IDs from the host
     uint32_t component_id_in = 0;
