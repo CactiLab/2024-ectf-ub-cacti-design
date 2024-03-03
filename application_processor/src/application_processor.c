@@ -1092,7 +1092,7 @@ void attempt_replace() {
             WRITE_FLASH_MEMORY;
             // print replace success information
             // print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out, component_id_in);
-            // print_success("Replace\n");
+            print_success("Replace\n");
             return;
         }
     }
