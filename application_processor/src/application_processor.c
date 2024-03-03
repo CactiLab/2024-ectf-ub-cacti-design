@@ -686,6 +686,8 @@ int get_provisioned_ids(uint32_t* buffer) {
 /******************************** COMPONENT COMMS ********************************/
 
 int scan_components() {
+    MXC_Delay(500);
+
     // Print out provisioned component IDs
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         print_info("P>0x%08x\n", flash_status.component_ids[i]);
@@ -1098,6 +1100,7 @@ void attempt_replace() {
             // print replace success information
             // print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out, component_id_in);
             print_success("Replace\n");
+            MXC_Delay(500);
             return;
         }
     }
