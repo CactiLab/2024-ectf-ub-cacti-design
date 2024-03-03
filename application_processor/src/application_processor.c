@@ -14,7 +14,7 @@
 #include "board.h"
 #include "i2c.h"
 #include "icc.h"
-#include "led.h"
+// #include "led.h"
 #include "mxc_delay.h"
 #include "mxc_device.h"
 #include "nvic_table.h"
@@ -879,18 +879,18 @@ void boot() {
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
     while (1) {
-        LED_On(LED1);
-        MXC_Delay(500000);
-        LED_On(LED2);
-        MXC_Delay(500000);
-        LED_On(LED3);
-        MXC_Delay(500000);
-        LED_Off(LED1);
-        MXC_Delay(500000);
-        LED_Off(LED2);
-        MXC_Delay(500000);
-        LED_Off(LED3);
-        MXC_Delay(500000);
+        // LED_On(LED1);
+        // MXC_Delay(500000);
+        // LED_On(LED2);
+        // MXC_Delay(500000);
+        // LED_On(LED3);
+        // MXC_Delay(500000);
+        // LED_Off(LED1);
+        // MXC_Delay(500000);
+        // LED_Off(LED2);
+        // MXC_Delay(500000);
+        // LED_Off(LED3);
+        // MXC_Delay(500000);
     }
     #endif
 }

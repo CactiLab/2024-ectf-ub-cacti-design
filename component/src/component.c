@@ -13,7 +13,7 @@
 
 #include "board.h"
 #include "i2c.h"
-#include "led.h"
+// #include "led.h"
 #include "mxc_delay.h"
 #include "mxc_errors.h"
 #include "nvic_table.h"
@@ -41,7 +41,7 @@ volatile uint8_t if_val_2;
 #define ERR_VALUE -15
 
 #ifdef POST_BOOT
-#include "led.h"
+// #include "led.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -300,7 +300,7 @@ void init() {
         panic();
     }
 
-    LED_On(LED2);
+    // LED_On(LED2);
 }
 
 void print_hex(uint8_t *buf, size_t len) {
@@ -552,23 +552,23 @@ void boot() {
 
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems
-    LED_Off(LED1);
-    LED_Off(LED2);
-    LED_Off(LED3);
+    // LED_Off(LED1);
+    // LED_Off(LED2);
+    // LED_Off(LED3);
     // LED loop to show that boot occurred
     while (1) {
-        LED_On(LED1);
-        MXC_Delay(500000);
-        LED_On(LED2);
-        MXC_Delay(500000);
-        LED_On(LED3);
-        MXC_Delay(500000);
-        LED_Off(LED1);
-        MXC_Delay(500000);
-        LED_Off(LED2);
-        MXC_Delay(500000);
-        LED_Off(LED3);
-        MXC_Delay(500000);
+        // LED_On(LED1);
+        // MXC_Delay(500000);
+        // LED_On(LED2);
+        // MXC_Delay(500000);
+        // LED_On(LED3);
+        // MXC_Delay(500000);
+        // LED_Off(LED1);
+        // MXC_Delay(500000);
+        // LED_Off(LED2);
+        // MXC_Delay(500000);
+        // LED_Off(LED3);
+        // MXC_Delay(500000);
     }
     #endif
 }
