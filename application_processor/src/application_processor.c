@@ -790,7 +790,7 @@ int scan_components() {
 }
 
 int attest_component(uint32_t component_id) {
-    print_info("[DEBUG] attest id=%d\n", component_id);
+    print_info("[DEBUG] attest id=0x%x\n", component_id);
     MXC_Delay(50);
 
     // check if component_id exists in the flash memory
@@ -879,10 +879,13 @@ int attest_component(uint32_t component_id) {
     // tweak the nonce
     convert_32_to_8(flash_status.aead_nonce, component_id);
     flash_status.aead_nonce[4] = ENC_ATTESTATION_MAGIC;
+    print_info("nonce before hash =\n");
+    print_hex_info(flash_status.aead_nonce, AEAD_NONCE_SIZE);
     crypto_blake2b(flash_status.aead_nonce, AEAD_NONCE_SIZE, flash_status.aead_nonce, AEAD_NONCE_SIZE);
     // decrypt
     crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
     // CONDITION_NEQ_BRANCH(crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
+    receive_buffer[100] = 0;
     if (crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE) != 0) {
         // decryption failed
         print_info("[DEBUG] attest 3 decyrption failed\n");
@@ -892,14 +895,14 @@ int attest_component(uint32_t component_id) {
         print_hex_info(flash_status.aead_nonce, AEAD_NONCE_SIZE);
         print_info("received-\n");
         print_hex_info(receive_buffer, ATT_FINAL_TEXT_SIZE);
-        MXC_Delay(100);
-        crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
-        crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
-        crypto_wipe(receive_buffer, sizeof(receive_buffer));
-        crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        defense_mode();
-        return ERROR_RETURN;
+        // MXC_Delay(100);
+        // crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+        // crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+        // crypto_wipe(receive_buffer, sizeof(receive_buffer));
+        // crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        // crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        // return ERROR_RETURN;
     }
     // CONDITION_BRANCH_ENDING(ERR_VALUE);
     MXC_Delay(100);
