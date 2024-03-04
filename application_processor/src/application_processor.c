@@ -1072,7 +1072,31 @@ void attempt_boot1() {
             panic();
             return;
         }
-        print_info("0x%08x>%s\n", flash_status.component_ids[i], receiving_buf);
+
+        // decrypt the CP boot message
+        // retrive
+        retrive_aead_cp_boot_nonce();
+        retrive_aead_key();
+        // tweak the nonce
+        convert_32_to_8(flash_status.aead_cp_boot_nonce, flash_status.component_ids[i]);
+        flash_status.aead_cp_boot_nonce[4] = ENC_BOOT_MAGIC;
+        crypto_blake2b(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE, flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+        // decrypt
+        uint8_t cp_boot_msg[BOOT_MSG_PLAIN_TEXT_SIZE];
+        CONDITION_NEQ_BRANCH(crypto_aead_unlock(cp_boot_msg, receiving_buf, flash_status.aead_key, flash_status.aead_cp_boot_nonce, NULL, 0, receiving_buf + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
+        // decryption failure
+        crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+        crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+        crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+        defense_mode();
+        CONDITION_BRANCH_ENDING(ERR_VALUE);
+        //decyrption success
+        crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+        crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+
+        // print decrpted CP boot message
+        print_info("0x%08x>%s\n", flash_status.component_ids[i], cp_boot_msg);
+        crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
         MXC_Delay(50);
     }
 

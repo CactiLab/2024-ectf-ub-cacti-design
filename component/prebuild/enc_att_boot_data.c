@@ -38,7 +38,6 @@
 #define CUSTOMER_LEN_POS                DATE_LEN_POS + 1
 #define ENC_ATTESTATION_MAGIC           173
 #define ENC_BOOT_MAGIC                  82
-#define BLAKE_HASH_SIZE                 64
 
 struct options {
     const char* final_cipher_text_filename;

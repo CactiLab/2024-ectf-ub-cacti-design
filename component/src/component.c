@@ -693,17 +693,17 @@ void process_boot() {
     MXC_Delay(50);
 
     // respond with the encrypted cp boot message
-    // retrive_boot_cipher();
-    // memcpy((void*)transmit_buffer, flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
-    // send_packet_and_ack(BOOT_MSG_CIPHER_TEXT_SIZE, transmit_buffer);
-    // MXC_Delay(30);
-    // crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+    retrive_boot_cipher();
+    memcpy((void*)transmit_buffer, flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+    send_packet_and_ack(BOOT_MSG_CIPHER_TEXT_SIZE, transmit_buffer);
+    MXC_Delay(30);
+    crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
 
-    // orginal
+    // original
     // respond with the boot message
-    uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
-    memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
-    send_packet_and_ack(len, transmit_buffer);
+    // uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
+    // memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
+    // send_packet_and_ack(len, transmit_buffer);
 
     // clear buffers
     crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
