@@ -36,6 +36,9 @@
 #define LOC_LEN_POS                     CUSTOMER_POS + ATT_DATA_MAX_SIZE
 #define DATE_LEN_POS                    LOC_LEN_POS + 1
 #define CUSTOMER_LEN_POS                DATE_LEN_POS + 1
+#define ENC_ATTESTATION_MAGIC           173
+#define ENC_BOOT_MAGIC                  82
+#define BLAKE_HASH_SIZE                 64
 
 struct options {
     const char* final_cipher_text_filename;
@@ -59,6 +62,21 @@ void get_rand(uint8_t* buffer, int size) {
     }
 
     close(urandom);
+}
+
+
+/** 
+ * Convert an uint32_t to an array of uint8_t
+ * @param buf at least 4 elements
+ * @param i the uint32_t variable
+*/
+void convert_32_to_8(uint8_t *buf, uint32_t i) {
+    if (!buf)
+        return;
+    buf[0] = i & 0xff;
+    buf[1] = (i >> 8) & 0xff;
+    buf[2] = (i >> 16) & 0xff;
+    buf[3] = (i >> 24) & 0xff;
 }
 
 void print_hex(uint8_t *buf, size_t len) {
@@ -159,6 +177,8 @@ int main(int argc, char *argv[]) {
     size_t len = 0;
     ssize_t read;
     int mark = 0;
+    uint32_t comp_id = 0;
+    char comp_id_str[64] = {0};
     while ((read = getline(&line, &len, param_file)) != -1) {
         if ((p = strstr(line, "ATTESTATION_LOC")) != NULL) {
             // p += strlen("ATTESTATION_LOC");
@@ -223,13 +243,37 @@ int main(int argc, char *argv[]) {
             memcpy(plain_boot_text, q, i);
             plain_boot_text[i] = '\0';
             mark += 8;
+        } else if ((p = strstr(line, "COMPONENT_ID")) != NULL) {
+            p += strlen("COMPONENT_ID");
+            while (*p != '0' && *p != '1' && *p != '2' && *p != '3' && *p != '4' && *p != '5' && *p != '6' && *p != '7' && *p != '8' && *p != '9') {
+                ++p;
+            }
+            q = p;
+            int i = 0;
+            while (*p != '\0' && *p != '\n') {
+                ++p;
+                ++i;
+            }
+            memcpy(comp_id_str, q, i);
+            comp_id_str[i] = '\0';
+            comp_id = atoi(comp_id_str);
+            mark += 16;
         }
     }
+    // printf("atoi=%dend\n\n\n", comp_id);
     fclose(param_file);
-    if (mark != 15) {
+    if (mark != 31) {
         perror("Wrong macro definitions in the param file");
         exit(1);
     }
+
+    // tweak nonces
+    convert_32_to_8(nonce, comp_id);
+    nonce[4] = ENC_ATTESTATION_MAGIC;
+    crypto_blake2b(nonce, NONCE_SIZE, nonce, NONCE_SIZE);
+    convert_32_to_8(nonce_cp_boot, comp_id);
+    nonce_cp_boot[4] = ENC_BOOT_MAGIC;
+    crypto_blake2b(nonce_cp_boot, NONCE_SIZE, nonce_cp_boot, NONCE_SIZE);
 
     // encrypt (attest data)
     crypto_aead_lock(final_text + CIPHER_POS_IN_FINAL_TEXT, final_text + MAC_POS_IN_FINAL_TEXT, key, nonce, NULL, 0, plain_text, PLAIN_TEXT_SIZE);

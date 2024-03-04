@@ -136,6 +136,8 @@ typedef struct {
 #define ATT_CUSTOMER_LEN_POS                ATT_DATE_LEN_POS + 1
 #define BOOT_MSG_PLAIN_TEXT_SIZE        128
 #define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + AEAD_MAC_SIZE
+#define ENC_ATTESTATION_MAGIC           173
+#define ENC_BOOT_MAGIC                  82
 
 // system mode
 typedef enum {
@@ -866,6 +868,11 @@ int attest_component(uint32_t component_id) {
     // decrypt the attestation message
     retrive_aead_key();
     retrive_aead_nonce();
+    // tweak the nonce
+    convert_32_to_8(flash_status.aead_nonce, component_id);
+    flash_status.aead_nonce[4] = ENC_ATTESTATION_MAGIC;
+    crypto_blake2b(flash_status.aead_nonce, AEAD_NONCE_SIZE, flash_status.aead_nonce, AEAD_NONCE_SIZE);
+    // decrypt
     CONDITION_NEQ_BRANCH(crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
     // decryption failed
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
