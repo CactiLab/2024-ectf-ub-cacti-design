@@ -9,7 +9,7 @@ def read_binary_file(path):
 def format_key_for_c_define(key):
     return ', '.join(f'0x{byte:02x}' for byte in key)
 
-def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key, ap_hash_key, ap_hash_salt, ap_hash_pin, ap_hash_token, aead_key, aead_nonce):
+def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key, ap_hash_key, ap_hash_salt, ap_hash_pin, ap_hash_token, aead_key, aead_nonce, aead_nonce_cp_boot, aead_nonce_ap_boot, aead_cipher_ap_boot):
     with open(header_path, 'r') as file:
         lines = file.readlines()
 
@@ -46,6 +46,9 @@ def parse_and_modify_header(header_path, ap_priv_key, cp_pub_key, ap_hash_key, a
         file.write(f'#define AP_HASH_SALT {format_key_for_c_define(ap_hash_salt)}\n')
         file.write(f'#define AEAD_KEY {format_key_for_c_define(aead_key)}\n')
         file.write(f'#define AEAD_NONCE {format_key_for_c_define(aead_nonce)}\n')
+        file.write(f'#define AEAD_NONCE_CP_BOOT {format_key_for_c_define(aead_nonce_cp_boot)}\n')
+        file.write(f'#define AEAD_NONCE_AP_BOOT {format_key_for_c_define(aead_nonce_ap_boot)}\n')
+        file.write(f'#define AEAD_CIPHER_AP_BOOT {format_key_for_c_define(aead_cipher_ap_boot)}\n')
         file.write(f'#endif')
         
     
@@ -62,6 +65,9 @@ def main():
     parser.add_argument("--hash-token-file", type=Path, required=True)
     parser.add_argument("--aead-key-file", type=Path, required=True)
     parser.add_argument("--aead-nonce-file", type=Path, required=True)
+    parser.add_argument("--aead-nonce-cp-boot-file", type=Path, required=True)
+    parser.add_argument("--aead-nonce-ap-boot-file", type=Path, required=True)
+    parser.add_argument("--aead-cipher-ap-boot-file", type=Path, required=True)
     args = parser.parse_args()
     
     if not args.header_file.exists():
@@ -99,6 +105,16 @@ def main():
     if not args.aead_nonce_file.exists():
         print(f"AEAD nonce file {args.aead_nonce_file} does not exist. Build the deployment package first.")
         sys.exit(1)
+
+    if not args.aead_nonce_cp_boot_file.exists():
+        print(f"AEAD nonce_cp_boo file {args.aead_nonce_cp_boot_file} does not exist. Build the deployment package first.")
+        sys.exit(1)
+
+    if not args.aead_nonce_ap_boot_file.exists():
+        sys.exit(1)
+
+    if not args.aead_cipher_ap_boot_file.exists():
+        sys.exit(1)
     
     priv_key = args.ap_priv_key_file.read_bytes()
     pub_key = args.cp_pub_key_file.read_bytes()
@@ -108,8 +124,11 @@ def main():
     hash_token = args.hash_token_file.read_bytes()
     aead_key = args.aead_key_file.read_bytes()
     aead_nonce = args.aead_nonce_file.read_bytes()
+    aead_nonce_cp_boot = args.aead_nonce_cp_boot_file.read_bytes()
+    aead_nonce_ap_boot = args.aead_nonce_ap_boot_file.read_bytes()
+    aead_cipher_ap_boot = args.aead_cipher_ap_boot_file.read_bytes()
     
-    cp_ids, cp_cnt, ap_pin, ap_token = parse_and_modify_header(args.header_file, priv_key, pub_key, hash_key, hash_salt, hash_pin, hash_token, aead_key, aead_nonce)
+    cp_ids, cp_cnt, ap_pin, ap_token = parse_and_modify_header(args.header_file, priv_key, pub_key, hash_key, hash_salt, hash_pin, hash_token, aead_key, aead_nonce, aead_nonce_cp_boot, aead_nonce_ap_boot, aead_cipher_ap_boot)
     
     if ap_pin and ap_token and cp_ids and cp_cnt:
         print(f"AP_PIN: {ap_pin}")

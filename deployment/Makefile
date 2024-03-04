@@ -10,7 +10,7 @@ __check_defined = \
 all: keygen aead_keygen
 	./keygen.elf priv=ap_priv.bin pub=ap_pub.bin
 	./keygen.elf priv=cp_priv.bin pub=cp_pub.bin
-	./aead_key.elf key=aead_key.bin nonce=aead_nonce.bin
+	./aead_key.elf key=aead_key.bin nonce=aead_nonce.bin nonce_cp_boot=aead_nonce_cp_boot.bin
 
 global_secrets.h:
 	echo "#define SECRET 1234" > global_secrets.h

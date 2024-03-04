@@ -7,17 +7,22 @@
 #include "monocypher.h"
 
 #define USAGE \
-    "\n usage: enc_att_data final_cipher_text=%%s key=%%s nonce=%%s\n"              \
+    "\n usage: enc_att_data final_cipher_text=%%s key=%%s nonce=%%s nonce_cp_boot=%%s boot_cipher=%%s\n"              \
     "\n acceptable parameters:\n"                      \
     "    final_cipher_text=%%s       e.g.: final_cipher_text.bin\n"   \
     "    key=%%s                     e.g.: key.bin\n"    \
     "    nonce=%%s                   e.g.: nonce.bin\n"    \
+    "    nonce_cp_boot=%%s                   e.g.: nonce_cp_boot.bin\n"    \
+    "    boot_cipher=%%s              e.g.: boot_cipher.bin\n"    \
     "\n"
 
 #define KEY_SIZE                        32
 #define NONCE_SIZE                      24
 #define MAC_SIZE                        16
 #define ATT_DATA_MAX_SIZE               64
+#define CP_BOOT_MSG_MAX_SIZE            64
+#define BOOT_MSG_PLAIN_TEXT_SIZE        128
+#define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + MAC_SIZE
 #define PADDING_SIZE                    16
 #define FINAL_TEXT_SIZE                 ATT_DATA_MAX_SIZE * 3 + MAC_SIZE + 3 + PADDING_SIZE * 2
 #define PLAIN_TEXT_SIZE                 ATT_DATA_MAX_SIZE * 3 + 3 + PADDING_SIZE * 2
@@ -36,6 +41,8 @@ struct options {
     const char* final_cipher_text_filename;
     const char* key_filename;
     const char* nonce_filename;
+    const char* nonce_cp_filename;
+    const char* boot_cipher_filename;
 };
 
 void get_rand(uint8_t* buffer, int size) {
@@ -62,7 +69,7 @@ void print_hex(uint8_t *buf, size_t len) {
 
 int main(int argc, char *argv[]) {
     // check args quantity
-    if (argc != 4) {
+    if (argc != 6) {
         printf(USAGE);
         exit(1);
     }
@@ -84,6 +91,10 @@ int main(int argc, char *argv[]) {
             opt.nonce_filename = q;
         } else if (strcmp(p, "final_cipher_text") == 0) {
             opt.final_cipher_text_filename = q;
+        } else if (strcmp(p, "boot_cipher") == 0) {
+            opt.boot_cipher_filename = q;
+        } else if (strcmp(p, "nonce_cp_boot") == 0) {
+            opt.nonce_cp_filename = q;
         } else {
             printf(USAGE);
             exit(1);
@@ -93,8 +104,14 @@ int main(int argc, char *argv[]) {
     // define variables
     uint8_t key[KEY_SIZE];
     uint8_t nonce[NONCE_SIZE];
+    uint8_t nonce_cp_boot[NONCE_SIZE];
     uint8_t final_text[FINAL_TEXT_SIZE];
     uint8_t plain_text[PLAIN_TEXT_SIZE];
+    uint8_t plain_boot_text[BOOT_MSG_PLAIN_TEXT_SIZE];
+    uint8_t cipher_boot_text[BOOT_MSG_CIPHER_TEXT_SIZE];
+
+    // fill plain_boot_text buffer with random value as the boot message won't be so long
+    get_rand(plain_boot_text, BOOT_MSG_PLAIN_TEXT_SIZE);
 
     // load key
     FILE *key_file = fopen(opt.key_filename, "rb");
@@ -120,7 +137,19 @@ int main(int argc, char *argv[]) {
         perror("Nonce size is wrong in the nonce file");
     }
 
-    // contruct plain text
+    // load nonce_cp
+    FILE *nonce_cp_file = fopen(opt.nonce_cp_filename, "rb");
+    if (nonce_cp_file == NULL) {
+        perror("Failed to open the nonce_cp file");
+        exit(1);
+    }
+    r = fread(nonce_cp_boot, sizeof(uint8_t), NONCE_SIZE, nonce_cp_file);
+    fclose(nonce_cp_file);
+    if (r != NONCE_SIZE) {
+        perror("Nonce size is wrong in the nonce_cp file");
+    }
+
+    // contruct plain text (attest data)
     FILE *param_file = fopen("./inc/ectf_params.h", "r");
     if (param_file == NULL) {
         perror("Failed to open the param file");
@@ -179,21 +208,44 @@ int main(int argc, char *argv[]) {
             plain_text[CUSTOMER_LEN_POS] = i;
             get_rand(plain_text + CUSTOMER_POS + i, ATT_DATA_MAX_SIZE - i);
             mark += 4;
+        } else if ((p = strstr(line, "COMPONENT_BOOT_MSG")) != NULL) {
+            p += strlen("COMPONENT_BOOT_MSG");
+            while (*p != '\"') {
+                ++p;
+            }
+            ++p;
+            q = p;
+            int i = 0;
+            while (*p != '\"' && *p != '\n') {
+                ++p;
+                ++i;
+            }
+            memcpy(plain_boot_text, q, i);
+            plain_boot_text[i] = '\0';
+            mark += 8;
         }
     }
     fclose(param_file);
-    if (mark != 7) {
+    if (mark != 15) {
         perror("Wrong macro definitions in the param file");
         exit(1);
     }
 
-    // encrypt
+    // encrypt (attest data)
     crypto_aead_lock(final_text + CIPHER_POS_IN_FINAL_TEXT, final_text + MAC_POS_IN_FINAL_TEXT, key, nonce, NULL, 0, plain_text, PLAIN_TEXT_SIZE);
+
+    // encrypt (cp boot message)
+    crypto_aead_lock(cipher_boot_text + MAC_SIZE, cipher_boot_text, key, nonce_cp_boot, NULL, 0, plain_boot_text, BOOT_MSG_PLAIN_TEXT_SIZE);
+    
+    // wipe key and nonces
     crypto_wipe(key, KEY_SIZE);
     crypto_wipe(nonce, NONCE_SIZE);
+    crypto_wipe(nonce_cp_boot, NONCE_SIZE);
     crypto_wipe(plain_text, PLAIN_TEXT_SIZE);
+    crypto_wipe(plain_boot_text, BOOT_MSG_PLAIN_TEXT_SIZE);
 
-    // write
+
+    // write encrypted attestation data
     FILE *final_cipher_file = fopen(opt.final_cipher_text_filename, "wb");
     if (final_cipher_file == NULL) {
         perror("Failed to open the final cipher text file");
@@ -203,6 +255,17 @@ int main(int argc, char *argv[]) {
     fclose(final_cipher_file);
 
     crypto_wipe(final_text, FINAL_TEXT_SIZE);
+
+    // write encrypted attestation data
+    FILE *cipher_boot_file = fopen(opt.boot_cipher_filename, "wb");
+    if (cipher_boot_file == NULL) {
+        perror("Failed to open the boot cipher text file");
+        exit(1);
+    }
+    fwrite(cipher_boot_text, sizeof(uint8_t), BOOT_MSG_CIPHER_TEXT_SIZE, cipher_boot_file);
+    fclose(cipher_boot_file);
+
+    crypto_wipe(cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
 
     return 0;
 }

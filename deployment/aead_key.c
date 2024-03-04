@@ -7,10 +7,11 @@
 #include "monocypher.h"
 
 #define USAGE \
-    "\n usage: aead_key key=%%s nonce=%%s\n"              \
+    "\n usage: aead_key key=%%s nonce=%%s nonce_cp_boot=%%s\n"              \
     "\n acceptable parameters:\n"                      \
     "    key=%%s                e.g.: aead_key.bin\n"    \
     "    nonce=%%s                e.g.: aead_nonce.bin\n"    \
+    "    nonce_cp_boot=%%s                e.g.: aead_nonce_cp_boot.bin\n"    \
     "\n"
 #define KEY_SIZE 32
 #define NONCE_SIZE 24
@@ -18,6 +19,7 @@
 struct options {
     const char* key_filename;
     const char* nonce_filename;
+    const char* nonce_cp_boot_filename;
 };
 
 void get_rand(uint8_t* buffer, int size) {
@@ -44,7 +46,7 @@ void print_hex(uint8_t *buf, size_t len) {
 
 int main(int argc, char *argv[]) {
     // check args quantity
-    if (argc != 3) {
+    if (argc != 4) {
         printf(USAGE);
         exit(1);
     }
@@ -64,6 +66,8 @@ int main(int argc, char *argv[]) {
             opt.key_filename = q;
         } else if (strcmp(p, "nonce") == 0) {
             opt.nonce_filename = q;
+        } else if (strcmp(p, "nonce_cp_boot") == 0) {
+            opt.nonce_cp_boot_filename = q;
         } else {
             printf(USAGE);
             exit(1);
@@ -73,10 +77,14 @@ int main(int argc, char *argv[]) {
     // define variables
     uint8_t key[KEY_SIZE];
     uint8_t nonce[NONCE_SIZE];
+    uint8_t nonce_cp_boot[NONCE_SIZE];
 
     // rand
-    get_rand(key, sizeof(key));
-    get_rand(nonce, sizeof(nonce));
+    get_rand(key, KEY_SIZE);
+    sleep(1);
+    get_rand(nonce, NONCE_SIZE);
+    sleep(1);
+    get_rand(nonce_cp_boot, NONCE_SIZE);
 
     // write key into the file
     FILE *key_file = fopen(opt.key_filename, "wb");
@@ -95,6 +103,15 @@ int main(int argc, char *argv[]) {
     }
     fwrite(nonce, sizeof(uint8_t), NONCE_SIZE, nonce_file);
     fclose(nonce_file);
+
+    // write nonce_cp_boot into the file
+    FILE *nonce_cp_boot_file = fopen(opt.nonce_cp_boot_filename, "wb");
+    if (nonce_cp_boot_file == NULL) {
+        perror("Failed to open the nonce_cp_boot file");
+        exit(1);
+    }
+    fwrite(nonce_cp_boot, sizeof(uint8_t), NONCE_SIZE, nonce_cp_boot_file);
+    fclose(nonce_cp_boot_file);
 
     return 0;
 }
