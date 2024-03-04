@@ -256,7 +256,16 @@ int main(int argc, char *argv[]) {
             }
             memcpy(comp_id_str, q, i);
             comp_id_str[i] = '\0';
-            comp_id = atoi(comp_id_str);
+            printf("comp_id_str = %s\n", comp_id_str);
+            if (comp_id_str[0] == '0' && (comp_id_str[1] == 'x' || comp_id_str[1] == 'X' )) {
+                // hex
+                printf("hex\n");
+                comp_id = strtol(comp_id_str + 2, NULL, 16);
+            } else {
+                // dec
+                printf("dec\n");
+                comp_id = atoi(comp_id_str);
+            }
             mark += 16;
         }
     }
