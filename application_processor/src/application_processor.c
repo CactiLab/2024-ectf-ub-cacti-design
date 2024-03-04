@@ -789,6 +789,7 @@ int scan_components() {
 }
 
 int attest_component(uint32_t component_id) {
+    print_info("[DEBUG] attest id=%d\n", component_id);
     MXC_Delay(50);
 
     // check if component_id exists in the flash memory
@@ -822,10 +823,14 @@ int attest_component(uint32_t component_id) {
         return ERROR_RETURN;
     }
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    print_info("[DEBUG] attest packet sent\n");
+    print_hex_info(transmit_buffer, 1);
 
     // receive nonce from CP
     volatile int recv_len = poll_and_receive_packet(addr, receive_buffer);
     cancel_continuous_timer();
+    print_info("[DEBUG] attest nonce received\n");
+    print_hex_info(receive_buffer, recv_len);
     if (recv_len != NONCE_SIZE) {
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
@@ -853,6 +858,7 @@ int attest_component(uint32_t component_id) {
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
+    print_info("[DEBUG] attest 1\n");
     MXC_Delay(20);
 
     // receive the ecnrypted attestation data
@@ -865,6 +871,7 @@ int attest_component(uint32_t component_id) {
         return ERROR_RETURN;
     }
 
+    print_info("[DEBUG] attest 2\n");
     // decrypt the attestation message
     retrive_aead_key();
     retrive_aead_nonce();
@@ -875,6 +882,7 @@ int attest_component(uint32_t component_id) {
     // decrypt
     CONDITION_NEQ_BRANCH(crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
     // decryption failed
+    print_info("[DEBUG] attest 3 decyrption failed\n");
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
     crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
     crypto_wipe(receive_buffer, sizeof(receive_buffer));
@@ -885,6 +893,7 @@ int attest_component(uint32_t component_id) {
     CONDITION_BRANCH_ENDING(ERR_VALUE);
     // decryption ok
 
+    print_info("[DEBUG] attest 4\n");
     // wipe
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
     crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
