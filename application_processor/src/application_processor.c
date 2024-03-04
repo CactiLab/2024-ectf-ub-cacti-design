@@ -885,7 +885,6 @@ int attest_component(uint32_t component_id) {
     // decrypt
     crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
     // CONDITION_NEQ_BRANCH(crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
-    receive_buffer[100] = 0;
     if (crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE) != 0) {
         // decryption failed
         print_info("[DEBUG] attest 3 decyrption failed\n");
