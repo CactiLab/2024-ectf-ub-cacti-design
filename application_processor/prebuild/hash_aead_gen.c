@@ -153,7 +153,19 @@ int main(int argc, char *argv[]) {
         } else if ((p = strstr(line, "AP_TOKEN")) != NULL) {
             memcpy(token, p + 10, TOKEN_LEN);
         } else if ((p = strstr(line, "AP_BOOT_MSG")) != NULL) {
-            memcpy(ap_boot_msg, p + 13, TOKEN_LEN);
+            p += strlen("AP_BOOT_MSG");
+            while (*p != '\"') {
+                ++p;
+            }
+            ++p;
+            q = p;
+            int i = 0;
+            while (*p != '\"' && *p != '\n') {
+                ++p;
+                ++i;
+            }
+            memcpy(ap_boot_msg, q, i);
+            ap_boot_msg[i] = '\0';
         }
     }
     fclose(param_file);

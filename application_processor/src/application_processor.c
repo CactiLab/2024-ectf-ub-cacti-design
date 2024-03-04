@@ -100,6 +100,9 @@ typedef struct {
 #define TOKEN_HASH_OFFSET       offsetof(flash_entry, token_hash)
 #define AEAD_KEY_OFFSET         offsetof(flash_entry, aead_key)
 #define AEAD_NONCE_OFFSET       offsetof(flash_entry, aead_nonce)
+#define AEAD_CP_BOOT_NONCE_OFFSET   offsetof(flash_entry, aead_cp_boot_nonce)
+#define AEAD_AP_BOOT_NONCE_OFFSET   offsetof(flash_entry, aead_ap_boot_nonce)
+#define AEAD_AP_BOOT_CIPHER_OFFSET  offsetof(flash_entry, aead_ap_boot_cipher)
 #define NONCE_SIZE              64
 #define SIGNATURE_SIZE          64
 #define MAX_POST_BOOT_MSG_LEN   64
@@ -131,6 +134,8 @@ typedef struct {
 #define ATT_LOC_LEN_POS                     ATT_CUSTOMER_POS + ATT_DATA_MAX_SIZE
 #define ATT_DATE_LEN_POS                    ATT_LOC_LEN_POS + 1
 #define ATT_CUSTOMER_LEN_POS                ATT_DATE_LEN_POS + 1
+#define BOOT_MSG_PLAIN_TEXT_SIZE        128
+#define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + AEAD_MAC_SIZE
 
 // system mode
 typedef enum {
@@ -151,6 +156,9 @@ typedef struct {
     uint8_t token_hash[HASH_LEN];
     uint8_t aead_key[AEAD_KEY_SIZE];
     uint8_t aead_nonce[AEAD_NONCE_SIZE];
+    uint8_t aead_cp_boot_nonce[AEAD_NONCE_SIZE];
+    uint8_t aead_ap_boot_nonce[AEAD_NONCE_SIZE];
+    uint8_t aead_ap_boot_cipher[BOOT_MSG_CIPHER_TEXT_SIZE];
     uint32_t mode;   // 0: normal, 1: defense
 } flash_entry;
 
@@ -268,6 +276,42 @@ void retrive_aead_nonce() {
     flash_simple_read(FLASH_ADDR + AEAD_NONCE_OFFSET, (uint32_t*)flash_status.aead_nonce, AEAD_NONCE_SIZE);
 }
 
+/**
+ * @brief Retrieves AEAD CP boot nonce value from flash memory.
+ * 
+ * This function reads the AEAD CP boot nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_cp_boot_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_cp_boot_nonce() {
+    flash_simple_read(FLASH_ADDR + AEAD_CP_BOOT_NONCE_OFFSET, (uint32_t*)flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+}
+
+/**
+ * @brief Retrieves AEAD AP boot nonce value from flash memory.
+ * 
+ * This function reads the AEAD AP boot nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_ap_boot_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_ap_boot_nonce() {
+    flash_simple_read(FLASH_ADDR + AEAD_AP_BOOT_NONCE_OFFSET, (uint32_t*)flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
+}
+
+/**
+ * @brief Retrieves AEAD AP boot cipher text from flash memory.
+ * 
+ * This function reads the AEAD AP boot nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_ap_boot_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_ap_boot_cipher_text() {
+    flash_simple_read(FLASH_ADDR + AEAD_AP_BOOT_CIPHER_OFFSET, (uint32_t*)flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+}
+
 #define WRITE_FLASH_MEMORY  \
     retrive_ap_priv_key();  \
     retrive_cp_pub_key();   \
@@ -277,6 +321,9 @@ void retrive_aead_nonce() {
     retrive_token_hash();   \
     retrive_aead_key(); \
     retrive_aead_nonce();   \
+    retrive_aead_cp_boot_nonce();   \
+    retrive_aead_ap_boot_nonce();   \
+    retrive_aead_ap_boot_cipher_text(); \
     flash_simple_erase_page(FLASH_ADDR);    \
     flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));    \
@@ -286,7 +333,10 @@ void retrive_aead_nonce() {
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));  \
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));  \
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));  \
-    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));  \
+    crypto_wipe(flash_status.aead_cp_boot_nonce, sizeof(flash_status.aead_cp_boot_nonce));  \
+    crypto_wipe(flash_status.aead_ap_boot_nonce, sizeof(flash_status.aead_ap_boot_nonce));  \
+    crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
 
 /**
  * When the system detects a possible attack, go to the defense mode
@@ -363,6 +413,10 @@ void init() {
         uint8_t ap_hash_token[] = {AP_HASH_TOKEN};
         uint8_t aead_key[] = {AEAD_KEY};
         uint8_t aead_nonce[] = {AEAD_NONCE};
+        uint8_t aead_cp_nonce[] = {AEAD_NONCE_CP_BOOT};
+        uint8_t aead_ap_nonce[] = {AEAD_NONCE_AP_BOOT};
+        uint8_t aead_cipher_ap_boot[] = {AEAD_CIPHER_AP_BOOT};
+
         memcpy(flash_status.ap_priv_key, ap_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.cp_pub_key, cp_public_key, PUB_KEY_SIZE);
         memcpy(flash_status.hash_key, ap_hash_key, HASH_KEY_LEN);
@@ -371,6 +425,9 @@ void init() {
         memcpy(flash_status.token_hash, ap_hash_token, HASH_LEN);
         memcpy(flash_status.aead_key, aead_key, AEAD_KEY_SIZE);
         memcpy(flash_status.aead_nonce, aead_nonce, AEAD_NONCE_SIZE);
+        memcpy(flash_status.aead_cp_boot_nonce, aead_cp_nonce, AEAD_NONCE_SIZE);
+        memcpy(flash_status.aead_ap_boot_nonce, aead_ap_nonce, AEAD_NONCE_SIZE);
+        memcpy(flash_status.aead_ap_boot_cipher, aead_cipher_ap_boot, BOOT_MSG_CIPHER_TEXT_SIZE);
 
 
         flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
@@ -391,6 +448,9 @@ void init() {
         crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
         crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
         crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+        crypto_wipe(flash_status.aead_cp_boot_nonce, sizeof(flash_status.aead_cp_boot_nonce));
+        crypto_wipe(flash_status.aead_ap_boot_nonce, sizeof(flash_status.aead_ap_boot_nonce));
+        crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
     }
 
     if (flash_status.mode == SYS_MODE_DEFENSE) {
@@ -1012,11 +1072,40 @@ void attempt_boot1() {
     // clear buffers and free signatures
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     free(signatures);
+    
+    // retrieve the encrypted ap boot message
+    retrive_aead_ap_boot_cipher_text();
+    retrive_aead_ap_boot_nonce();
+    retrive_aead_key();
 
+    // decrypt
+    uint8_t plain_ap_boot_msg[BOOT_MSG_PLAIN_TEXT_SIZE];
+    CONDITION_NEQ_BRANCH(crypto_aead_unlock(plain_ap_boot_msg, flash_status.aead_ap_boot_cipher, flash_status.aead_key, flash_status.aead_ap_boot_nonce, NULL, 0, flash_status.aead_ap_boot_cipher + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
+    // decryption failure
+    crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
+    crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+    crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+    crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+    defense_mode();
+    return;
+    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // decryption success
+
+    // wipe
+    crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
+    crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+    crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+
+    // print boot message
+    print_info("AP>%s\n", plain_ap_boot_msg);
+    crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+    print_success("Boot\n");
+
+    // original
     // Print boot message
     // This always needs to be printed when booting
-    print_info("AP>%s\n", AP_BOOT_MSG);
-    print_success("Boot\n");
+    // print_info("AP>%s\n", AP_BOOT_MSG);
+    // print_success("Boot\n");
 
     // Boot
     boot();
