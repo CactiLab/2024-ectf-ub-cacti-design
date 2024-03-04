@@ -73,13 +73,16 @@ extern int timer_count_limit;
 #define CP_PRIV_KEY_OFFSET      offsetof(flash_entry, cp_priv_key)
 #define AP_PUB_KEY_OFFSET       offsetof(flash_entry, ap_pub_key)
 #define ATTEST_CIPHER_OFFSET    offsetof(flash_entry, cipher_attest_data)
+#define CIPHER_BOOT_TEXT_OFFSET offsetof(flash_entry, cipher_boot_text)
 #define NONCE_SIZE              64
 #define SIGNATURE_SIZE          64
 #define MAX_POST_BOOT_MSG_LEN   64
 #define CIPHER_ATTESTATION_DATA_LEN 243
 #define CIPHER_ATTESTATION_DATA_LEN_ROUND 244
 #define COMPONENT_ID_SIZE       4
-
+#define AEAD_MAC_SIZE           16
+#define BOOT_MSG_PLAIN_TEXT_SIZE        128
+#define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + AEAD_MAC_SIZE
 // #define print_info(...) printf("%%info: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
 // #define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
 
@@ -95,6 +98,7 @@ typedef struct {
     uint8_t cp_priv_key[PRIV_KEY_SIZE];
     uint8_t ap_pub_key[PUB_KEY_SIZE];
     uint8_t cipher_attest_data[CIPHER_ATTESTATION_DATA_LEN_ROUND];
+    uint8_t cipher_boot_text[BOOT_MSG_CIPHER_TEXT_SIZE];
     uint32_t mode;   // 0: normal, 1: defense
 } flash_entry;
 
@@ -197,15 +201,29 @@ void retrive_attest_cipher() {
     flash_simple_read(FLASH_ADDR + ATTEST_CIPHER_OFFSET, (uint32_t*)flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
 }
 
+/**
+ * @brief Retrieves encrypted boot message from flash memory.
+ * 
+ * This function reads encrypted boot message from the specified flash address
+ * and stores it in the global `flash_status.cipher_boot_text` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_boot_cipher() {
+    flash_simple_read(FLASH_ADDR + CIPHER_BOOT_TEXT_OFFSET, (uint32_t*)flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+}
+
 #define WRITE_FLASH_MEMORY  \
     retrive_ap_pub_key();   \
     retrive_cp_priv_key();  \
+    retrive_attest_cipher();    \
     retrive_attest_cipher();    \
     flash_simple_erase_page(FLASH_ADDR);    \
     flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));  \
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));    \
-    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));  \
+    crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
 
 /**
  * When the system detects a possible attack, go to the defense mode
@@ -286,9 +304,11 @@ void init() {
         uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
         uint8_t ap_public_key[] = {AP_PUBLIC_KEY};
         uint8_t attest_cipher[] = {ATTESTATION_CIPHER_DATA};
+        uint8_t boot_cipher[] = {CIPHER_CP_BOOT_MSG};
         memcpy(flash_status.cp_priv_key, cp_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.ap_pub_key, ap_public_key, PUB_KEY_SIZE);
         memcpy(flash_status.cipher_attest_data, attest_cipher, CIPHER_ATTESTATION_DATA_LEN);
+        memcpy(flash_status.cipher_boot_text, boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
 
         flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
@@ -298,6 +318,7 @@ void init() {
         crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
         crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
         crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+        crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
     }
 
     if (flash_status.mode == SYS_MODE_DEFENSE) {
@@ -671,6 +692,14 @@ void process_boot() {
 
     MXC_Delay(50);
 
+    // respond with the encrypted cp boot message
+    // retrive_boot_cipher();
+    // memcpy((void*)transmit_buffer, flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+    // send_packet_and_ack(BOOT_MSG_CIPHER_TEXT_SIZE, transmit_buffer);
+    // MXC_Delay(30);
+    // crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+
+    // orginal
     // respond with the boot message
     uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
     memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
