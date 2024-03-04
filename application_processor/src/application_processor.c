@@ -880,9 +880,17 @@ int attest_component(uint32_t component_id) {
     flash_status.aead_nonce[4] = ENC_ATTESTATION_MAGIC;
     crypto_blake2b(flash_status.aead_nonce, AEAD_NONCE_SIZE, flash_status.aead_nonce, AEAD_NONCE_SIZE);
     // decrypt
+    crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
     CONDITION_NEQ_BRANCH(crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
     // decryption failed
     print_info("[DEBUG] attest 3 decyrption failed\n");
+    print_info("key=\n");
+    print_hex_info(flash_status.aead_key, AEAD_KEY_SIZE);
+    print_info("nonce=\n");
+    print_hex_info(flash_status.aead_nonce, AEAD_NONCE_SIZE);
+    print_info("received-\n");
+    print_hex_info(receive_buffer, ATT_FINAL_TEXT_SIZE);
+    MXC_Delay(100);
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
     crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
     crypto_wipe(receive_buffer, sizeof(receive_buffer));
@@ -891,6 +899,7 @@ int attest_component(uint32_t component_id) {
     defense_mode();
     return ERROR_RETURN;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
+    MXC_Delay(100);
     // decryption ok
 
     print_info("[DEBUG] attest 4\n");
