@@ -243,6 +243,7 @@ int main(int argc, char *argv[]) {
             plain_boot_text[i] = '\0';
             mark += 8;
         } else if ((p = strstr(line, "COMPONENT_ID")) != NULL) {
+            printf("line=%s\n", line);
             p += strlen("COMPONENT_ID");
             while (*p != '0' && *p != '1' && *p != '2' && *p != '3' && *p != '4' && *p != '5' && *p != '6' && *p != '7' && *p != '8' && *p != '9') {
                 ++p;
