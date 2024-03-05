@@ -114,6 +114,11 @@ void MPURegionEnable(uint32_t ui32Region) {
     HWREG(NVIC_MPU_ATTR) |= NVIC_MPU_ATTR_ENABLE;
 }
 
+void mpu_handler(void)
+{
+    ASSERT(MPU_RGN_SIZE_16K);
+}
+
 void mpu_init() {
     __asm("dmb");
 
@@ -121,24 +126,32 @@ void mpu_init() {
         return;
     }
 
+    MPUDisable();
+
     // 0x1000E000 to 0x10045FFF - Firmware (executable, read-only)
     MPURegionSet(0, 0x1000E000,
                  MPU_RGN_SIZE_224K | MPU_RGN_PERM_EXEC |
                      MPU_RGN_PERM_PRV_RO_USR_NO | MPU_RGN_ENABLE);
+    MPURegionEnable(0);
     // 0x1007C000 to 0x1007DFFF - Flash status data (no-execute, read/write)
     MPURegionSet(1, 0x1007C000,
                  MPU_RGN_SIZE_8K | MPU_RGN_PERM_NOEXEC |
                      MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    MPURegionEnable(1);
     // 0x20000000 to 0x2001FFFF - SRAM region (no-execute, read/write)
     MPURegionSet(2, 0x20000000,
                  MPU_RGN_SIZE_128K | MPU_RGN_PERM_NOEXEC |
                      MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    MPURegionEnable(2);
     // 0x40000000 to 0x80000000 - MMIO peripherals
     MPURegionSet(3, 0x40000000,
                  MPU_RGN_SIZE_1G | MPU_RGN_PERM_NOEXEC |
                      MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    MPURegionEnable(3);
+
     // Enable the Memory Protection Unit
-    MPUEnable(MPU_CONFIG_HARDFLT_NMI);
+    MPUIntRegister(mpu_handler);
+    MPUEnable(MPU_CONFIG_PRIV_DEFAULT);
 
     __asm("dsb");
     __asm("isb");
