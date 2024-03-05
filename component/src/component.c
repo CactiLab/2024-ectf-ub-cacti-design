@@ -447,7 +447,7 @@ int secure_receive(uint8_t* buffer) {
     result = wait_and_receive_packet(receiving_buf);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
         // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
+        panic();
         return result;
     }
 
@@ -468,7 +468,7 @@ int secure_receive(uint8_t* buffer) {
     if (result <= 0) {
         // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
+        panic();
         return result;
     }
 
