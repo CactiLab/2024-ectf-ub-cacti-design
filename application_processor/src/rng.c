@@ -47,6 +47,7 @@ int rng_get_bytes(uint8_t* buffer, int size) {
  * This function is called when a critical error occurs. It disables interrupts and enters an infinite loop.
  */
 void __attribute__((noreturn)) panic(void) {
+    enable_defense_bit();
     cancel_continuous_timer();
     __disable_irq();
 
