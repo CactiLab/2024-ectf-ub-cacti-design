@@ -38,11 +38,15 @@
 //*****************************************************************************
 
 #include "mpu_init.h"
-#include "max78000.h"
+#include "mxc_device.h"
 #include <stdint.h>
 
 #define MPU_RGN_SIZE_224K                                                      \
     (MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_32K)
+
+#define NORMAL (8 << 16)		 // TEX:0b001 S:0b0 C:0b0 B:0b0
+#define FULL_ACCESS (0x03 << 24) // Privileged Read Write, Unprivileged Read Write
+#define NOT_EXEC (0x01 << 28)	 // All Instruction fetches abort
 
 void MPUEnable(uint32_t ui32MPUConfig) {
     //
@@ -93,9 +97,10 @@ void MPURegionSet(uint32_t ui32Region, uint32_t ui32Addr, uint32_t ui32Flags) {
     // and B bits to fixed values that are suitable for all Tiva C and
     // E Series memory.
     //
-    HWREG(NVIC_MPU_ATTR) =
-        ((ui32Flags & ~(NVIC_MPU_ATTR_TEX_M | NVIC_MPU_ATTR_CACHEABLE)) |
-         NVIC_MPU_ATTR_SHAREABLE | NVIC_MPU_ATTR_BUFFRABLE);
+    // HWREG(NVIC_MPU_ATTR) =
+    //     ((ui32Flags & ~(NVIC_MPU_ATTR_TEX_M | NVIC_MPU_ATTR_CACHEABLE)) |
+    //      NVIC_MPU_ATTR_SHAREABLE | NVIC_MPU_ATTR_BUFFRABLE);
+    HWREG(NVIC_MPU_ATTR) = ui32Flags;
 }
 
 void MPURegionEnable(uint32_t ui32Region) {
@@ -146,33 +151,39 @@ void mpu_init() {
         return;
     }
 
-    MPUDisable();
+    ARM_MPU_Disable();
 
     // 0x1000E000 to 0x10045FFF - Firmware (executable, read-only)
-    MPURegionSet(0, 0x1000E000,
-                 MPU_RGN_SIZE_224K | MPU_RGN_PERM_EXEC |
-                     MPU_RGN_PERM_PRV_RO_USR_NO | MPU_RGN_ENABLE);
-    MPURegionEnable(0);
+    // MPURegionSet(0, 0x1000E000,
+    //              MPU_RGN_SIZE_224K | MPU_RGN_PERM_EXEC |
+    //                  MPU_RGN_PERM_PRV_RO_USR_NO | MPU_RGN_ENABLE);
+    // MPURegionEnable(0);
+
+    MPU->RBAR = 0x1000E000 | NVIC_MPU_BASE_VALID | 0;
+    MPU->RASR = MPU_RGN_ENABLE | MPU_RGN_SIZE_224K | NORMAL | ARM_MPU_AP_PRO;
+
     // 0x1007C000 to 0x1007DFFF - Flash status data (no-execute, read/write)
-    MPURegionSet(1, 0x1007C000,
-                 MPU_RGN_SIZE_8K | MPU_RGN_PERM_NOEXEC |
-                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
-    MPURegionEnable(1);
-    // 0x20000000 to 0x2001FFFF - SRAM region (no-execute, read/write)
-    MPURegionSet(2, 0x20000000,
-                 MPU_RGN_SIZE_128K | MPU_RGN_PERM_NOEXEC |
-                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
-    MPURegionEnable(2);
-    // 0x40000000 to 0x80000000 - MMIO peripherals
-    MPURegionSet(3, 0x40000000,
-                 MPU_RGN_SIZE_1G | MPU_RGN_PERM_NOEXEC |
-                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
-    MPURegionEnable(3);
+    // MPURegionSet(1, 0x1007C000,
+    //              MPU_RGN_SIZE_8K | MPU_RGN_PERM_NOEXEC |
+    //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    // MPURegionEnable(1);
+    // // 0x20000000 to 0x2001FFFF - SRAM region (no-execute, read/write)
+    // MPURegionSet(2, 0x20000000,
+    //              MPU_RGN_SIZE_128K | MPU_RGN_PERM_NOEXEC |
+    //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    // MPURegionEnable(2);
+    // // 0x40000000 to 0x80000000 - MMIO peripherals
+    // MPURegionSet(3, 0x40000000,
+    //              MPU_RGN_SIZE_1G | MPU_RGN_PERM_NOEXEC |
+    //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    // MPURegionEnable(3);
+
+   for (uint32_t i = 1; i < MPURegionCountGet(); i++)
+   {
+      ARM_MPU_ClrRegion(i);
+   }
 
     // Enable the Memory Protection Unit
-    MPUIntRegister(mpu_handler);
-    MPUEnable(MPU_CONFIG_PRIV_DEFAULT);
+    ARM_MPU_Enable(MPU_CONFIG_PRIV_DEFAULT);
 
-    __asm("dsb");
-    __asm("isb");
 }
