@@ -1082,12 +1082,6 @@ void attempt_boot1() {
     crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
     print_success("Boot\n");
 
-    // original
-    // Print boot message
-    // This always needs to be printed when booting
-    // print_info("AP>%s\n", AP_BOOT_MSG);
-    // print_success("Boot\n");
-
     // Boot
     boot();
 }
@@ -1172,7 +1166,6 @@ void attempt_replace() {
     }
 
     // Component Out was not found
-    // print_error("Component 0x%08x is not provisioned for the system\r\n", component_id_out);
     defense_mode();
 }
 
@@ -1250,8 +1243,6 @@ void attempt_attest() {
 
 /*********************************** MAIN *************************************/
 
-// TODO: how to use panic? double-if, timeout
-// TODO: inline functions? like boot?
 int main() {
     // Initialize board
     init();
