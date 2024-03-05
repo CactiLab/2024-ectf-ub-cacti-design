@@ -514,9 +514,9 @@ int secure_receive(uint8_t* buffer) {
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
     // clear the buffers
-    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
 
     // save the plain message
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
