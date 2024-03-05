@@ -16,8 +16,6 @@
 // Print a message through USB UART and then receive a line over USB UART
 // TODO: vulnerable function
 void recv_input(const char *msg, char *buf) {
-    // print_debug(msg);
-    // fflush(0);
     print_ack();
     fgets(buf, HOST_MESSAGE_MAX_LENGTH, stdin);
     for (int i = 0; i < HOST_MESSAGE_MAX_LENGTH; ++i) {
@@ -26,13 +24,12 @@ void recv_input(const char *msg, char *buf) {
             break;
         }
     }
-    // puts("");
 }
 
 // Prints a buffer of bytes as a hex string
 // TODO: we may need to remove this function
-void print_hex(uint8_t *buf, size_t len) {
-    for (int i = 0; i < len; i++)
-    	printf("0x%02x, ", buf[i]);
-    printf("\n");
-}
+// void print_hex(uint8_t *buf, size_t len) {
+//     for (int i = 0; i < len; i++)
+//     	printf("0x%02x, ", buf[i]);
+//     printf("\n");
+// }

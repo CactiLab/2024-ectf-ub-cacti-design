@@ -83,10 +83,9 @@ extern int timer_count_limit;
 #define AEAD_MAC_SIZE           16
 #define BOOT_MSG_PLAIN_TEXT_SIZE        128
 #define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + AEAD_MAC_SIZE
-// #define print_info(...) printf("%%info: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
-// #define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
 
 // system mode
+// when in the defense mode, system will be delayed for 4 seconds
 typedef enum {
     SYS_MODE_NORMAL,
     SYS_MODE_DEFENSE
@@ -99,7 +98,7 @@ typedef struct {
     uint8_t ap_pub_key[PUB_KEY_SIZE];
     uint8_t cipher_attest_data[CIPHER_ATTESTATION_DATA_LEN_ROUND];
     uint8_t cipher_boot_text[BOOT_MSG_CIPHER_TEXT_SIZE];
-    uint32_t mode;   // 0: normal, 1: defense
+    uint32_t mode;   // 0: normal, 1: defense, refers to system_modes
 } flash_entry;
 
 // Commands received by Component using 32 bit integer
@@ -115,7 +114,7 @@ typedef enum {
 } component_cmd_t;
 
 /******************************** TYPE DEFINITIONS ********************************/
-// Data structure for receiving messages from the AP
+// Data structure for receiving (or "sending") messages from the AP
 typedef struct {
     uint8_t opcode;
     uint8_t params[MAX_I2C_MESSAGE_LEN-1];
@@ -151,7 +150,6 @@ typedef struct __attribute__((packed)) {
 void component_process_cmd(void);
 void process_boot(void);
 void process_scan(void);
-void process_validate(void);
 void process_attest(void);
 
 /********************************* GLOBAL VARIABLES **********************************/
@@ -213,6 +211,8 @@ void retrive_boot_cipher() {
     flash_simple_read(FLASH_ADDR + CIPHER_BOOT_TEXT_OFFSET, (uint32_t*)flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
 }
 
+// write current value in flast_status to the flash memory
+// for defense/normal mode for the current design
 #define WRITE_FLASH_MEMORY  \
     retrive_ap_pub_key();   \
     retrive_cp_priv_key();  \
@@ -230,8 +230,6 @@ void retrive_boot_cipher() {
  * delay 4 seconds
 */
 void defense_mode() {
-    // LED_On(LED1);
-    // printf("defense\n");
     __disable_irq();
     cancel_continuous_timer();
     flash_status.mode = SYS_MODE_DEFENSE;
@@ -240,9 +238,11 @@ void defense_mode() {
     flash_status.mode = SYS_MODE_NORMAL;
     WRITE_FLASH_MEMORY;
     __enable_irq();
-    // LED_Off(LED1);
 }
 
+/**
+ * Set the system to defense mode, but do not delay
+*/
 void enable_defense_bit() {
     __disable_irq();
     cancel_continuous_timer();
@@ -297,8 +297,6 @@ void init() {
 
     // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {
-        // printf("First boot, setting flash!\n");
-
         flash_status.flash_magic = FLASH_MAGIC;
 
         uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
@@ -334,19 +332,7 @@ void init() {
     if(rng_init() != E_NO_ERROR) {
         panic();
     }
-
-    // LED_On(LED2);
 }
-
-// void print_hex(uint8_t *buf, size_t len) {
-//     for (int i = 0; i < len; i++)
-//     	printf("%02x", buf[i]);
-//     printf("\n");
-// }
-
-// #define print_debug(...) printf("%%debug: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
-// #define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
-// #define print_hex_debug(...) printf("%%debug: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
 
 typedef struct __attribute__((packed)) {
     uint8_t cmd_label;
@@ -551,60 +537,8 @@ void boot() {
         POST_BOOT
     #else
 
-    // test 1
-    // printf("starting test 1 post-boot\n");
-    // uint8_t buffer[256];
-    // int r = secure_receive(buffer);
-    // printf("buffer=%s\n", buffer);
-    // print_hex(buffer, r);
-
-    // test 2
-    // printf("starting test 2 post-boot\n");
-    // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
-    // // uint8_t buffer[1] = {0};
-    // secure_send(buffer, sizeof(buffer));
-
-    // test 3
-    // uint8_t buffer1[256];
-    // uint8_t buffer2[] = "I love you.";
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-
-    // test 4
-    // uint8_t buffer1[256];
-    // uint8_t buffer2[] = "ectf{testing_1afa95d5de6bea59}";
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-    // secure_receive(buffer1);
-    // secure_send(buffer2, sizeof(buffer2));
-
-    // Anything after this macro can be changed by your design
-    // but will not be run on provisioned systems
-    // LED_Off(LED1);
-    // LED_Off(LED2);
-    // LED_Off(LED3);
-    // LED loop to show that boot occurred
     while (1) {
-        // LED_On(LED1);
-        // MXC_Delay(500000);
-        // LED_On(LED2);
-        // MXC_Delay(500000);
-        // LED_On(LED3);
-        // MXC_Delay(500000);
-        // LED_Off(LED1);
-        // MXC_Delay(500000);
-        // LED_Off(LED2);
-        // MXC_Delay(500000);
-        // LED_Off(LED3);
-        // MXC_Delay(500000);
+        // do nothing
     }
     #endif
 }
@@ -732,7 +666,6 @@ void component_process_cmd() {
         process_attest();
         break;
     default:
-        // printf("Error: Unrecognized command received %d\n", command->opcode);
         defense_mode();
         break;
     }
@@ -806,9 +739,7 @@ void process_attest() {
 int main(void) {
     // Initialize board
     init();
-
-    // printf("Component Started\n");
-
+    
     while (1) {
         wait_and_receive_packet(global_buffer_recv);
 

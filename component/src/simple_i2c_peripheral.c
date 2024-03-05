@@ -12,6 +12,7 @@
  */
 
 #include "simple_i2c_peripheral.h"
+#include "common.h"
 
 /******************************** GLOBAL DEFINITIONS ********************************/
 // Data for all of the I2C registers
@@ -62,6 +63,7 @@ int i2c_simple_peripheral_init(uint8_t addr) {
     error = MXC_I2C_Init(I2C_INTERFACE, false, addr);
     if (error != E_NO_ERROR) {
         printf("Failed to initialize I2C.\n");
+        panic();
         return error;
     }
     

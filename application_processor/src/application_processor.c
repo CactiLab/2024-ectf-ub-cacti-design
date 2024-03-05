@@ -49,16 +49,6 @@ volatile uint8_t if_val_2;
 
 /********************************* CONSTANTS **********************************/
 
-// Passed in through ectf-params.h
-// Example of format of ectf-params.h shown here
-/*
-#define AP_PIN "123456"
-#define AP_TOKEN "0123456789abcdef"
-#define COMPONENT_IDS 0x11111124, 0x11111125
-#define COMPONENT_CNT 2
-#define AP_BOOT_MSG "Test boot message"
-*/
-
 // Flash Macros
 #define FLASH_ADDR ((MXC_FLASH_MEM_BASE + MXC_FLASH_MEM_SIZE) - (2 * MXC_FLASH_PAGE_SIZE))
 #define FLASH_MAGIC 0xDEADBEEF
@@ -68,29 +58,9 @@ volatile uint8_t if_val_2;
 #define ERROR_RETURN -1
 #define ERR_VALUE -15   // an error value that functions will never return
 
-/******************************** TYPE DEFINITIONS ********************************/
-// Data structure for sending commands to component
-// Params allows for up to MAX_I2C_MESSAGE_LEN - 1 bytes to be send
-// along with the opcode through board_link. This is not utilized by the example
-// design but can be utilized by your design.
-typedef struct {
-    uint8_t opcode;
-    uint8_t params[MAX_I2C_MESSAGE_LEN-1];
-} command_message;
-
-// Data type for receiving a validate message
-typedef struct {
-    uint32_t component_id;
-} validate_message;
-
-// Data type for receiving a scan message
-typedef struct {
-    uint32_t component_id;
-} scan_message;
-
-#define PRIV_KEY_SIZE       64
-#define PUB_KEY_SIZE        32
-#define COMPONENT_ID_SIZE   4
+#define PRIV_KEY_SIZE           64
+#define PUB_KEY_SIZE            32
+#define COMPONENT_ID_SIZE       4
 #define COMPONENT_IDS_OFFSET    offsetof(flash_entry, component_ids)
 #define AP_PRIV_KEY_OFFSET      offsetof(flash_entry, ap_priv_key)
 #define CP_PUB_KEY_OFFSET       offsetof(flash_entry, cp_pub_key)
@@ -103,22 +73,21 @@ typedef struct {
 #define AEAD_CP_BOOT_NONCE_OFFSET   offsetof(flash_entry, aead_cp_boot_nonce)
 #define AEAD_AP_BOOT_NONCE_OFFSET   offsetof(flash_entry, aead_ap_boot_nonce)
 #define AEAD_AP_BOOT_CIPHER_OFFSET  offsetof(flash_entry, aead_ap_boot_cipher)
-#define NONCE_SIZE              64
-#define SIGNATURE_SIZE          64
-#define MAX_POST_BOOT_MSG_LEN   64
-#define PIN_LEN                 6
-#define TOKEN_LEN               16
-#define HASH_KEY_LEN            128
-#define HASH_SALT_LEN           128
-#define NB_BLOCKS_PIN           108
-#define NB_BLOCKS_TOKEN         108
-#define NB_PASSES               3
-#define NB_LANES                1
-#define HASH_LEN                64
-#define HOST_INPUT_BUF_SIZE     64
-// #define CIPHER_ATTESTATION_DATA_LEN 243
-#define AEAD_MAC_SIZE           16
-#define AEAD_NONCE_SIZE         24
+#define NONCE_SIZE                      64
+#define SIGNATURE_SIZE                  64
+#define MAX_POST_BOOT_MSG_LEN           64
+#define PIN_LEN                         6
+#define TOKEN_LEN                       16
+#define HASH_KEY_LEN                    128
+#define HASH_SALT_LEN                   128
+#define NB_BLOCKS_PIN                   108
+#define NB_BLOCKS_TOKEN                 108
+#define NB_PASSES                       3
+#define NB_LANES                        1
+#define HASH_LEN                        64
+#define HOST_INPUT_BUF_SIZE             64
+#define AEAD_MAC_SIZE                   16
+#define AEAD_NONCE_SIZE                 24
 #define AEAD_KEY_SIZE                        32
 #define ATT_DATA_MAX_SIZE               64
 #define ATT_PADDING_SIZE                    16
@@ -139,7 +108,74 @@ typedef struct {
 #define ENC_ATTESTATION_MAGIC           173
 #define ENC_BOOT_MAGIC                  82
 
+
+/******************************** TYPE DEFINITIONS ********************************/
+// Data structure for sending commands to component
+// Params allows for up to MAX_I2C_MESSAGE_LEN - 1 bytes to be send
+// along with the opcode through board_link. This is not utilized by the example
+// design but can be utilized by your design.
+typedef struct {
+    uint8_t opcode;
+    uint8_t params[MAX_I2C_MESSAGE_LEN-1];
+} command_message;
+
+// Data type for receiving a scan message
+typedef struct {
+    uint32_t component_id;
+} scan_message;
+
+// Data structure for sending and receiving commands to component for more secure protocols
+// packet structure for plain text for signature contains component I2C address
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t address;
+} packet_plain_with_addr;
+
+// packet structure for plain text for signature contains compontent ID
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_plain_with_id;
+
+// packet structure for plain text for signature of transmitting message
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t address;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t msg[MAX_POST_BOOT_MSG_LEN];
+} packet_plain_msg;
+
+// packet structure for sending message
+typedef struct __attribute__((packed)) {
+    uint8_t sig_auth[SIGNATURE_SIZE];
+    uint8_t sig_msg[SIGNATURE_SIZE];
+    uint8_t msg[MAX_POST_BOOT_MSG_LEN];
+} packet_sign_sign_msg;
+
+// packet structure for reading message (post boot) request
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+} packet_read_msg;
+
+// packet structure for post boot from AP to CP
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_boot_1_ap_to_cp;
+
+// packet structure for post boot from CP to AP
+typedef struct __attribute__((packed)) {
+    uint8_t sig_auth[SIGNATURE_SIZE];
+    uint8_t nonce[NONCE_SIZE];
+} packet_boot_1_cp_to_ap;
+
+
 // system mode
+// when in the defense mode, system will be delayed for 4 seconds
 typedef enum {
     SYS_MODE_NORMAL,
     SYS_MODE_DEFENSE
@@ -161,7 +197,7 @@ typedef struct {
     uint8_t aead_cp_boot_nonce[AEAD_NONCE_SIZE];
     uint8_t aead_ap_boot_nonce[AEAD_NONCE_SIZE];
     uint8_t aead_ap_boot_cipher[BOOT_MSG_CIPHER_TEXT_SIZE];
-    uint32_t mode;   // 0: normal, 1: defense
+    uint32_t mode;   // 0: normal, 1: defense, refers to system_modes
 } flash_entry;
 
 // Datatype for commands sent to components
@@ -314,6 +350,8 @@ void retrive_aead_ap_boot_cipher_text() {
     flash_simple_read(FLASH_ADDR + AEAD_AP_BOOT_CIPHER_OFFSET, (uint32_t*)flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
 }
 
+// write current value in flast_status to the flash memory
+// for defense/normal mode and replace for the current design
 #define WRITE_FLASH_MEMORY  \
     retrive_ap_priv_key();  \
     retrive_cp_pub_key();   \
@@ -345,8 +383,6 @@ void retrive_aead_ap_boot_cipher_text() {
  * delay 4 seconds
 */
 void defense_mode() {
-    // LED_On(LED1);
-    print_info("defense\n");
     __disable_irq();
     cancel_continuous_timer();
     flash_status.mode = SYS_MODE_DEFENSE;
@@ -355,9 +391,11 @@ void defense_mode() {
     flash_status.mode = SYS_MODE_NORMAL;
     WRITE_FLASH_MEMORY;
     __enable_irq();
-    // LED_Off(LED1);
 }
 
+/**
+ * Set the system to defense mode, but do not delay
+*/
 void enable_defense_bit() {
     __disable_irq();
     cancel_continuous_timer();
@@ -398,8 +436,6 @@ void init() {
 
     // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {
-        // print_debug("First boot, setting flash!\n");
-
         flash_status.flash_magic = FLASH_MAGIC;
         flash_status.component_cnt = COMPONENT_CNT;
         uint32_t component_ids[COMPONENT_CNT] = {COMPONENT_IDS};
@@ -419,29 +455,6 @@ void init() {
         uint8_t aead_cp_nonce[] = {AEAD_NONCE_CP_BOOT};
         uint8_t aead_ap_nonce[] = {AEAD_NONCE_AP_BOOT};
         uint8_t aead_cipher_ap_boot[] = {AEAD_CIPHER_AP_BOOT};
-
-        print_hex_info(ap_private_key, PRIV_KEY_SIZE);
-        puts("");
-        print_hex_info(cp_public_key, PUB_KEY_SIZE);
-        puts("");
-        print_hex_info(ap_hash_key, HASH_KEY_LEN);
-        puts("");
-        print_hex_info(ap_hash_salt, HASH_SALT_LEN);
-        puts("");
-        print_hex_info(ap_hash_pin, HASH_LEN);
-        puts("");
-        print_hex_info(ap_hash_token, HASH_LEN);
-        puts("");
-        print_hex_info(aead_key, AEAD_KEY_SIZE);
-        puts("");
-        print_hex_info(aead_nonce, AEAD_NONCE_SIZE);
-        puts("");
-        print_hex_info(aead_cp_nonce, AEAD_NONCE_SIZE);
-        puts("");
-        print_hex_info(aead_ap_nonce, AEAD_NONCE_SIZE);
-        puts("");
-        print_hex_info(aead_cipher_ap_boot, BOOT_MSG_CIPHER_TEXT_SIZE);
-        puts("");
 
         memcpy(flash_status.ap_priv_key, ap_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.cp_pub_key, cp_public_key, PUB_KEY_SIZE);
@@ -479,10 +492,12 @@ void init() {
         crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
     }
 
+    // check if the system is in the defense mode
     if (flash_status.mode == SYS_MODE_DEFENSE) {
         defense_mode();
     }
     
+    // Initialize TRNG
     if (rng_init() != E_NO_ERROR) {
         panic();
     }
@@ -508,55 +523,6 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
     }
     return len;
 }
-
-// packet structure for plain text for signature contains component I2C address
-typedef struct __attribute__((packed)) {
-    uint8_t cmd_label;
-    uint8_t nonce[NONCE_SIZE];
-    uint8_t address;
-} packet_plain_with_addr;
-
-// packet structure for plain text for signature contains compontent ID
-typedef struct __attribute__((packed)) {
-    uint8_t cmd_label;
-    uint8_t nonce[NONCE_SIZE];
-    uint8_t id[COMPONENT_ID_SIZE];
-} packet_plain_with_id;
-
-// packet structure for plain text for signature of transmitting message
-typedef struct __attribute__((packed)) {
-    uint8_t cmd_label;
-    uint8_t address;
-    uint8_t nonce[NONCE_SIZE];
-    uint8_t msg[MAX_POST_BOOT_MSG_LEN];
-} packet_plain_msg;
-
-// packet structure for sending message
-typedef struct __attribute__((packed)) {
-    uint8_t sig_auth[SIGNATURE_SIZE];
-    uint8_t sig_msg[SIGNATURE_SIZE];
-    uint8_t msg[MAX_POST_BOOT_MSG_LEN];
-} packet_sign_sign_msg;
-
-// packet structure for reading message (post boot) request
-typedef struct __attribute__((packed)) {
-    uint8_t cmd_label;
-    uint8_t nonce[NONCE_SIZE];
-} packet_read_msg;
-
-// packet structure for post boot from AP to CP
-typedef struct __attribute__((packed)) {
-    uint8_t cmd_label;
-    uint8_t nonce[NONCE_SIZE];
-    uint8_t id[COMPONENT_ID_SIZE];
-} packet_boot_1_ap_to_cp;
-
-// packet structure for post boot from CP to AP
-typedef struct __attribute__((packed)) {
-    uint8_t sig_auth[SIGNATURE_SIZE];
-    uint8_t nonce[NONCE_SIZE];
-} packet_boot_1_cp_to_ap;
-
 
 /**
  * @brief Secure Send 
@@ -777,7 +743,6 @@ int scan_components() {
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         print_info("P>0x%08x\n", flash_status.component_ids[i]);
     }
-    // print_info("ok\n");
 
     // Buffers for board link communication
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
@@ -785,35 +750,29 @@ int scan_components() {
 
     // Scan scan command to each component 
     for (i2c_addr_t addr = 0x8; addr < 0x78; addr++) {
-        // print_info("addr=0x%x\n", addr);
         // I2C Blacklist:
         // 0x18, 0x28, and 0x36 conflict with separate devices on MAX78000FTHR
         if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
             continue;
         }
-        // print_info("scan_components 1\n");
         // Create command message 
         command_message* command = (command_message*) transmit_buffer;
         command->opcode = COMPONENT_CMD_SCAN;
-        // print_info("scan_components 2\n");
         
         // Send out command and receive result
         int len = issue_cmd(addr, transmit_buffer, receive_buffer);
-        // print_info("scan_components 3\n");
 
         // Success, device is present
         if (len > 0) {
             scan_message* scan = (scan_message*) receive_buffer;
             print_info("F>0x%08x\n", scan->component_id);
         }
-        // print_info("scan_components 4\n");
     }
     print_success("List\n");
     return SUCCESS_RETURN;
 }
 
 int attest_component(uint32_t component_id) {
-    // print_info("[DEBUG] attest id=0x%x\n", component_id);
     MXC_Delay(50);
 
     // check if component_id exists in the flash memory
@@ -847,14 +806,10 @@ int attest_component(uint32_t component_id) {
         return ERROR_RETURN;
     }
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
-    // print_info("[DEBUG] attest packet sent\n");
-    // print_hex_info(transmit_buffer, 1);
 
     // receive nonce from CP
     volatile int recv_len = poll_and_receive_packet(addr, receive_buffer);
     cancel_continuous_timer();
-    // print_info("[DEBUG] attest nonce received\n");
-    // print_hex_info(receive_buffer, recv_len);
     if (recv_len != NONCE_SIZE) {
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
@@ -895,29 +850,16 @@ int attest_component(uint32_t component_id) {
         return ERROR_RETURN;
     }
 
-    // print_info("[DEBUG] attest 2\n");
     // decrypt the attestation message
     retrive_aead_key();
     retrive_aead_nonce();
     // tweak the nonce
     convert_32_to_8(flash_status.aead_nonce, component_id);
     flash_status.aead_nonce[4] = ENC_ATTESTATION_MAGIC;
-    // print_info("nonce before hash =\n");
-    // print_hex_info(flash_status.aead_nonce, AEAD_NONCE_SIZE);
     crypto_blake2b(flash_status.aead_nonce, AEAD_NONCE_SIZE, flash_status.aead_nonce, AEAD_NONCE_SIZE);
     // decrypt
     crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
     CONDITION_NEQ_BRANCH(crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE), 0, ERR_VALUE);
-    // if (crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE) != 0) {
-        // decryption failed
-        // print_info("[DEBUG] attest 3 decyrption failed\n");
-        // print_info("key=\n");
-        // print_hex_info(flash_status.aead_key, AEAD_KEY_SIZE);
-        // print_info("nonce=\n");
-        // print_hex_info(flash_status.aead_nonce, AEAD_NONCE_SIZE);
-        // print_info("received-\n");
-        // print_hex_info(receive_buffer, ATT_FINAL_TEXT_SIZE);
-        MXC_Delay(100);
         crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
         crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
         crypto_wipe(receive_buffer, sizeof(receive_buffer));
@@ -925,12 +867,9 @@ int attest_component(uint32_t component_id) {
         crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
         defense_mode();
         return ERROR_RETURN;
-    // }
     CONDITION_BRANCH_ENDING(ERR_VALUE);
-    MXC_Delay(100);
     // decryption ok
 
-    // print_info("[DEBUG] attest 4\n");
     // wipe
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
     crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
@@ -959,57 +898,10 @@ void boot() {
     #ifdef POST_BOOT
         POST_BOOT
     #else
-    // test 1
-    // uint8_t buffer[] = "ectf{testing_1afa95d5de6bea59}";
-    // // uint8_t buffer[1] = {0};
-    // secure_send(0x24, buffer, sizeof(buffer));
 
-    // test 2
-    // uint8_t buffer[256];
-    // int r = secure_receive(0x24, buffer);
-    // printf("buffer=%s\n", buffer);
-    // print_hex(buffer, r);
-
-    // test 3
-    // uint8_t buffer1[] = "ectf{testing_1afa95d5de6bea59}";
-    // uint8_t buffer2[256];
-    // printf("1\n");
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // printf("2\n");
-    // secure_receive(0x24, buffer2);
-    // printf("3\n");
-
-    // test 4
-    // uint8_t buffer1[] = "ectf{testing_1afa95d5de6bea59}";
-    // uint8_t buffer2[256];
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    // secure_send(0x24, buffer1, sizeof(buffer1));
-    // secure_receive(0x24, buffer2);
-    
     // Everything after this point is modifiable in your design
-    // LED loop to show that boot occurred
     while (1) {
-        // LED_On(LED1);
-        // MXC_Delay(500000);
-        // LED_On(LED2);
-        // MXC_Delay(500000);
-        // LED_On(LED3);
-        // MXC_Delay(500000);
-        // LED_Off(LED1);
-        // MXC_Delay(500000);
-        // LED_Off(LED2);
-        // MXC_Delay(500000);
-        // LED_Off(LED3);
-        // MXC_Delay(500000);
+        // do nothing
     }
     #endif
 }
@@ -1032,9 +924,6 @@ void attempt_boot1() {
         packet_boot_1_ap_to_cp *pkt_send_1 = (packet_boot_1_ap_to_cp *) sending_buf;
         pkt_send_1->cmd_label = COMPONENT_CMD_BOOT;
         rng_get_bytes(pkt_send_1->nonce, NONCE_SIZE);
-
-        print_info("generated nonce=\n");
-        print_hex_info(pkt_send_1->nonce, NONCE_SIZE);
 
         convert_32_to_8(pkt_send_1->id, flash_status.component_ids[i]);
 
@@ -1061,10 +950,6 @@ void attempt_boot1() {
             return;
         }
         packet_boot_1_cp_to_ap *pkt_recv_1 = (packet_boot_1_cp_to_ap *) receiving_buf;
-
-
-        print_info("received nonce=\n");
-        print_hex_info(pkt_recv_1->nonce, NONCE_SIZE);
 
         // verify the signature
         retrive_cp_pub_key();
@@ -1211,7 +1096,6 @@ void attempt_replace() {
 
     // length check
     if (strlen(buf) != TOKEN_LEN) {
-        // print_error("Invalid Token!\n");
         crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
         defense_mode();
         return;
@@ -1249,14 +1133,12 @@ void attempt_replace() {
     // invalid token
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     crypto_wipe(hash, sizeof(hash));
-    // print_error("Invalid Token!\n");
     defense_mode();
     return;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
     // valid token
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     crypto_wipe(hash, sizeof(hash));
-    // print_debug("Token Accepted!\n");
 
     // input IDs from the host
     uint32_t component_id_in = 0;
@@ -1274,7 +1156,6 @@ void attempt_replace() {
             flash_status.component_ids[i] = component_id_in;
             WRITE_FLASH_MEMORY;
             // print replace success information
-            // print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out, component_id_in);
             print_success("Replace\n");
             MXC_Delay(500);
             return;
@@ -1298,7 +1179,6 @@ void attempt_attest() {
 
     // length check
     if (strlen(buf) != PIN_LEN) {
-        // print_error("Invalid PIN!\n");
         crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
         defense_mode();
         return;
@@ -1336,7 +1216,6 @@ void attempt_attest() {
     // an invalid PIN
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
-    // print_error("Invalid PIN!\n");
     defense_mode();
     return;
     CONDITION_BRANCH_ENDING(ERR_VALUE);
@@ -1344,7 +1223,6 @@ void attempt_attest() {
     // a valid PIN
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
-    // print_debug("Pin Accepted!\n");
 
     MXC_Delay(100);
     
@@ -1358,7 +1236,6 @@ void attempt_attest() {
     if(attest_component(component_id) == SUCCESS_RETURN) {
         print_success("Attest\n");
     } else {
-        // print_error("Attest\n");
     }
 }
 
@@ -1369,8 +1246,6 @@ void attempt_attest() {
 int main() {
     // Initialize board
     init();
-
-    // print_info("Application Processor Started\n");
 
     // Handle commands forever
     char buf[HOST_INPUT_BUF_SIZE];
@@ -1387,7 +1262,6 @@ int main() {
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
         } else {
-            // print_error("Unrecognized command '%s'\n", buf);
             defense_mode();
         }
     }

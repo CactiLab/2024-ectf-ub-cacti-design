@@ -15,7 +15,7 @@ unsigned int get_current_cpu_cycle();
 void random_delay_us(uint32_t);
 void enable_defense_bit();       // defined in application_processor.c
 
-#define RANDOM_DELAY_TINY_2 do { \
+#define RANDOM_DELAY_TINY do { \
     uint8_t non_volatile_delay_cycles; \
     volatile uint8_t delay_cycles; \
     do {    \
@@ -46,9 +46,9 @@ void enable_defense_bit();       // defined in application_processor.c
     (if_val_1 = (ERR)); \
     (if_val_2 = (ERR)); \
     if ((if_val_1 = (EXPR)) != VAL) { \
-        RANDOM_DELAY_TINY_2;    \
+        RANDOM_DELAY_TINY;    \
         if ((if_val_2 = (EXPR)) != VAL) {   \
-            RANDOM_DELAY_TINY_2;    \
+            RANDOM_DELAY_TINY;    \
 
 /**
  * Double-if, anti-glitching
@@ -61,9 +61,9 @@ void enable_defense_bit();       // defined in application_processor.c
     (if_val_1 = (ERR)); \
     (if_val_2 = (ERR)); \
     if ((if_val_1 = (EXPR)) == VAL) { \
-        RANDOM_DELAY_TINY_2;    \
+        RANDOM_DELAY_TINY;    \
         if ((if_val_2 = (EXPR)) == VAL) {   \
-            RANDOM_DELAY_TINY_2;    \
+            RANDOM_DELAY_TINY;    \
 
 /**
  * CONDITION_XXX_BRANCH and CONDITION_BRANCH_ENDING include the true-branch code
