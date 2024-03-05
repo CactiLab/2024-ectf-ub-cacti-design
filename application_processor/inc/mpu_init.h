@@ -41,6 +41,7 @@
 
 #define HWREG(x)                                                              \
         (*((volatile uint32_t *)(x)))
+#define ASSERT(expr)
 
 #define NVIC_MPU_TYPE           0xE000ED90  // MPU Type
 #define NVIC_MPU_CTRL           0xE000ED94  // MPU Control
