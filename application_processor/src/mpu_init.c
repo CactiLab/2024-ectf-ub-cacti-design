@@ -119,29 +119,6 @@ void MPURegionEnable(uint32_t ui32Region) {
     HWREG(NVIC_MPU_ATTR) |= NVIC_MPU_ATTR_ENABLE;
 }
 
-void
-MPUIntRegister(void (*pfnHandler)(void))
-{
-    //
-    // Check the arguments.
-    //
-    ASSERT(pfnHandler);
-
-    //
-    // Register the interrupt handler.
-    //
-    MXC_NVIC_SetVector(MemoryManagement_IRQn, pfnHandler);
-
-    //
-    // Enable the memory management fault.
-    //
-    NVIC_EnableIRQ(MemoryManagement_IRQn);
-}
-
-void mpu_handler(void)
-{
-    ASSERT(MPU_RGN_SIZE_16K);
-}
 
 void mpu_init() {
     __asm("dmb");
@@ -158,20 +135,17 @@ void mpu_init() {
                      MPU_RGN_PERM_PRV_RO_USR_NO | MPU_RGN_ENABLE);
     MPURegionEnable(0);
 
-    // MPU->RBAR = 0x1000E000 | NVIC_MPU_BASE_VALID | 0;
-    // MPU->RASR = MPU_RGN_ENABLE | MPU_RGN_SIZE_224K | NORMAL | ARM_MPU_AP_PRO;
-
     // 0x1007C000 to 0x1007DFFF - Flash status data (no-execute, read/write)
-    // MPURegionSet(1, 0x1007C000,
-    //              MPU_RGN_SIZE_8K | MPU_RGN_PERM_NOEXEC |
-    //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
-    // MPURegionEnable(1);
-    // // 0x20000000 to 0x2001FFFF - SRAM region (no-execute, read/write)
-    // MPURegionSet(2, 0x20000000,
-    //              MPU_RGN_SIZE_128K | MPU_RGN_PERM_NOEXEC |
-    //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
-    // MPURegionEnable(2);
-    // // 0x40000000 to 0x80000000 - MMIO peripherals
+    MPURegionSet(1, 0x1007C000,
+                 MPU_RGN_SIZE_8K | MPU_RGN_PERM_NOEXEC |
+                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    MPURegionEnable(1);
+    // 0x20000000 to 0x2001FFFF - SRAM region (no-execute, read/write)
+    MPURegionSet(2, 0x20000000,
+                 MPU_RGN_SIZE_128K | MPU_RGN_PERM_NOEXEC |
+                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    MPURegionEnable(2);
+    // 0x40000000 to 0x80000000 - MMIO peripherals
     // MPURegionSet(3, 0x40000000,
     //              MPU_RGN_SIZE_1G | MPU_RGN_PERM_NOEXEC |
     //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
