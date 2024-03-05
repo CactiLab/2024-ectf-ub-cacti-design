@@ -96,6 +96,7 @@ int poll_and_receive_packet(i2c_addr_t address, uint8_t* packet) {
         return ERROR_RETURN;
     }
     if (len > MAX_I2C_MESSAGE_LEN) {
+        enable_defense_bit();
         panic();
     }
     result = i2c_simple_read_data_generic(address, TRANSMIT, (uint8_t)len, packet);
