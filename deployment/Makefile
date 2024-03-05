@@ -15,11 +15,11 @@ all: keygen aead_keygen
 global_secrets.h:
 	echo "#define SECRET 1234" > global_secrets.h
 
-gen_key: gen_key.c
-	gcc -o gen_key.elf gen_key.c -I$(MBEDTLS_PATH)/include -L$(MBEDTLS_PATH)/lib -lmbedtls -lmbedx509 -lmbedcrypto
+# gen_key: gen_key.c
+# 	gcc -o gen_key.elf gen_key.c -I$(MBEDTLS_PATH)/include -L$(MBEDTLS_PATH)/lib -lmbedtls -lmbedx509 -lmbedcrypto
 
-ecdsa: ecdsa.c
-	gcc -o ecdsa.elf ecdsa.c -I$(MBEDTLS_PATH)/include -L$(MBEDTLS_PATH)/lib -lmbedtls -lmbedx509 -lmbedcrypto
+# ecdsa: ecdsa.c
+# 	gcc -o ecdsa.elf ecdsa.c -I$(MBEDTLS_PATH)/include -L$(MBEDTLS_PATH)/lib -lmbedtls -lmbedx509 -lmbedcrypto
 
 test: test.c monocypher.c
 	gcc -o test.elf test.c monocypher.c
