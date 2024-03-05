@@ -41,7 +41,7 @@
 #include <stdint.h>
 
 #define MPU_RGN_SIZE_224K                                                      \
-    MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_32K
+    (MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_32K)
 
 void MPUEnable(uint32_t ui32MPUConfig) {
     //
