@@ -30,6 +30,7 @@
 #include "monocypher.h"
 
 #include "timer.h"
+#include "mpu_init.h"
 
 // Includes from containerized build
 #include "ectf_params.h"
@@ -285,7 +286,9 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
  * This function must be called on startup to initialize the flash and i2c interfaces.
  */
 void init() {
-
+    // Initialize the MPU
+    mpu_init();
+    
     // Enable global interrupts    
     __enable_irq();
 
