@@ -499,11 +499,13 @@ void init() {
     
     // Initialize TRNG
     if (rng_init() != E_NO_ERROR) {
+        enable_defense_bit();
         panic();
     }
 
     // Initialize board link interface
     if (board_link_init() != E_NO_ERROR) {
+        enable_defense_bit();
         panic();
     }
 }
@@ -540,6 +542,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // check the given sending lenth
     if (len > MAX_POST_BOOT_MSG_LEN) {
+        enable_defense_bit();
         panic();
         return ERROR_RETURN;
     }
@@ -560,6 +563,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result == ERROR_RETURN) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        enable_defense_bit();
         panic();
         return ERROR_RETURN;
     }
@@ -603,6 +607,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+        enable_defense_bit();
         panic();
         return ERROR_RETURN;
     }
@@ -662,6 +667,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
+        enable_defense_bit();
         panic();
         return recv_len;
     }
@@ -802,6 +808,7 @@ int attest_component(uint32_t component_id) {
     result = send_packet(addr, 1, transmit_buffer);
     if (result == ERROR_RETURN) {
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        enable_defense_bit();
         panic();
         return ERROR_RETURN;
     }
@@ -813,6 +820,7 @@ int attest_component(uint32_t component_id) {
     if (recv_len != NONCE_SIZE) {
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        enable_defense_bit();
         panic();
         return ERROR_RETURN;
     }
@@ -933,6 +941,7 @@ void attempt_boot1() {
         if (result == ERROR_RETURN) {
             crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
+            enable_defense_bit();
             panic();
             return;
         }
@@ -996,7 +1005,7 @@ void attempt_boot1() {
         if (result == ERROR_RETURN) {
             crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            // defense_mode();
+            enable_defense_bit();
             panic();
             return;
         }
@@ -1007,7 +1016,7 @@ void attempt_boot1() {
         if (recv_len < 0) {
             crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            // defense_mode();
+            enable_defense_bit();
             panic();
             return;
         }
