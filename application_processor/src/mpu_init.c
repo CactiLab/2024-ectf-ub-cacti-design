@@ -38,6 +38,7 @@
 //*****************************************************************************
 
 #include "mpu_init.h"
+#include "max78000.h"
 #include <stdint.h>
 
 #define MPU_RGN_SIZE_224K                                                      \
