@@ -114,6 +114,25 @@ void MPURegionEnable(uint32_t ui32Region) {
     HWREG(NVIC_MPU_ATTR) |= NVIC_MPU_ATTR_ENABLE;
 }
 
+void
+MPUIntRegister(void (*pfnHandler)(void))
+{
+    //
+    // Check the arguments.
+    //
+    ASSERT(pfnHandler);
+
+    //
+    // Register the interrupt handler.
+    //
+    MXC_NVIC_SetVector(MemoryManagement_IRQn, pfnHandler);
+
+    //
+    // Enable the memory management fault.
+    //
+    NVIC_EnableIRQ(MemoryManagement_IRQn);
+}
+
 void mpu_handler(void)
 {
     ASSERT(MPU_RGN_SIZE_16K);
