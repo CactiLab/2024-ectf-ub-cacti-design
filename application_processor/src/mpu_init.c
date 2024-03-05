@@ -40,6 +40,9 @@
 #include "mpu_init.h"
 #include <stdint.h>
 
+#define MPU_RGN_SIZE_224K                                                      \
+    MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_64K + MPU_RGN_SIZE_32K
+
 void MPUEnable(uint32_t ui32MPUConfig) {
     //
     // Check the arguments.
@@ -103,18 +106,23 @@ void MPURegionEnable(uint32_t ui32Region) {
 }
 
 void mpu_init() {
-    // 0x1000E000 to 0x1004E000 - Firmware (executable, read-only)
+    __asm("dmb");
+
+    // 0x1000E000 to 0x10045FFF - Firmware (executable, read-only)
     MPURegionSet(0, 0x1000E000,
-                 MPU_RGN_SIZE_256K | MPU_RGN_PERM_EXEC |
+                 MPU_RGN_SIZE_224K | MPU_RGN_PERM_EXEC |
                      MPU_RGN_PERM_PRV_RO_USR_NO | MPU_RGN_ENABLE);
-    // 0x1007C000 to 0x1007E000 - Flash status data (no-execute, read/write)
-    MPURegionSet(1, 0x1007C000,
-                 MPU_RGN_SIZE_4K | MPU_RGN_PERM_NOEXEC |
-                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
-    // 0x20000000 to 0x20020000 - SRAM region (no-execute, read/write)
-    MPURegionSet(2, 0x20000000,
+    // 0x1007C000 to 0x1007DFFF - Flash status data (no-execute, read/write)
+    // MPURegionSet(1, 0x1007C000,
+    //              MPU_RGN_SIZE_4K | MPU_RGN_PERM_NOEXEC |
+    //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    // 0x20000000 to 0x2001FFFF - SRAM region (no-execute, read/write)
+    MPURegionSet(1, 0x20000000,
                  MPU_RGN_SIZE_128K | MPU_RGN_PERM_NOEXEC |
                      MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
     // Enable the Memory Protection Unit
     MPUEnable(MPU_CONFIG_HARDFLT_NMI);
+
+    __asm("dsb");
+    __asm("isb");
 }
