@@ -420,6 +420,29 @@ void init() {
         uint8_t aead_ap_nonce[] = {AEAD_NONCE_AP_BOOT};
         uint8_t aead_cipher_ap_boot[] = {AEAD_CIPHER_AP_BOOT};
 
+        print_hex_info(ap_private_key, PRIV_KEY_SIZE);
+        puts("");
+        print_hex_info(cp_public_key, PUB_KEY_SIZE);
+        puts("");
+        print_hex_info(ap_hash_key, HASH_KEY_LEN);
+        puts("");
+        print_hex_info(ap_hash_salt, HASH_SALT_LEN);
+        puts("");
+        print_hex_info(ap_hash_pin, HASH_LEN);
+        puts("");
+        print_hex_info(ap_hash_token, HASH_LEN);
+        puts("");
+        print_hex_info(aead_key, AEAD_KEY_SIZE);
+        puts("");
+        print_hex_info(aead_nonce, AEAD_NONCE_SIZE);
+        puts("");
+        print_hex_info(aead_cp_nonce, AEAD_NONCE_SIZE);
+        puts("");
+        print_hex_info(aead_ap_nonce, AEAD_NONCE_SIZE);
+        puts("");
+        print_hex_info(aead_cipher_ap_boot, BOOT_MSG_CIPHER_TEXT_SIZE);
+        puts("");
+
         memcpy(flash_status.ap_priv_key, ap_private_key, PRIV_KEY_SIZE);
         memcpy(flash_status.cp_pub_key, cp_public_key, PUB_KEY_SIZE);
         memcpy(flash_status.hash_key, ap_hash_key, HASH_KEY_LEN);
@@ -1009,6 +1032,10 @@ void attempt_boot1() {
         packet_boot_1_ap_to_cp *pkt_send_1 = (packet_boot_1_ap_to_cp *) sending_buf;
         pkt_send_1->cmd_label = COMPONENT_CMD_BOOT;
         rng_get_bytes(pkt_send_1->nonce, NONCE_SIZE);
+
+        print_info("generated nonce=\n");
+        print_hex_info(pkt_send_1->nonce, NONCE_SIZE);
+
         convert_32_to_8(pkt_send_1->id, flash_status.component_ids[i]);
 
         // send the pakcet (boot command + nonce + id)
@@ -1034,6 +1061,10 @@ void attempt_boot1() {
             return;
         }
         packet_boot_1_cp_to_ap *pkt_recv_1 = (packet_boot_1_cp_to_ap *) receiving_buf;
+
+
+        print_info("received nonce=\n");
+        print_hex_info(pkt_recv_1->nonce, NONCE_SIZE);
 
         // verify the signature
         retrive_cp_pub_key();

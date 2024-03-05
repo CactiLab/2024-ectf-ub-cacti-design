@@ -29,7 +29,8 @@ def parse_and_modify_header(header_path, cp_priv_key, ap_pub_key, aead_enc, aead
         for line in lines:
             if line.strip().startswith('#endif'):
                 break
-            file.write(line)
+            if 'COMPONENT_BOOT_MSG' not in line and 'ATTESTATION' not in line:
+                file.write(line)
         # for line in lines:
         #     if not line.strip() or line.strip().startswith('#'):
         #         file.write(line)
