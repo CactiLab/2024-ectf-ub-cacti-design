@@ -64,6 +64,15 @@ void MPUDisable(void) {
     HWREG(NVIC_MPU_CTRL) &= ~NVIC_MPU_CTRL_ENABLE;
 }
 
+uint32_t MPURegionCountGet(void) {
+    //
+    // Read the DREGION field of the MPU type register and mask off
+    // the bits of interest to get the count of regions.
+    //
+    return ((HWREG(NVIC_MPU_TYPE) & NVIC_MPU_TYPE_DREGION_M) >>
+            NVIC_MPU_TYPE_DREGION_S);
+}
+
 void MPURegionSet(uint32_t ui32Region, uint32_t ui32Addr, uint32_t ui32Flags) {
     //
     // Check the arguments.
@@ -108,17 +117,25 @@ void MPURegionEnable(uint32_t ui32Region) {
 void mpu_init() {
     __asm("dmb");
 
+    if (MPURegionCountGet() < 8) {
+        return;
+    }
+
     // 0x1000E000 to 0x10045FFF - Firmware (executable, read-only)
     MPURegionSet(0, 0x1000E000,
                  MPU_RGN_SIZE_224K | MPU_RGN_PERM_EXEC |
                      MPU_RGN_PERM_PRV_RO_USR_NO | MPU_RGN_ENABLE);
     // 0x1007C000 to 0x1007DFFF - Flash status data (no-execute, read/write)
-    // MPURegionSet(1, 0x1007C000,
-    //              MPU_RGN_SIZE_4K | MPU_RGN_PERM_NOEXEC |
-    //                  MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    MPURegionSet(1, 0x1007C000,
+                 MPU_RGN_SIZE_8K | MPU_RGN_PERM_NOEXEC |
+                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
     // 0x20000000 to 0x2001FFFF - SRAM region (no-execute, read/write)
-    MPURegionSet(1, 0x20000000,
+    MPURegionSet(2, 0x20000000,
                  MPU_RGN_SIZE_128K | MPU_RGN_PERM_NOEXEC |
+                     MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
+    // 0x40000000 to 0x80000000 - MMIO peripherals
+    MPURegionSet(3, 0x40000000,
+                 MPU_RGN_SIZE_1G | MPU_RGN_PERM_NOEXEC |
                      MPU_RGN_PERM_PRV_RW_USR_NO | MPU_RGN_ENABLE);
     // Enable the Memory Protection Unit
     MPUEnable(MPU_CONFIG_HARDFLT_NMI);
