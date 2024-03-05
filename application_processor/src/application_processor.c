@@ -653,6 +653,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     if (result == ERROR_RETURN) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
+        enable_defense_bit();
         panic();
         return ERROR_RETURN;
     }
