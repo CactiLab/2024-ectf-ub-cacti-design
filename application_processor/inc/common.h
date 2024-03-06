@@ -20,7 +20,6 @@ void enable_defense_bit();       // defined in application_processor.c
     volatile uint8_t delay_cycles; \
     do {    \
         if (rng_get_bytes(&non_volatile_delay_cycles, sizeof(non_volatile_delay_cycles)) != 0) { \
-            enable_defense_bit();   \
             panic(); /* Handle TRNG failure */ \
         } \
     } while(!non_volatile_delay_cycles);   \
@@ -32,7 +31,6 @@ void enable_defense_bit();       // defined in application_processor.c
         dummy_var_2 |= i;   \
     } \
     if ((dummy_var | dummy_var_2) == 0) { \
-        enable_defense_bit();   \
         panic();    \
     }   \
 } while(0)
@@ -75,7 +73,6 @@ void enable_defense_bit();       // defined in application_processor.c
         }   \
     }   \
     if ((if_val_1 == (ERR)) || (if_val_2 == (ERR))) {   \
-        enable_defense_bit();   \
         panic();    \
     }   \
 

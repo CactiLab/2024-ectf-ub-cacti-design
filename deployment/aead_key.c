@@ -38,12 +38,6 @@ void get_rand(uint8_t* buffer, int size) {
     close(urandom);
 }
 
-void print_hex(uint8_t *buf, size_t len) {
-    for (int i = 0; i < len; i++)
-    	printf("%02x", buf[i]);
-    printf("\n");
-}
-
 int main(int argc, char *argv[]) {
     // check args quantity
     if (argc != 4) {
