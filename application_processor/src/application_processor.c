@@ -1239,9 +1239,8 @@ int main() {
     // Initialize board
     init();
 
-    // Delay up to 0.5 second
-    random_delay_us(300000);
-    MXC_Delay(200000);
+    // Delay for 0.5 second
+    MXC_Delay(500000);
     
 
     // Handle commands forever
