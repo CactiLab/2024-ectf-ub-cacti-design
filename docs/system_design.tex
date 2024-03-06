@@ -346,6 +346,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	This functionality requires the AP to test if all the provisioned CPs are present and valid before the AP boots.
 	The AP sends commands to all the CPs to let them boot,
 	and the CPs must ensure that the boot command is from the valid AP before booting.
+	The boot messages of both AP and CP are encrypted,
+	so decryption is necessary when printing the boot message when booting.
 	
 	\begin{figure}[h]
 		\centering
