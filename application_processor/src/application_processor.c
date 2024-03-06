@@ -1038,7 +1038,6 @@ void attempt_boot1() {
         print_info("0x%08x>%s\n", flash_status.component_ids[i], cp_boot_msg);
         crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
 
-        // print_info("0x%08x>%s\n", flash_status.component_ids[i], receiving_buf);
         MXC_Delay(50);
     }
 

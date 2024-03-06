@@ -619,12 +619,6 @@ void process_boot() {
     MXC_Delay(30);
     crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
 
-    // original
-    // respond with the boot message
-    // uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
-    // memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
-    // send_packet_and_ack(len, transmit_buffer);
-
     // clear buffers
     crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
