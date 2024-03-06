@@ -165,7 +165,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	it sends the encrypted boot message to AP,
 	and AP decrypts it.
 	When the AP boots,
-	it retrieve and decrypts the boot message.
+	it retrieves and decrypts the boot message.
 	
 	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionalities or other CPs).
 	
@@ -384,8 +384,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item After receiving the response from the AP,
 		the CP verifies the response by using the \texttt{K\_Pub1}.
 		The CP will boot up if verification passes.
-		\item The CP retrieves and sends encrypted CP boot message to AP, and AP decrypts it and sends to the host computer.
-		\item The AP retrieve and decrypts the AP boot message and send to the host computer.
+		\item The CP retrieves and sends the encrypted CP boot message to AP, and AP decrypts it and sends it to the host computer.
+		\item The AP retrieves and decrypts the AP boot message and sends it to the host computer.
 	\end{enumerate}
 	
 	\subsubsection{Replace}
