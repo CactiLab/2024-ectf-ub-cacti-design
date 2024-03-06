@@ -260,7 +260,6 @@ int i2c_simple_read_status_generic(i2c_addr_t addr, ECTF_I2C_REGS reg) {
     request.restart = 0;
     request.callback = NULL;
 
-    // TODO: handle return value == 1
     int result = MXC_I2C_MasterTransaction(&request);
     if (result < 0) {
         return result;
