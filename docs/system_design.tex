@@ -160,6 +160,13 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	For a CP,
 	it will verify the response from the AP using the first public key and boot up if verification passes.
 	
+	The boot messages will be stored as encrypted text in both AP and CP.
+	When a CP boots,
+	it sends the encrypted boot message to AP,
+	and AP decrypts it.
+	When the AP boots,
+	it retrieve and decrypts the boot message.
+	
 	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionalities or other CPs).
 	
 	\subsection{SR3}
@@ -354,11 +361,11 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		the AP generates a nonce as the challenge.
 		It then sends the \texttt{boot} command,
 		challenge,
-		and the corresponding CP address to the corresponding CP.
+		and the corresponding CP ID.
 		\item After receiving the boot command and the challenge,
 		the CP makes up the response by signing a boot purpose label,
 		the challenge,
-		along with the CP address using the \texttt{K\_Pri2} key.
+		along with the CP ID using the \texttt{K\_Pri2} key.
 		It then creates a new challenge by generating a nonce and puts the response and new challenge to the I2C buffer waiting for the AP to read.
 		\item The AP reads the response from the CP and verifies the response using the \texttt{K\_Pub2}.
 		It checks if the purpose label is for booting,
@@ -376,6 +383,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item After receiving the response from the AP,
 		the CP verifies the response by using the \texttt{K\_Pub1}.
 		The CP will boot up if verification passes.
+		\item The CP retrieves and sends encrypted CP boot message to AP, and AP decrypts it and sends to the host computer.
+		\item The AP retrieve and decrypts the AP boot message and send to the host computer.
 	\end{enumerate}
 	
 	\subsubsection{Replace}
