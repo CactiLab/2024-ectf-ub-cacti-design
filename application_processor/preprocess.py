@@ -131,12 +131,7 @@ def main():
     
     cp_ids, cp_cnt, ap_pin, ap_token = parse_and_modify_header(args.header_file, priv_key, pub_key, hash_key, hash_salt, hash_pin, hash_token, aead_key, aead_nonce, aead_nonce_cp_boot, aead_nonce_ap_boot, aead_cipher_ap_boot)
     
-    if ap_pin and ap_token and cp_ids and cp_cnt:
-        print(f"AP_PIN: {ap_pin}")
-        print(f"AP_TOKEN: {ap_token}")
-        print(f"COMPONENT_IDS: {cp_ids}")
-        print(f"COMPONENT_CNT: {cp_cnt}")
-    else:
+    if not (ap_pin and ap_token and cp_ids and cp_cnt):
         print("Error: Could not find AP_PIN, AP_TOKEN, COMPONENT_IDS, or COMPONENT_CNT in header file.")
 
 if __name__ == "__main__":

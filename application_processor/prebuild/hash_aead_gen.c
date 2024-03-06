@@ -58,12 +58,6 @@ void get_rand(uint8_t* buffer, int size) {
     close(urandom);
 }
 
-void print_hex(uint8_t *buf, size_t len) {
-    for (int i = 0; i < len; i++)
-    	printf("%02x", buf[i]);
-    printf("\n");
-}
-
 int main(int argc, char *argv[]) {
     // param check
     if (argc != 8) {
@@ -104,9 +98,6 @@ int main(int argc, char *argv[]) {
     // rand
     uint8_t buf[KEY_LEN + SALT_LEN + AEAD_NONCE_SIZE];
     get_rand(buf, sizeof(buf));
-    printf("buf = \n");
-    print_hex(buf, KEY_LEN + SALT_LEN + AEAD_NONCE_SIZE);
-    puts("");
 
     // write key
     FILE *key_file = fopen(opt.key_filename, "wb");
@@ -182,20 +173,6 @@ int main(int argc, char *argv[]) {
     crypto_argon2_extras cae = {buf, NULL, KEY_LEN, 0};
     crypto_argon2(hash_pin, HASH_LEN, workarea_pin, cac_pin, cai_pin, cae);
     crypto_argon2(hash_token, HASH_LEN, workarea_token, cac_token, cai_token, cae);
-    printf("DEBUG:\n");
-    printf("PIN: ");
-    print_hex(pin, PIN_LEN);
-    printf("\nToken: ");
-    print_hex(token, TOKEN_LEN);
-    printf("\nKey: ");
-    print_hex(buf, KEY_LEN);
-    printf("\nSalt: ");
-    print_hex(buf + KEY_LEN, SALT_LEN);
-    printf("\nHash PIN: ");
-    print_hex(hash_pin, HASH_LEN);
-    printf("\nHash Token: ");
-    print_hex(hash_token, HASH_LEN);
-    printf("DEBUG END\n");
 
     // write hash pin
     FILE *hash_pin_file = fopen(opt.hash_pin_filename, "wb");
@@ -246,10 +223,6 @@ int main(int argc, char *argv[]) {
     }
     fwrite(cipher_ap_boot_text, sizeof(uint8_t), BOOT_MSG_CIPHER_TEXT_SIZE, cipher_boot_text_file);
     fclose(cipher_boot_text_file);
-    print_hex(cipher_ap_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
-    puts("");
-    print_hex(buf + KEY_LEN + SALT_LEN, AEAD_NONCE_SIZE);
-    puts("");
 
     crypto_wipe(ap_boot_msg, AP_BOOT_MSG_MAX_SIZE);
     crypto_wipe(aead_key, AEAD_KEY_SIZE);
