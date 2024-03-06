@@ -736,4 +736,8 @@ int main(void) {
         component_process_cmd();
         crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
     }
+
+    panic();
+
+    return 0;
 }
