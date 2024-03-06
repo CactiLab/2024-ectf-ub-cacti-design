@@ -353,20 +353,3 @@ Todo.
 Tasks will be primarily tracked using the [Github Issues](https://github.com/CactiLab/2024-ectf-ub-cacti-design/issues) page of this
 repository. Using issues improves task accountability and visibility, and
 allows better collaboration through the comments system.
-
-
-## Team Members (Alphabetical)
-* Dr. Hongxin Hu
-* Dr. Ziming Zhao
-* ASV Akhila
-* MD Armanuzzaman
-* Sai Bhargav M
-* Alex Eastman (Team Leader)
-* Gaoxiang Liu (Team Leader)
-* Zheyuan Ma
-* Dylan Miler-Cruz
-* Sagar Mohan
-* Rumaizi Mopuri
-* Barani Rajendran
-* Afton Spiegel
-* Xi Tan
