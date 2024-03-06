@@ -478,8 +478,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	\begin{enumerate}
 		\item The AP sends the \texttt{sending} command to one specific CP.
 		\item The CP generates a nonce as the challenge for the AP.
-		\item The AP signs the sending purpose label,
-		nonce,
+		\item The AP signs the nonce,
+		sending purpose label,
 		and the CP I2C address using the \texttt{K\_Pri1} key as the response for the CP.
 		The AP sends the response,
 		a signature of the message (signed using the \texttt{K\_Pri1} key),
@@ -502,8 +502,8 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	The reading message process is shown in Figure \ref{fig:functionality_post2}.
 	\begin{enumerate}
 		\item The AP sends the \texttt{reading} command and a generated nonce to one specific CP.
-		\item The CP signs the reading purpose label,
-		nonce,
+		\item The CP signs the nonce,
+		reading purpose label,
 		and the address with the \texttt{K\_Pri2} key as the response.
 		It puts the response,
 		a signature of the message signed using the \texttt{K\_Pri2} key,
