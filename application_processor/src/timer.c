@@ -33,7 +33,6 @@ void continuous_timer()
     tmr.pol = 0;
 
     if (MXC_TMR_Init(CONT_TIMER, &tmr, true) != E_NO_ERROR) {
-        enable_defense_bit();
         panic();
         return;
     }

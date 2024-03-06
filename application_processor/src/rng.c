@@ -35,7 +35,6 @@ int rng_init(void) {
 int rng_get_bytes(uint8_t* buffer, int size) {
     int r = MXC_TRNG_Random(buffer, size);
     if (r != 0) {
-        enable_defense_bit();
         panic();
     }
     return r;

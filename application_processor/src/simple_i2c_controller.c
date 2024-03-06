@@ -133,7 +133,6 @@ int i2c_simple_write_receive_done(i2c_addr_t addr, bool done) {
 */
 int i2c_simple_write_receive_len(i2c_addr_t addr, uint8_t len) {
     if (len > MAX_I2C_MESSAGE_LEN) {
-        enable_defense_bit();
         panic();
     }
     return i2c_simple_write_status_generic(addr, RECEIVE_LEN, len); 
@@ -167,7 +166,6 @@ int i2c_simple_write_transmit_done(i2c_addr_t addr, bool done) {
 */
 int i2c_simple_write_transmit_len(i2c_addr_t addr, uint8_t len) {
     if (len > MAX_I2C_MESSAGE_LEN) {
-        enable_defense_bit();
         panic();
     }
     return i2c_simple_write_status_generic(addr, TRANSMIT_LEN, len); 
@@ -189,7 +187,7 @@ int i2c_simple_write_transmit_len(i2c_addr_t addr, uint8_t len) {
 int i2c_simple_read_data_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t len, uint8_t* buf)
 {
     if (len > MAX_I2C_MESSAGE_LEN) {
-        enable_defense_bit();
+        
         panic();
     }
     mxc_i2c_req_t request;
@@ -220,7 +218,6 @@ int i2c_simple_read_data_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t len
 */
 int i2c_simple_write_data_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t len, uint8_t* buf) {
     if (len > MAX_I2C_MESSAGE_LEN) {
-        enable_defense_bit();
         panic();
     }
     uint8_t packet[MAX_I2C_MESSAGE_LEN + 1];
