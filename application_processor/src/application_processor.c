@@ -1239,8 +1239,10 @@ int main() {
     // Initialize board
     init();
 
-    // Delay for 1 second
-    MXC_Delay(1000000);
+    // Delay up to 0.5 second
+    random_delay_us(300000);
+    MXC_Delay(200000);
+    
 
     // Handle commands forever
     char buf[HOST_INPUT_BUF_SIZE];
