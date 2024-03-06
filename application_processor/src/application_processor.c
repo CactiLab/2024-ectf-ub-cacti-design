@@ -1080,7 +1080,6 @@ void attempt_boot1() {
 }
 
 // Replace a component if the PIN is correct
-// TODO: can we erase 4 bytes of flash instead of a page?
 void attempt_replace() {
     MXC_Delay(200);
 
