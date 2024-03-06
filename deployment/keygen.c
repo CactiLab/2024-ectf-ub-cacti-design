@@ -37,13 +37,6 @@ void get_rand(uint8_t* buffer, int size) {
     close(urandom);
 }
 
-void print_buffer(const uint8_t* buffer, int size) {
-    for (int i = 0; i < size; i++) {
-        printf("%02X", buffer[i]);
-    }
-    printf("\n");
-}
-
 int main(int argc, char *argv[]) {
     int i;
     char *p, *q;
@@ -76,16 +69,8 @@ usage:
 
     get_rand(seed, sizeof(seed));
 
-    printf("seed: ");
-    print_buffer(seed, sizeof(seed));
-
     crypto_eddsa_key_pair(sk, pk, seed);
-
-    printf("sk: ");
-    print_buffer(sk, sizeof(sk));
-    printf("pk: ");
-    print_buffer(pk, sizeof(pk));
-
+    
     FILE* skFile = fopen(opt.priv_filename, "wb");
     if (skFile == NULL) {
         perror("Failed to open priv");
