@@ -265,6 +265,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	a symmetric encryption key (for encrypting the attestation data),
 	and two pairs of public and private keys will be generated.
 	The hash key and symmetric encryption key (containing salt and nonce) will be shared among the AP and all the CPs.
+	
 	AP will store the first private key of \texttt{K\_Pri1} and the second public key of \texttt{K\_Pub2}.
 	CP will store the second private key of \texttt{K\_Pri2} and the first public key of \texttt{K\_Pub1}.
 	We generate the Deployment Secrets randomly when building deployment to prevent the attacker from retrieving it through the source code.
