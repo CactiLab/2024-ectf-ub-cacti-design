@@ -78,12 +78,6 @@ void convert_32_to_8(uint8_t *buf, uint32_t i) {
     buf[3] = (i >> 24) & 0xff;
 }
 
-void print_hex(uint8_t *buf, size_t len) {
-    for (int i = 0; i < len; i++)
-    	printf("%02x", buf[i]);
-    printf("\n");
-}
-
 int main(int argc, char *argv[]) {
     // check args quantity
     if (argc != 6) {
@@ -243,7 +237,6 @@ int main(int argc, char *argv[]) {
             plain_boot_text[i] = '\0';
             mark += 8;
         } else if ((p = strstr(line, "COMPONENT_ID")) != NULL) {
-            printf("line=%s\n", line);
             p += strlen("COMPONENT_ID");
             while (*p != '0' && *p != '1' && *p != '2' && *p != '3' && *p != '4' && *p != '5' && *p != '6' && *p != '7' && *p != '8' && *p != '9') {
                 ++p;
@@ -256,20 +249,16 @@ int main(int argc, char *argv[]) {
             }
             memcpy(comp_id_str, q, i);
             comp_id_str[i] = '\0';
-            printf("comp_id_str = %s\n", comp_id_str);
             if (comp_id_str[0] == '0' && (comp_id_str[1] == 'x' || comp_id_str[1] == 'X' )) {
                 // hex
-                printf("hex\n");
                 comp_id = strtol(comp_id_str + 2, NULL, 16);
             } else {
                 // dec
-                printf("dec\n");
                 comp_id = atoi(comp_id_str);
             }
             mark += 16;
         }
     }
-    printf("(comp id) atoi=%dend\n\n\n", comp_id);
     fclose(param_file);
     if (mark != 31) {
         perror("Wrong macro definitions in the param file");
@@ -279,18 +268,10 @@ int main(int argc, char *argv[]) {
     // tweak nonces
     convert_32_to_8(nonce, comp_id);
     nonce[4] = ENC_ATTESTATION_MAGIC;
-    printf("nonce before tweaking\n");
-    print_hex(nonce, NONCE_SIZE);
     crypto_blake2b(nonce, NONCE_SIZE, nonce, NONCE_SIZE);
-    printf("nonce after tweaking\n");
-    print_hex(nonce, NONCE_SIZE);
     convert_32_to_8(nonce_cp_boot, comp_id);
     nonce_cp_boot[4] = ENC_BOOT_MAGIC;
-    printf("nonce_cp_boot before tweaking\n");
-    print_hex(nonce_cp_boot, NONCE_SIZE);
     crypto_blake2b(nonce_cp_boot, NONCE_SIZE, nonce_cp_boot, NONCE_SIZE);
-    printf("nonce_cp_boot after tweaking\n");
-    print_hex(nonce_cp_boot, NONCE_SIZE);
     // encrypt (attest data)
     crypto_aead_lock(final_text + CIPHER_POS_IN_FINAL_TEXT, final_text + MAC_POS_IN_FINAL_TEXT, key, nonce, NULL, 0, plain_text, PLAIN_TEXT_SIZE);
 

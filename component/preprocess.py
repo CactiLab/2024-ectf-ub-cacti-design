@@ -79,11 +79,6 @@ def main():
     aead_enc_boot = args.aead_enc_boot_text_file.read_bytes()
     
     cp_id, att_loc, att_date, att_customer = parse_and_modify_header(args.header_file, priv_key, pub_key, aead_enc, aead_enc_boot)
-    
-    print(f"Component ID: {cp_id}")
-    print(f"Attestation Location: {att_loc}")
-    print(f"Attestation Date: {att_date}")
-    print(f"Attestation Customer: {att_customer}")
 
 if __name__ == "__main__":
     main()
