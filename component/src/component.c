@@ -727,6 +727,9 @@ int main(void) {
     // Initialize board
     init();
 
+    // Delay for 1 second
+    MXC_Delay(1000000);
+
     while (1) {
         wait_and_receive_packet(global_buffer_recv);
 
