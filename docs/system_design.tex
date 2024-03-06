@@ -181,7 +181,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	and compare the hash string with the saved one.
 	The comparison time is constant regardless of the content of the PIN or Replacement Token to mitigate a timing side-channel attack.
 	To mitigate a brute force attack,
-	the AP will delay randomly up to 5 seconds after receiving a wrong PIN or token.
+	the AP will delay 4 seconds after receiving a wrong PIN or token.
 	
 	\subsection{SR4}
 	\textbf{CP Attestation Data should be kept confidential.}
@@ -409,7 +409,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		All the characters in the hash value are compared one by one.
 		The comparison time is always constant no matter if the received Token is correct or not.
 		If a wrong Token is received,
-		the AP will randomly delay for up to 5 seconds to mitigate brute force and then terminate the replace mode.
+		the AP will randomly delay for 4 seconds to mitigate brute force and then terminate the replace mode.
 		For a correct Token received,
 		the AP will wait for the host computer to send the old (currently provisioned) and new IDs.
 		\item The AP modifies the flash memory after receiving the two IDs and sends a success message to the host computer.
@@ -438,20 +438,20 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item After receiving the PIN code,
 		the AP applies the keyed-hash algorithm to the PIN and compares it with the stored one.
 		The comparison time is always constant no matter the correctness of the PIN.
-		The AP will randomly delay for up to 5 seconds to mitigate brute force and then terminate the attestation mode for a wrong PIN.
+		The AP will randomly delay for 4 seconds to mitigate brute force and then terminate the attestation mode for a wrong PIN.
 		When given a correct PIN,
 		the AP tries to acquire the attestation data from the specific CP with the ID given by the host computer.
 		\item The AP sends the \texttt{attestation} command to the CP.
 		\item The CP generates a nonce and sends it as a challenge to the AP.
 		\item The AP signs the attesting purpose label,
 		nonce,
-		and the CP I2C address using the \texttt{K\_Pri1} key and sending it as the response back to the CP.
+		and the CP ID using the \texttt{K\_Pri1} key and sending it as the response back to the CP.
 		\item The CP verifies the response with the \texttt{K\_Pub1} key to check if the attesting purpose label,
 		nonce,
-		and the address is correct.
+		and the ID is correct.
 		If validation fails,
 		the CP sends the verification failure message to the AP,
-		and the AP randomly delays up to 5 seconds to prevent brute force and terminate the attestation mode.
+		and the AP randomly delays for 4 seconds to prevent brute force and terminate the attestation mode.
 		Otherwise,
 		the CP puts the encrypted attestation data in the I2C buffer waiting for the AP to read.
 		\item The AP decrypts the data using the symmetric algorithm and sends the plain attestation data to the host computer.
