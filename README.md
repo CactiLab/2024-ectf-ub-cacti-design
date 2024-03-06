@@ -1,10 +1,6 @@
 # MITRE 2024 eCTF Challenge
 <img src="https://ectfmitre.gitlab.io/ectf-website/_static/eCTF-RGB-color.png" alt="New MITRE eCTF Logo" width="250"/>
 
-## Flag Submission Details (Remove after open-sourcing)
-Username: ub@ectf.fake\
-Password: 5bgrs3rCsCbSsrV6iKq4
-
 # eCTF Insecure Example
 This repository holds the insecure example design for an eCTF MISC system.
 
