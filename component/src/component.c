@@ -13,7 +13,6 @@
 
 #include "board.h"
 #include "i2c.h"
-// #include "led.h"
 #include "mxc_delay.h"
 #include "mxc_errors.h"
 #include "nvic_table.h"

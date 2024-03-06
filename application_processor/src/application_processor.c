@@ -14,7 +14,6 @@
 #include "board.h"
 #include "i2c.h"
 #include "icc.h"
-// #include "led.h"
 #include "mxc_delay.h"
 #include "mxc_device.h"
 #include "nvic_table.h"
