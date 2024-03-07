@@ -12,12 +12,6 @@ all: keygen aead_keygen
 	./keygen.elf priv=cp_priv.bin pub=cp_pub.bin
 	./aead_key.elf key=aead_key.bin nonce=aead_nonce.bin nonce_cp_boot=aead_nonce_cp_boot.bin
 
-global_secrets.h:
-	echo "#define SECRET 1234" > global_secrets.h
-
-test: test.c monocypher.c
-	gcc -o test.elf test.c monocypher.c
-
 keygen: keygen.c monocypher.c
 	gcc -o keygen.elf keygen.c monocypher.c
 
@@ -25,4 +19,4 @@ aead_keygen: aead_key.c monocypher.c
 	gcc -o aead_key.elf aead_key.c monocypher.c
 
 clean:
-	rm -f global_secrets.h *.elf *.bin
+	rm -f *.elf *.bin
