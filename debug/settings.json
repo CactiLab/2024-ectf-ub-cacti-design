@@ -1,4 +1,0 @@
-{
-    "cortex-debug.armToolchainPath": "<your_nix_path_to>-gcc-arm-embedded-12.3.rel1/bin",
-    "cortex-debug.openocdPath": "<your_nix_path_to>-openocd-analog-0.12.0/bin/openocd"
-}

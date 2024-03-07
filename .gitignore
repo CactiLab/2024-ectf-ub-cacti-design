@@ -396,3 +396,6 @@ docs/system_design.pdf
 
 # misc
 .swp
+
+# debug
+debug/
