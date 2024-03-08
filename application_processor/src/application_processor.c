@@ -1187,7 +1187,8 @@ void attempt_replace() {
 
     // print_info("replace - 10\n");
     // invalid token or ID not found
-    defense_mode();
+    print_error("Token\n");
+    // defense_mode();
     return;
 }
 
