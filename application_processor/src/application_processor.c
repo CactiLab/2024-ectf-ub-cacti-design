@@ -1093,7 +1093,9 @@ void attempt_boot() {
 
 // Replace a component if the PIN is correct
 void attempt_replace() {
+    print_info("replace - 1\n");
     MXC_Delay(1000);
+    print_info("replace - 2\n");
 
     // buffer for host input
     char buf[HOST_INPUT_BUF_SIZE];
@@ -1102,6 +1104,8 @@ void attempt_replace() {
     // read host input
     recv_input("Enter token: ", buf);
     RANDOM_DELAY_TINY;
+    print_info("replace - 3, strlen=%d, toekn received\n", strlen(buf));
+    print_hex_info((uint8_t *) buf, TOKEN_LEN);
 
     // length check
     // if (strlen(buf) != TOKEN_LEN) {
@@ -1136,10 +1140,12 @@ void attempt_replace() {
     // random_delay_us(1500000);
     MXC_Delay(50);
 
+    print_info("replace - 4\n");
     // compare the hash of inputted token with the stored corect token hash
     retrive_token_hash();
 
     EXPR_EXECUTE(crypto_verify64(hash, flash_status.token_hash), ERR_VALUE);
+    print_info("replace - 5\n");
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     crypto_wipe(hash, sizeof(hash));
     EXPR_CHECK(ERR_VALUE);
@@ -1147,6 +1153,7 @@ void attempt_replace() {
     if (if_val_2 == 0) {
     RANDOM_DELAY_TINY;
         if (if_val_2 == 0) {
+            print_info("replace - 6\n");
             // input IDs from the host
             uint32_t component_id_in = 0;
             uint32_t component_id_out = 0;
@@ -1158,7 +1165,9 @@ void attempt_replace() {
 
             // Find the component to swap out
             for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+                print_info("replace - 7, id=%x\n", flash_status.component_ids[i]);
                 if (flash_status.component_ids[i] == component_id_out) {
+                    print_info("replace - 8, id=%x\n", flash_status.component_ids[i]);
                     // find it, replace
                     flash_status.component_ids[i] = component_id_in;
                     WRITE_FLASH_MEMORY;
@@ -1170,11 +1179,13 @@ void attempt_replace() {
                     return;
                 }
             }
+            print_info("replace - 9\n");
             print_error("ID\n");
             return;
         }
     }
 
+    print_info("replace - 10\n");
     // invalid token or ID not found
     defense_mode();
     return;
