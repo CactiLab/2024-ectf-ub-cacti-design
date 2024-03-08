@@ -387,7 +387,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // define variables
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
     volatile int result = ERROR_RETURN;
 
@@ -401,11 +400,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 
     MXC_Delay(50);
 
-    // plain text for the authentication signature (in general_buf)
-    memcpy(general_buf, receiving_buf + 1, NONCE_SIZE);         // nonce
-    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;  // cmd label
-    general_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;            // component address
-
     // plain text for the message signature (in general_buf_2)
     general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
     general_buf_2[1] = COMPONENT_ADDRESS;                       // component address
@@ -414,10 +408,9 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 
     // calculate the auth and msg singatures and construct the sneding packet (sign(auth), sign(msg), msg)
     retrive_cp_priv_key();
-    crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf, NONCE_SIZE + 2);      // auth sign
-    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
+    crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
-    memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);      // plain message
+    memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);      // plain message
 
     // send the packet (sign(auth), sign(msg), msg)
     send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
@@ -425,7 +418,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // clear the buffers
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     
     MXC_Delay(200);
