@@ -1227,7 +1227,7 @@ void attempt_attest() {
     free(workarea);
 
     // mitigate brute-force
-    random_delay_us(1200000);
+    // random_delay_us(1200000);
     MXC_Delay(100);
 
     // retieve the stored correct hashed PIN, compare it with the inputted hashed PIN
