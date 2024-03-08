@@ -42,6 +42,12 @@ struct options {
     const char* aead_key_filename;
 };
 
+void print_hex(uint8_t *buf, size_t len) {
+    for (int i = 0; i < len; i++)
+    	printf("0x%02x, ", buf[i]);
+    printf("\n");
+}
+
 void get_rand(uint8_t* buffer, int size) {
     int urandom = open("/dev/urandom", O_RDONLY);
     if (urandom == -1) {
@@ -136,7 +142,7 @@ int main(int argc, char *argv[]) {
     size_t len = 0;
     ssize_t read;
     uint8_t pin[PIN_LEN] = {0};
-    uint8_t token[TOKEN_LEN] = {0};
+    uint8_t token[TOKEN_LEN + 4] = {0};
     memset(token, 0xaa, TOKEN_LEN);
     uint8_t ap_boot_msg[AP_BOOT_MSG_MAX_SIZE] = {0};
     while ((read = getline(&line, &len, param_file)) != -1) {
@@ -156,6 +162,9 @@ int main(int argc, char *argv[]) {
             }
             memcpy(token, q, i);
             token[i] = '\0';
+            token[i + 1] = '\0';
+            printf("\n\n\n\n\n\n");
+            print_hex(token, TOKEN_LEN);
         } else if ((p = strstr(line, "AP_BOOT_MSG")) != NULL) {
             p += strlen("AP_BOOT_MSG");
             while (*p != '\"') {
