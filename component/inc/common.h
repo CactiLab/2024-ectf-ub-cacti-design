@@ -76,3 +76,24 @@ void enable_defense_bit();       // defined in component.c
     }   \
 
 #endif
+
+#define CHECK_WHEN_PASS(EXPR, VAL, ERR)   \
+    (if_val_1 = (ERR)); \
+    (if_val_2 = (ERR)); \
+    RANDOM_DELAY_TINY;    \
+    if ((if_val_1 = EXPR) == VAL) { \
+        RANDOM_DELAY_TINY;    \
+        if ((if_val_2 = EXPR) == VAL) { \
+            RANDOM_DELAY_TINY;    \
+            if (if_val_1 == if_val_2 && if_val_1 == VAL && if_val_2 == VAL) {   \
+
+#define END_CHECK_WHEN_PASS \
+            } else {    \
+                panic();    \
+            }   \
+        } else {  \
+            panic();    \
+        }   \
+    } else {  \
+        defense_mode(); \
+    }

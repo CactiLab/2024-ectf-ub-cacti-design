@@ -271,12 +271,17 @@ void convert_32_to_8(uint8_t *buf, uint32_t i) {
 int compare_32_and_8(uint8_t *buf, uint32_t i) {
     uint8_t tarray[4] = {0};
     convert_32_to_8(tarray, i);
-    int r = 0;
-    r += (tarray[0] - buf[0]);
-    r += (tarray[1] - buf[1]);
-    r += (tarray[2] - buf[2]);
-    r += (tarray[3] - buf[3]);
-    return r;
+    if (tarray[0] - buf[0] == 0) {
+        if (tarray[1] - buf[1] == 0) {
+            if (tarray[2] - buf[2] == 0) {
+                if (tarray[3] - buf[3] == 0) {
+                    return 0;
+                }
+            }
+        }
+    }
+
+    return -1;
 }
 
 /**

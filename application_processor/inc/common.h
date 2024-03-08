@@ -76,4 +76,44 @@ void enable_defense_bit();       // defined in application_processor.c
         panic();    \
     }   \
 
+#define CHECK_WHEN_PASS(EXPR, ERR)   \
+    (if_val_1 = (ERR)); \
+    (if_val_2 = (ERR)); \
+    RANDOM_DELAY_TINY;    \
+    if (if_val_1 = EXPR) { \
+        RANDOM_DELAY_TINY;    \
+        if ((if_val_2 = EXPR) == VAL) { \
+            RANDOM_DELAY_TINY;    \
+            if (if_val_1 == if_val_2 && if_val_1 == VAL && if_val_2 == VAL) {
+
+#define END_CHECK_WHEN_PASS \
+            } else {    \
+                panic();    \
+            }   \
+        } else {  \
+            panic();    \
+        }   \
+    } else {  \
+        defense_mode(); \
+    }
+
+
+#define EXPR_EXECUTE(EXPR, ERR)     \
+    (if_val_1 = (ERR));             \
+    (if_val_2 = (ERR));             \
+    RANDOM_DELAY_TINY;              \
+    (if_val_1 = (EXPR));            \
+    RANDOM_DELAY_TINY;              \
+    (if_val_2 = (EXPR));            \
+    RANDOM_DELAY_TINY;
+
+#define EXPR_CHECK(ERR)         \
+    if (if_val_1 != if_val_2 || if_val_1 == ERR || if_val_2 == ERR) {   \
+        panic();                \
+    }
+
+#define EXPR_EXECUTE_CHECK(EXPR, ERR)    \
+    EXPR_EXECUTE(EXPR, ERR)              \
+    EXPR_CHECK(ERR)
+
 #endif
