@@ -1343,7 +1343,7 @@ int main() {
     // Handle commands forever
     char buf[HOST_INPUT_BUF_SIZE];
     while (1) {
-        MXC_Delay(500);
+        // MXC_Delay(500);
         recv_input("Enter Command: ", buf);
 
         // Execute requested command
