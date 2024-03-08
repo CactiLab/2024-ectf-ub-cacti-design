@@ -378,6 +378,14 @@ void retrive_aead_ap_boot_cipher_text() {
     crypto_wipe(flash_status.aead_ap_boot_nonce, sizeof(flash_status.aead_ap_boot_nonce));  \
     crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
 
+#define print_hex_info(...) printf("%%info: "); print_hex(__VA_ARGS__); printf("%%"); fflush(stdout)
+
+void print_hex(uint8_t *buf, size_t len) {
+    for (int i = 0; i < len; i++)
+    	printf("0x%02x, ", buf[i]);
+    printf("\n");
+}
+
 /**
  * When the system detects a possible attack, go to the defense mode
  * delay 4 seconds
@@ -582,9 +590,9 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     // construct the plain text (general_buf) for the authtication signature
-    memcpy(general_buf, receiving_buf, NONCE_SIZE);             // nonce
-    general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;  // cmd_label
-    general_buf[NONCE_SIZE + 1] = address;                      // CP address
+    // memcpy(general_buf, receiving_buf, NONCE_SIZE);             // nonce
+    // general_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;  // cmd_label
+    // general_buf[NONCE_SIZE + 1] = address;                      // CP address
 
     // construct the plain text (general_buf_2) for the message signature
     general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;     // cmd_label
@@ -594,13 +602,13 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // make the 2 signatures and construct the sending packet (sign(auth), sign(msg), msg)
     retrive_ap_priv_key();
-    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);      // sign auth
-    crypto_eddsa_sign(sending_buf + SIGNATURE_SIZE, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
+    // crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 2);      // sign auth
+    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
-    memcpy(sending_buf + SIGNATURE_SIZE * 2, buffer, len);
+    memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);
 
     // send the packet (sign(auth), sign(msg), msg)
-    result = send_packet(address, SIGNATURE_SIZE * 2 + len, sending_buf);
+    result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
     if (result == ERROR_RETURN) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
@@ -1125,14 +1133,15 @@ void attempt_replace() {
     recv_input("Enter token: ", buf);
     RANDOM_DELAY_TINY;
 
-    print_info("replace - 2\n");
+    print_info("replace - 2, len=%d\n", strlen(buf));
+    print_hex_info(buf, 16);
 
     // length check
-    if (strlen(buf) != TOKEN_LEN) {
-        crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
-        defense_mode();
-        return;
-    }
+    // if (strlen(buf) != TOKEN_LEN) {
+    //     crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
+    //     defense_mode();
+    //     return;
+    // }
 
     print_info("replace - 3\n");
     MXC_Delay(50);

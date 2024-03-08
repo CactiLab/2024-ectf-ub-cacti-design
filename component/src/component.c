@@ -479,26 +479,26 @@ int secure_receive(uint8_t* buffer) {
 
     // construct the plain text for verifying the authentication signature (in sending_buf)
     // re-use the sending_buf as the first NONCE_SIZE elements are filled with generated nonce
-    sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;      // cmd_label
-    sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;                // CP address
+    // sending_buf[NONCE_SIZE] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;      // cmd_label
+    // sending_buf[NONCE_SIZE + 1] = COMPONENT_ADDRESS;                // CP address
 
     // construct the plain text for verifying the message signature (in general_buf)
     general_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;               // cmd_label
     general_buf[1] = COMPONENT_ADDRESS;                             // CP address
     memcpy(general_buf + 2, sending_buf, NONCE_SIZE);               // nonce
-    memcpy(general_buf + 2 + NONCE_SIZE, receiving_buf + SIGNATURE_SIZE * 2, len);  // plain message
+    memcpy(general_buf + 2 + NONCE_SIZE, receiving_buf + SIGNATURE_SIZE, len);  // plain message
 
     // calculate the auth and msg signatures and verify
     retrive_ap_pub_key();
-    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
-    // verification failed - auth
-    crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-    defense_mode();
-    return 0;
-    CONDITION_BRANCH_ENDING(ERR_VALUE);
+    // CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf, flash_status.ap_pub_key, sending_buf, NONCE_SIZE + 2), 0, ERR_VALUE);
+    // // verification failed - auth
+    // crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
+    // defense_mode();
+    // return 0;
+    // CONDITION_BRANCH_ENDING(ERR_VALUE);
     // verification passed - auth
 
-    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf + SIGNATURE_SIZE, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len), 0, ERR_VALUE);
+    CONDITION_NEQ_BRANCH(crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len), 0, ERR_VALUE);
     // verification failed - msg
     crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
     defense_mode();
@@ -510,7 +510,7 @@ int secure_receive(uint8_t* buffer) {
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
     // save the plain message
-    memcpy(buffer, receiving_buf + SIGNATURE_SIZE * 2, len);
+    memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
 
     MXC_Delay(500);
     return len;
