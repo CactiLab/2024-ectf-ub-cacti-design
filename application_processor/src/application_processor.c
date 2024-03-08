@@ -1093,7 +1093,7 @@ void attempt_boot() {
 
 // Replace a component if the PIN is correct
 void attempt_replace() {
-    MXC_Delay(200);
+    // MXC_Delay(200);
 
     // buffer for host input
     char buf[HOST_INPUT_BUF_SIZE];
