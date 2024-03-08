@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define print_debug(...) printf("%%debug: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
+
 // Macro definitions to print the specified format for error messages
 #define print_error(...) printf("%%error: "); printf(__VA_ARGS__); printf("%%"); fflush(stdout)
 
