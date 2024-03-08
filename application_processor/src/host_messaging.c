@@ -29,6 +29,8 @@ void recv_input(const char *msg, char *buf) {
     print_debug(msg);
     fflush(0);
     print_ack();
+    fflush(0);
     gets(buf);
+    
     puts("");
 }
