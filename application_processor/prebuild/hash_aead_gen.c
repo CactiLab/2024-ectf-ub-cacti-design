@@ -145,6 +145,7 @@ int main(int argc, char *argv[]) {
     uint8_t token[TOKEN_LEN] = {0};
     uint8_t ap_boot_msg[AP_BOOT_MSG_MAX_SIZE] = {0};
     while ((read = getline(&line, &len, param_file)) != -1) {
+        printf("line=%stheend\n", line);
         if ((p = strstr(line, "AP_PIN")) != NULL) {
             memcpy(pin, p + 8, PIN_LEN);
         } else if ((p = strstr(line, "AP_TOKEN")) != NULL) {
