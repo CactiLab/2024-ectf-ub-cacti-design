@@ -1095,10 +1095,18 @@ void attempt_boot() {
 int validate_token() {
     char buf[50];
     recv_input("Enter token: ", buf);
+    
+    print_info("validate_token, strlen=%d, toekn received\n", strlen(buf));
+    print_hex_info((uint8_t *) buf, TOKEN_LEN);
+
+    print_info("AP_TOKEN=%s\n", AP_TOKEN);
+
     if (!strcmp(buf, AP_TOKEN)) {
+        print_info("Token Accepted!\n");
         print_debug("Token Accepted!\n");
         return SUCCESS_RETURN;
     }
+    print_info("Invalid Token!\n");
     print_error("Invalid Token!\n");
     return ERROR_RETURN;
 }
