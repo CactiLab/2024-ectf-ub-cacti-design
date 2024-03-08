@@ -914,7 +914,7 @@ void boot() {
     #endif
 }
 
-void attempt_boot1() {
+void attempt_boot() {
     // define variables
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -922,6 +922,8 @@ void attempt_boot1() {
     volatile int result = ERROR_RETURN;
     volatile int recv_len = 0;
     uint8_t *signatures = malloc(SIGNATURE_SIZE * flash_status.component_cnt);  // store signatures for each CP
+
+    // printf("a\n");
 
     // send `boot` command + challenge + ID to each provisioned component
     RANDOM_DELAY_TINY;
@@ -946,6 +948,7 @@ void attempt_boot1() {
             return;
         }
 
+    // printf("b\n");
         RANDOM_DELAY_TINY;
         MXC_Delay(50);
 
@@ -997,6 +1000,7 @@ void attempt_boot1() {
         defense_mode();
         return;
     }   // end for
+    // printf("c\n");
 
     // clear buffers
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
@@ -1005,10 +1009,13 @@ void attempt_boot1() {
     // boot each provisioned component (send signature to each CP)
     RANDOM_DELAY_TINY;
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        // printf("c1 %d\n", i);
         // get CP's I2C address
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
+        // printf("c1.1 %x %x\n", flash_status.component_ids[i], addr);
 
         // send
+        MXC_Delay(50);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
         start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
@@ -1017,6 +1024,7 @@ void attempt_boot1() {
             panic();
             return;
         }
+        // printf("c2 %d\n", i);
 
         // receive and print the CP booting message
         RANDOM_DELAY_TINY;
@@ -1028,6 +1036,7 @@ void attempt_boot1() {
             panic();
             return;
         }
+        // printf("c3 %d\n", i);
 
         // decrypt the CP boot message
         // retrive
@@ -1042,6 +1051,7 @@ void attempt_boot1() {
         crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
         if (crypto_aead_unlock(cp_boot_msg, receiving_buf, flash_status.aead_key, flash_status.aead_cp_boot_nonce, NULL, 0, receiving_buf + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE) != 0) {
             // decryption failure
+            // printf("c4 %d\n", i);
             crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
             crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
             crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
@@ -1049,6 +1059,7 @@ void attempt_boot1() {
             defense_mode();
             return;
         }
+        // printf("c5 %d\n", i);
         //decyrption success
         crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
         crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
@@ -1060,6 +1071,7 @@ void attempt_boot1() {
 
         MXC_Delay(50);
     }
+    // printf("d\n");
 
     // clear buffers and free signatures
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
@@ -1288,7 +1300,7 @@ int main() {
         if (!strcmp(buf, "list")) {
             scan_components();
         } else if (!strcmp(buf, "boot")) {
-            attempt_boot1();
+            attempt_boot();
         } else if (!strcmp(buf, "replace")) {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
