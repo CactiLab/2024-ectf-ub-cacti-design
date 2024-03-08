@@ -1097,6 +1097,7 @@ void attempt_replace() {
 
     // buffer for host input
     char buf[HOST_INPUT_BUF_SIZE];
+    memset(buf, 0xaa, TOKEN_LEN);
 
     print_info("replace - 1\n");
 

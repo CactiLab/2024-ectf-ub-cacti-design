@@ -137,12 +137,25 @@ int main(int argc, char *argv[]) {
     ssize_t read;
     uint8_t pin[PIN_LEN] = {0};
     uint8_t token[TOKEN_LEN] = {0};
+    memset(token, 0xaa, TOKEN_LEN);
     uint8_t ap_boot_msg[AP_BOOT_MSG_MAX_SIZE] = {0};
     while ((read = getline(&line, &len, param_file)) != -1) {
         if ((p = strstr(line, "AP_PIN")) != NULL) {
             memcpy(pin, p + 8, PIN_LEN);
         } else if ((p = strstr(line, "AP_TOKEN")) != NULL) {
-            memcpy(token, p + 10, TOKEN_LEN);
+            p += strlen("AP_TOKEN");
+            while (*p != '\"') {
+                ++p;
+            }
+            ++p;
+            q = p;
+            int i = 0;
+            while (*p != '\"' && *p != '\n') {
+                ++p;
+                ++i;
+            }
+            memcpy(token, q, i);
+            token[i] = '\0';
         } else if ((p = strstr(line, "AP_BOOT_MSG")) != NULL) {
             p += strlen("AP_BOOT_MSG");
             while (*p != '\"') {
