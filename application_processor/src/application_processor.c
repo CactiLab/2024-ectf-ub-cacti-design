@@ -1093,9 +1093,9 @@ void attempt_boot() {
 
 // Replace a component if the PIN is correct
 void attempt_replace() {
-    print_info("replace - 1\n");
+    // print_info("replace - 1\n");
     MXC_Delay(1000);
-    print_info("replace - 2\n");
+    // print_info("replace - 2\n");
 
     // buffer for host input
     char buf[HOST_INPUT_BUF_SIZE];
@@ -1104,8 +1104,8 @@ void attempt_replace() {
     // read host input
     recv_input("Enter token: ", buf);
     RANDOM_DELAY_TINY;
-    print_info("replace - 3, strlen=%d, toekn received\n", strlen(buf));
-    print_hex_info((uint8_t *) buf, TOKEN_LEN);
+    // print_info("replace - 3, strlen=%d, toekn received\n", strlen(buf));
+    // print_hex_info((uint8_t *) buf, TOKEN_LEN);
 
     // length check
     // if (strlen(buf) != TOKEN_LEN) {
