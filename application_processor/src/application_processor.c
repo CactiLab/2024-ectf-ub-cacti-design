@@ -1170,6 +1170,8 @@ void attempt_replace() {
                     return;
                 }
             }
+            print_error("ID\n");
+            return;
         }
     }
 
