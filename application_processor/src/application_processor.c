@@ -1353,7 +1353,15 @@ int main() {
             attempt_boot();
         } else if (!strcmp(buf, "replace")) {
             print_info("pre - replace\n");
-            attempt_replace();
+            // attempt_replace();
+            char buf[50];
+    recv_input("Enter token: ", buf);
+    
+    print_info("input (token), strlen=%d, toekn received\n", strlen(buf));
+    print_hex_info((uint8_t *) buf, strlen(buf) + 1);
+
+    print_info("AP_TOKEN=%s\n", AP_TOKEN);
+
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
         } else {
