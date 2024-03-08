@@ -18,8 +18,11 @@ void continuous_timer_handler()
     }
 }
 
-void continuous_timer()
+void timer_init()
 {
+    MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
+    NVIC_EnableIRQ(TMR1_IRQn);
+
     mxc_tmr_cfg_t tmr;
     uint32_t periodTicks = MXC_TMR_GetPeriod(CONT_TIMER, CONT_CLOCK_SOURCE, 128, CONT_FREQ);
 
@@ -36,16 +39,17 @@ void continuous_timer()
         panic();
         return;
     }
+
+    MXC_TMR_Stop(CONT_TIMER);
 }
 
-void start_continuous_timer(int limit) {
-    // timer_count_limit = limit;
-    // MXC_NVIC_SetVector(TMR1_IRQn, continuous_timer_handler);
-    // NVIC_EnableIRQ(TMR1_IRQn);
-    // continuous_timer();
-}
-
-void cancel_continuous_timer() {
-    MXC_TMR_Shutdown(CONT_TIMER);
+void timer_start(int limit) {
     timer_count = 0;
+    timer_count_limit = limit;
+    MXC_TMR_SetCount(CONT_TIMER, 0);
+    MXC_TMR_Start(CONT_TIMER);
+}
+
+void timer_stop() {
+    MXC_TMR_Stop(CONT_TIMER);
 }
