@@ -719,7 +719,7 @@ int get_provisioned_ids(uint32_t* buffer) {
 /******************************** COMPONENT COMMS ********************************/
 
 int scan_components() {
-    MXC_Delay(500);
+    // MXC_Delay(500);
 
     // Print out provisioned component IDs
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
