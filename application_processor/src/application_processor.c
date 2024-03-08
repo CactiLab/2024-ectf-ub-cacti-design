@@ -1098,8 +1098,7 @@ void attempt_replace() {
     print_info("replace - 2\n");
 
     // buffer for host input
-    char buf[HOST_INPUT_BUF_SIZE];
-    memset(buf, 0xaa, TOKEN_LEN);
+    char buf[HOST_INPUT_BUF_SIZE] ={0};
 
     // read host input
     recv_input("Enter token: ", buf);
