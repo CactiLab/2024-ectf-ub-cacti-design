@@ -19,10 +19,10 @@
 
 void continuous_timer_handler();
 
-void continuous_timer();
+static inline void continuous_timer() {}
 
-void start_continuous_timer(int);
+static inline  void start_continuous_timer(int a) {}
 
-void cancel_continuous_timer();
+static inline void cancel_continuous_timer() {}
 
 #endif
