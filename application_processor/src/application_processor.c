@@ -1119,9 +1119,13 @@ void attempt_replace() {
     // buffer for host input
     char buf[HOST_INPUT_BUF_SIZE];
 
+    print_info("replace - 1\n");
+
     // read host input
-    RANDOM_DELAY_TINY;
     recv_input("Enter token: ", buf);
+    RANDOM_DELAY_TINY;
+
+    print_info("replace - 2\n");
 
     // length check
     if (strlen(buf) != TOKEN_LEN) {
@@ -1130,6 +1134,7 @@ void attempt_replace() {
         return;
     }
 
+    print_info("replace - 3\n");
     MXC_Delay(50);
 
     // for hash the inputted token
@@ -1146,6 +1151,7 @@ void attempt_replace() {
     // hash the inputted token
     crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
 
+    print_info("replace - 4\n");
     // free and wipe
     free(workarea);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
@@ -1158,15 +1164,18 @@ void attempt_replace() {
 
     // compare the hash of inputted token with the stored corect token hash
     retrive_token_hash();
+    print_info("replace - 5\n");
 
     EXPR_EXECUTE(crypto_verify64(hash, flash_status.token_hash), ERR_VALUE);
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
     crypto_wipe(hash, sizeof(hash));
+    print_info("replace - 6\n");
     EXPR_CHECK(ERR_VALUE);
     RANDOM_DELAY_TINY;
     if (if_val_2 == 0) {
     RANDOM_DELAY_TINY;
         if (if_val_2 == 0) {
+            print_info("replace - 7\n");
             // input IDs from the host
             uint32_t component_id_in = 0;
             uint32_t component_id_out = 0;
@@ -1178,8 +1187,10 @@ void attempt_replace() {
 
             // Find the component to swap out
             for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+                print_info("replace - 8, %x\n", flash_status.component_ids[i]);
                 if (flash_status.component_ids[i] == component_id_out) {
                     // find it, replace
+                    print_info("replace - 9, %x\n", flash_status.component_ids[i]);
                     flash_status.component_ids[i] = component_id_in;
                     WRITE_FLASH_MEMORY;
                     // print replace success information
