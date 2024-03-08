@@ -1097,7 +1097,7 @@ int validate_token() {
     recv_input("Enter token: ", buf);
     
     print_info("validate_token, strlen=%d, toekn received\n", strlen(buf));
-    print_hex_info((uint8_t *) buf, TOKEN_LEN);
+    print_hex_info((uint8_t *) buf, strlen(buf) + 1);
 
     print_info("AP_TOKEN=%s\n", AP_TOKEN);
 
