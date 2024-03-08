@@ -1091,8 +1091,55 @@ void attempt_boot() {
     boot();
 }
 
-// Replace a component if the PIN is correct
+// Function to validate the replacement token
+int validate_token() {
+    char buf[50];
+    recv_input("Enter token: ", buf);
+    if (!strcmp(buf, AP_TOKEN)) {
+        print_debug("Token Accepted!\n");
+        return SUCCESS_RETURN;
+    }
+    print_error("Invalid Token!\n");
+    return ERROR_RETURN;
+}
 void attempt_replace() {
+    char buf[50];
+
+    if (validate_token()) {
+        return;
+    }
+
+    uint32_t component_id_in = 0;
+    uint32_t component_id_out = 0;
+
+    recv_input("Component ID In: ", buf);
+    sscanf(buf, "%x", &component_id_in);
+    recv_input("Component ID Out: ", buf);
+    sscanf(buf, "%x", &component_id_out);
+
+    // Find the component to swap out
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        if (flash_status.component_ids[i] == component_id_out) {
+            flash_status.component_ids[i] = component_id_in;
+
+            // write updated component_ids to flash
+            flash_simple_erase_page(FLASH_ADDR);
+            flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+
+            print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
+                    component_id_in);
+            print_success("Replace\n");
+            return;
+        }
+    }
+
+    // Component Out was not found
+    print_error("Component 0x%08x is not provisioned for the system\r\n",
+            component_id_out);
+}
+
+// Replace a component if the PIN is correct
+void attempt_replace1() {
     print_info("replace - 1\n");
     MXC_Delay(1000);
     print_info("replace - 2\n");
