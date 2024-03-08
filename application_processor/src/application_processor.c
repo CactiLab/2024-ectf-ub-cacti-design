@@ -1269,7 +1269,7 @@ int main() {
     init();
 
     // Delay for 0.5 second
-    MXC_Delay(500000);
+    // MXC_Delay(500000);
     
 
     // Handle commands forever
