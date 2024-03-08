@@ -1290,7 +1290,6 @@ int main() {
     while (1) {
         MXC_Delay(200);
         recv_input("Enter Command: ", buf);
-        print_info("Simon says: %s\n", buf);
 
         // Execute requested command
         if (!strcmp(buf, "list")) {
