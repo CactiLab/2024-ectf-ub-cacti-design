@@ -1153,7 +1153,7 @@ void attempt_replace() {
     crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
 
     // mitigate brute-force
-    random_delay_us(1500000);
+    // random_delay_us(1500000);
     MXC_Delay(50);
 
     // compare the hash of inputted token with the stored corect token hash
