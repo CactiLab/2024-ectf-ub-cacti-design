@@ -291,7 +291,7 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
  */
 void init() {
     // Initialize the MPU
-    mpu_init();
+    // mpu_init();
     
     // Enable global interrupts    
     __enable_irq();
