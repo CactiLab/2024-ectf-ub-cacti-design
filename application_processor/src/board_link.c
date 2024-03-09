@@ -4,8 +4,8 @@
  * @brief High Level API for I2C Controller Communications Implementation
  * @date 2024
  *
- * This source file is part of an example system for MITRE's 2024 Embedded System CTF (eCTF).
- * This code is being provided only for educational purposes for the 2024 MITRE eCTF competition,
+ * This source file is part of an example system for MITRE's 2SUCCESS_RETURN23 Embedded System CTF (eCTF).
+ * This code is being provided only for educational purposes for the 2SUCCESS_RETURN23 MITRE eCTF competition,
  * and may not meet MITRE standards for quality. Use this code at your own risk!
  *
  * @copyright Copyright (c) 2024 The MITRE Corporation
@@ -20,12 +20,10 @@
 /**
  * @brief Initialize the board link connection
  * 
- * @return negative fail, 0 success
- * 
  * Initiailize the underlying i2c simple interface
 */
-int board_link_init(void) {
-    return i2c_simple_controller_init();
+void board_link_init(void) {
+    i2c_simple_controller_init();
 }
 
 /**
@@ -94,9 +92,6 @@ int poll_and_receive_packet(i2c_addr_t address, uint8_t* packet) {
     int len = i2c_simple_read_transmit_len(address);
     if (len < SUCCESS_RETURN) {
         return ERROR_RETURN;
-    }
-    if (len > MAX_I2C_MESSAGE_LEN) {
-        panic();
     }
     result = i2c_simple_read_data_generic(address, TRANSMIT, (uint8_t)len, packet);
     if (result < SUCCESS_RETURN) {

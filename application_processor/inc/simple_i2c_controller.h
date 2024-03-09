@@ -21,7 +21,6 @@
 #include "nvic_table.h"
 #include "i2c.h"
 #include "string.h"
-#include "common.h"
 
 /******************************** MACRO DEFINITIONS ********************************/
 // I2C frequency in HZ

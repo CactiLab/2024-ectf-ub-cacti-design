@@ -26,11 +26,9 @@
 /**
  * @brief Initialize the board link connection
  * 
- * @return negative fail, 0 success
- * 
  * Initiailize the underlying i2c simple interface
 */
-int board_link_init(void);
+void board_link_init(void);
 
 /**
  * @brief Convert 4-byte component ID to I2C address

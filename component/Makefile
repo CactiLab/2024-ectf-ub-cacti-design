@@ -259,6 +259,10 @@ PROJ_CFLAGS += -DMXC_ASSERT_ENABLE
 PROJ_CFLAGS += -DNO_WOLFSSL_DIR
 PROJ_CFLAGS += -DWOLFSSL_AES_DIRECT
 PROJ_CFLAGS += -DCRYPTO_EXAMPLE=1
+# From https://www.wolfssl.com/documentation/manuals/wolfssl/chapter02.html#building-with-gcc-arm
+PROJ_CFLAGS += -DHAVE_PK_CALLBACKS                                                               
+PROJ_CFLAGS += -DWOLFSSL_USER_IO                                                                 
+PROJ_CFLAGS += -DNO_WRITEV -DTIME_T_NOT_64BIT                                                    
 endif
 PROJ_CFLAGS += -DMXC_ASSERT_ENABLE
 
@@ -419,12 +423,7 @@ MAKECMDGOALS:=$(.DEFAULT_GOAL)
 endif
 
 
-pre:
-	gcc -o enc_att_boot_data.elf ./prebuild/enc_att_boot_data.c ./prebuild/monocypher.c
-	./enc_att_boot_data.elf key=../deployment/aead_key.bin nonce=../deployment/aead_nonce.bin final_cipher_text=final_cipher_text.bin nonce_cp_boot=../deployment/aead_nonce_cp_boot.bin boot_cipher=boot_cipher.bin
-	python preprocess.py --header-file inc/ectf_params.h --cp-priv-key-file ../deployment/cp_priv.bin --ap-pub-key-file ../deployment/ap_pub.bin --aead-enc-text-file final_cipher_text.bin --aead-enc-boot-text-file=boot_cipher.bin
-
-all: pre
+all:
 # 	Extend the functionality of the "all" recipe here
 	arm-none-eabi-size --format=berkeley $(BUILD_DIR)/$(PROJECT).elf
 

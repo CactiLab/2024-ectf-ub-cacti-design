@@ -18,7 +18,6 @@
 #include "flc.h"
 #include "icc.h"
 #include "nvic_table.h"
-#include "common.h"
 
 #include <stdio.h>
 
@@ -38,7 +37,6 @@ void flash_simple_irq(void) {
     if (temp & MXC_F_FLC_INTR_AF) {
         MXC_FLC0->intr &= ~MXC_F_FLC_INTR_AF;
         printf(" -> Interrupt! (Flash access failure)\n\n");
-        panic();
     }
 }
 

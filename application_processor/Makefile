@@ -257,6 +257,10 @@ PROJ_CFLAGS += -DMXC_ASSERT_ENABLE
 PROJ_CFLAGS += -DNO_WOLFSSL_DIR
 PROJ_CFLAGS += -DWOLFSSL_AES_DIRECT
 PROJ_CFLAGS += -DCRYPTO_EXAMPLE=1
+# From https://www.wolfssl.com/documentation/manuals/wolfssl/chapter02.html#building-with-gcc-arm
+PROJ_CFLAGS += -DHAVE_PK_CALLBACKS                                                               
+PROJ_CFLAGS += -DWOLFSSL_USER_IO                                                                 
+PROJ_CFLAGS += -DNO_WRITEV -DTIME_T_NOT_64BIT                                                    
 endif
 
 ifeq ($(POST_BOOT_ENABLED), 1)
@@ -415,12 +419,8 @@ ifeq "$(MAKECMDGOALS)" ""
 MAKECMDGOALS:=$(.DEFAULT_GOAL)
 endif
 
-pre:
-	gcc -o ./hash_aead_gen.elf ./prebuild/hash_aead_gen.c ./prebuild/monocypher.c
-	./hash_aead_gen.elf hash_key=hash_key.bin hash_salt=hash_salt.bin hash_pin=hash_pin.bin hash_token=hash_token.bin nonce_ap=nonce_ap.bin cipher_ap_boot=cipher_ap_boot.bin aead_key=../deployment/aead_key.bin
-	python preprocess.py --header-file inc/ectf_params.h --ap-priv-key-file ../deployment/ap_priv.bin --cp-pub-key-file ../deployment/cp_pub.bin --hash-key-file hash_key.bin --hash-salt-file hash_salt.bin --hash-pin-file hash_pin.bin --hash-token-file hash_token.bin --aead-key-file ../deployment/aead_key.bin --aead-nonce-file ../deployment/aead_nonce.bin --aead-nonce-cp-boot-file ../deployment/aead_nonce_cp_boot.bin --aead-nonce-cp-boot-file ../deployment/aead_nonce_cp_boot.bin --aead-nonce-ap-boot-file nonce_ap.bin --aead-cipher-ap-boot-file cipher_ap_boot.bin
 
-all: pre
+all:
 # 	Extend the functionality of the "all" recipe here
 	arm-none-eabi-size --format=berkeley $(BUILD_DIR)/$(PROJECT).elf
 
