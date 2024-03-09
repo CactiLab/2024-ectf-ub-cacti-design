@@ -202,19 +202,26 @@ void process_attest() {
     send_packet_and_ack(len, transmit_buffer);
 }
 
-/*********************************** MAIN *************************************/
+void init() {
+    // initialize the MPU
+    mpu_init();
 
-int main(void) {
-    printf("Component Started\n");
-    
     // Enable Global Interrupts
     __enable_irq();
-    
+
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
     board_link_init(addr);
-    
+
     LED_On(LED2);
+}
+
+/*********************************** MAIN *************************************/
+
+int main(void) {
+    init();
+
+    printf("Component Started\n");
 
     while (1) {
         wait_and_receive_packet(receive_buffer);

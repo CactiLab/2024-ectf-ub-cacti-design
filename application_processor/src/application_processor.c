@@ -161,6 +161,8 @@ int get_provisioned_ids(uint32_t* buffer) {
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
 void init() {
+    // initialize the MPU
+    mpu_init();
 
     // Enable global interrupts    
     __enable_irq();
