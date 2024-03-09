@@ -31,6 +31,10 @@
 #include "simple_crypto.h"
 #endif
 
+#include "monocypher.h"
+#include "mpu_init.h"
+#include "syscalls.h"
+
 #ifdef POST_BOOT
 #include "mxc_delay.h"
 #include <stdint.h>
@@ -44,23 +48,65 @@
 
 /********************************* CONSTANTS **********************************/
 
-// Passed in through ectf-params.h
-// Example of format of ectf-params.h shown here
-/*
-#define AP_PIN "123456"
-#define AP_TOKEN "0123456789abcdef"
-#define COMPONENT_IDS 0x11111124, 0x11111125
-#define COMPONENT_CNT 2
-#define AP_BOOT_MSG "Test boot message"
-*/
-
 // Flash Macros
 #define FLASH_ADDR ((MXC_FLASH_MEM_BASE + MXC_FLASH_MEM_SIZE) - (2 * MXC_FLASH_PAGE_SIZE))
 #define FLASH_MAGIC 0xDEADBEEF
+#define COMPONENT_IDS_OFFSET    offsetof(flash_entry, component_ids)
+#define AP_PRIV_KEY_OFFSET      offsetof(flash_entry, ap_priv_key)
+#define CP_PUB_KEY_OFFSET       offsetof(flash_entry, cp_pub_key)
+#define HASH_KEY_OFFSET         offsetof(flash_entry, hash_key)
+#define HASH_SALT_OFFSET        offsetof(flash_entry, hash_salt)
+#define PIN_HASH_OFFSET         offsetof(flash_entry, pin_hash)
+#define TOKEN_HASH_OFFSET       offsetof(flash_entry, token_hash)
+#define AEAD_KEY_OFFSET         offsetof(flash_entry, aead_key)
+#define AEAD_NONCE_OFFSET       offsetof(flash_entry, aead_nonce)
+#define AEAD_CP_BOOT_NONCE_OFFSET   offsetof(flash_entry, aead_cp_boot_nonce)
+#define AEAD_AP_BOOT_NONCE_OFFSET   offsetof(flash_entry, aead_ap_boot_nonce)
+#define AEAD_AP_BOOT_CIPHER_OFFSET  offsetof(flash_entry, aead_ap_boot_cipher)
 
 // Library call return types
 #define SUCCESS_RETURN 0
 #define ERROR_RETURN -1
+#define ERR_VALUE -15   // an error value that functions will never return
+
+// length and functionality
+#define PRIV_KEY_SIZE           64
+#define PUB_KEY_SIZE            32
+#define COMPONENT_ID_SIZE       4
+#define NONCE_SIZE                      64
+#define SIGNATURE_SIZE                  64
+#define MAX_POST_BOOT_MSG_LEN           64
+#define PIN_LEN                         6
+#define TOKEN_LEN                       16
+#define HASH_KEY_LEN                    128
+#define HASH_SALT_LEN                   128
+#define NB_BLOCKS_PIN                   108
+#define NB_BLOCKS_TOKEN                 108
+#define NB_PASSES                       3
+#define NB_LANES                        1
+#define HASH_LEN                        64
+#define HOST_INPUT_BUF_SIZE             64
+#define AEAD_MAC_SIZE                   16
+#define AEAD_NONCE_SIZE                 24
+#define AEAD_KEY_SIZE                        32
+#define ATT_DATA_MAX_SIZE               64
+#define ATT_PADDING_SIZE                    16
+#define ATT_FINAL_TEXT_SIZE                 ATT_DATA_MAX_SIZE * 3 + AEAD_MAC_SIZE + 3 + ATT_PADDING_SIZE * 2
+#define ATT_PLAIN_TEXT_SIZE                 ATT_DATA_MAX_SIZE * 3 + 3 + ATT_PADDING_SIZE * 2
+#define ATT_MAC_POS_IN_FINAL_TEXT           0
+#define ATT_CIPHER_POS_IN_FINAL_TEXT        AEAD_MAC_SIZE
+#define ATT_LOC_POS                         0
+#define ATT_PADDING_1_POS                   ATT_DATA_MAX_SIZE
+#define ATT_DATE_POS                        ATT_PADDING_1_POS + ATT_PADDING_SIZE
+#define ATT_PADDING_2_POS                   ATT_DATE_POS + ATT_DATA_MAX_SIZE
+#define ATT_CUSTOMER_POS                    ATT_PADDING_2_POS + ATT_PADDING_SIZE
+#define ATT_LOC_LEN_POS                     ATT_CUSTOMER_POS + ATT_DATA_MAX_SIZE
+#define ATT_DATE_LEN_POS                    ATT_LOC_LEN_POS + 1
+#define ATT_CUSTOMER_LEN_POS                ATT_DATE_LEN_POS + 1
+#define BOOT_MSG_PLAIN_TEXT_SIZE        128
+#define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + AEAD_MAC_SIZE
+#define ENC_ATTESTATION_MAGIC           173
+#define ENC_BOOT_MAGIC                  82
 
 /******************************** TYPE DEFINITIONS ********************************/
 // Data structure for sending commands to component
@@ -87,7 +133,26 @@ typedef struct {
     uint32_t flash_magic;
     uint32_t component_cnt;
     uint32_t component_ids[32];
+    uint8_t ap_priv_key[PRIV_KEY_SIZE];
+    uint8_t cp_pub_key[PUB_KEY_SIZE];
+    uint8_t hash_key[HASH_KEY_LEN];
+    uint8_t hash_salt[HASH_SALT_LEN];
+    uint8_t pin_hash[HASH_LEN];
+    uint8_t token_hash[HASH_LEN];
+    uint8_t aead_key[AEAD_KEY_SIZE];
+    uint8_t aead_nonce[AEAD_NONCE_SIZE];
+    uint8_t aead_cp_boot_nonce[AEAD_NONCE_SIZE];
+    uint8_t aead_ap_boot_nonce[AEAD_NONCE_SIZE];
+    uint8_t aead_ap_boot_cipher[BOOT_MSG_CIPHER_TEXT_SIZE];
+    uint32_t mode;   // 0: normal, 1: defense, refers to system_modes
 } flash_entry;
+
+// system mode
+// when in the defense mode, system will be delayed for 4 seconds
+typedef enum {
+    SYS_MODE_NORMAL,
+    SYS_MODE_DEFENSE
+} system_modes;
 
 // Datatype for commands sent to components
 typedef enum {
@@ -101,13 +166,6 @@ typedef enum {
 /********************************* GLOBAL VARIABLES **********************************/
 // Variable for information stored in flash memory
 flash_entry flash_status;
-
-/********************************* REFERENCE FLAG **********************************/
-// trust me, it's easier to get the boot reference flag by
-// getting this running than to try to untangle this
-// NOTE: you're not allowed to do this in your code
-// Remove this in your design
-typedef uint32_t aErjfkdfru;const aErjfkdfru aseiFuengleR[]={0x1ffe4b6,0x3098ac,0x2f56101,0x11a38bb,0x485124,0x11644a7,0x3c74e8,0x3c74e8,0x2f56101,0x12614f7,0x1ffe4b6,0x11a38bb,0x1ffe4b6,0x12614f7,0x1ffe4b6,0x12220e3,0x3098ac,0x1ffe4b6,0x2ca498,0x11a38bb,0xe6d3b7,0x1ffe4b6,0x127bc,0x3098ac,0x11a38bb,0x1d073c6,0x51bd0,0x127bc,0x2e590b1,0x1cc7fb2,0x1d073c6,0xeac7cb,0x51bd0,0x2ba13d5,0x2b22bad,0x2179d2e,0};const aErjfkdfru djFIehjkklIH[]={0x138e798,0x2cdbb14,0x1f9f376,0x23bcfda,0x1d90544,0x1cad2d2,0x860e2c,0x860e2c,0x1f9f376,0x38ec6f2,0x138e798,0x23bcfda,0x138e798,0x38ec6f2,0x138e798,0x31dc9ea,0x2cdbb14,0x138e798,0x25cbe0c,0x23bcfda,0x199a72,0x138e798,0x11c82b4,0x2cdbb14,0x23bcfda,0x3225338,0x18d7fbc,0x11c82b4,0x35ff56,0x2b15630,0x3225338,0x8a977a,0x18d7fbc,0x29067fe,0x1ae6dee,0x4431c8,0};typedef int skerufjp;skerufjp siNfidpL(skerufjp verLKUDSfj){aErjfkdfru ubkerpYBd=12+1;skerufjp xUrenrkldxpxx=2253667944%0x432a1f32;aErjfkdfru UfejrlcpD=1361423303;verLKUDSfj=(verLKUDSfj+0x12345678)%60466176;while(xUrenrkldxpxx--!=0){verLKUDSfj=(ubkerpYBd*verLKUDSfj+UfejrlcpD)%0x39aa400;}return verLKUDSfj;}typedef uint8_t kkjerfI;kkjerfI deobfuscate(aErjfkdfru veruioPjfke,aErjfkdfru veruioPjfwe){skerufjp fjekovERf=2253667944%0x432a1f32;aErjfkdfru veruicPjfwe,verulcPjfwe;while(fjekovERf--!=0){veruioPjfwe=(veruioPjfwe-siNfidpL(veruioPjfke))%0x39aa400;veruioPjfke=(veruioPjfke-siNfidpL(veruioPjfwe))%60466176;}veruicPjfwe=(veruioPjfke+0x39aa400)%60466176;verulcPjfwe=(veruioPjfwe+60466176)%0x39aa400;return veruicPjfwe*60466176+verulcPjfwe-89;}
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
@@ -158,6 +216,34 @@ int get_provisioned_ids(uint32_t* buffer) {
 
 /********************************* UTILITIES **********************************/
 
+// write current value in flast_status to the flash memory
+// for defense/normal mode and replace for the current design
+#define WRITE_FLASH_MEMORY  \
+    retrive_ap_priv_key();  \
+    retrive_cp_pub_key();   \
+    retrive_hash_key(); \
+    retrive_hash_salt();    \
+    retrive_pin_hash(); \
+    retrive_token_hash();   \
+    retrive_aead_key(); \
+    retrive_aead_nonce();   \
+    retrive_aead_cp_boot_nonce();   \
+    retrive_aead_ap_boot_nonce();   \
+    retrive_aead_ap_boot_cipher_text(); \
+    flash_simple_erase_page(FLASH_ADDR);    \
+    flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
+    crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));    \
+    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));  \
+    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));  \
+    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));    \
+    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));  \
+    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));  \
+    crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));  \
+    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));  \
+    crypto_wipe(flash_status.aead_cp_boot_nonce, sizeof(flash_status.aead_cp_boot_nonce));  \
+    crypto_wipe(flash_status.aead_ap_boot_nonce, sizeof(flash_status.aead_ap_boot_nonce));  \
+    crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
+
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
 void init() {
@@ -173,17 +259,75 @@ void init() {
     // Test application has been booted before
     flash_simple_read(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
+    // // Write Component IDs from flash if first boot e.g. flash unwritten
+    // if (flash_status.flash_magic != FLASH_MAGIC) {
+    //     print_debug("First boot, setting flash!\n");
+
+    //     flash_status.flash_magic = FLASH_MAGIC;
+    //     flash_status.component_cnt = COMPONENT_CNT;
+    //     uint32_t component_ids[COMPONENT_CNT] = {COMPONENT_IDS};
+    //     memcpy(flash_status.component_ids, component_ids, 
+    //         COMPONENT_CNT*sizeof(uint32_t));
+
+    //     flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+    // }
+
     // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {
-        print_debug("First boot, setting flash!\n");
-
         flash_status.flash_magic = FLASH_MAGIC;
         flash_status.component_cnt = COMPONENT_CNT;
         uint32_t component_ids[COMPONENT_CNT] = {COMPONENT_IDS};
         memcpy(flash_status.component_ids, component_ids, 
             COMPONENT_CNT*sizeof(uint32_t));
+        
+        flash_status.mode = SYS_MODE_NORMAL;
+
+        uint8_t ap_private_key[] = {AP_PRIVATE_KEY};
+        uint8_t cp_public_key[] = {CP_PUBLIC_KEY};
+        uint8_t ap_hash_key[] = {AP_HASH_KEY};
+        uint8_t ap_hash_salt[] = {AP_HASH_SALT};
+        uint8_t ap_hash_pin[] = {AP_HASH_PIN};
+        uint8_t ap_hash_token[] = {AP_HASH_TOKEN};
+        uint8_t aead_key[] = {AEAD_KEY};
+        uint8_t aead_nonce[] = {AEAD_NONCE};
+        uint8_t aead_cp_nonce[] = {AEAD_NONCE_CP_BOOT};
+        uint8_t aead_ap_nonce[] = {AEAD_NONCE_AP_BOOT};
+        uint8_t aead_cipher_ap_boot[] = {AEAD_CIPHER_AP_BOOT};
+
+        memcpy(flash_status.ap_priv_key, ap_private_key, PRIV_KEY_SIZE);
+        memcpy(flash_status.cp_pub_key, cp_public_key, PUB_KEY_SIZE);
+        memcpy(flash_status.hash_key, ap_hash_key, HASH_KEY_LEN);
+        memcpy(flash_status.hash_salt, ap_hash_salt, HASH_SALT_LEN);
+        memcpy(flash_status.pin_hash, ap_hash_pin, HASH_LEN);
+        memcpy(flash_status.token_hash, ap_hash_token, HASH_LEN);
+        memcpy(flash_status.aead_key, aead_key, AEAD_KEY_SIZE);
+        memcpy(flash_status.aead_nonce, aead_nonce, AEAD_NONCE_SIZE);
+        memcpy(flash_status.aead_cp_boot_nonce, aead_cp_nonce, AEAD_NONCE_SIZE);
+        memcpy(flash_status.aead_ap_boot_nonce, aead_ap_nonce, AEAD_NONCE_SIZE);
+        memcpy(flash_status.aead_ap_boot_cipher, aead_cipher_ap_boot, BOOT_MSG_CIPHER_TEXT_SIZE);
+
 
         flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+
+        crypto_wipe(ap_private_key, sizeof(ap_private_key));
+        crypto_wipe(cp_public_key, sizeof(cp_public_key));
+        crypto_wipe(ap_hash_key, sizeof(ap_hash_key));
+        crypto_wipe(ap_hash_salt, sizeof(ap_hash_salt));
+        crypto_wipe(ap_hash_pin, sizeof(ap_hash_pin));
+        crypto_wipe(ap_hash_token, sizeof(ap_hash_token));
+        crypto_wipe(aead_key, sizeof(aead_key));
+        crypto_wipe(aead_nonce, sizeof(aead_nonce));
+        crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+        crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+        crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+        crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+        crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+        crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+        crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+        crypto_wipe(flash_status.aead_cp_boot_nonce, sizeof(flash_status.aead_cp_boot_nonce));
+        crypto_wipe(flash_status.aead_ap_boot_nonce, sizeof(flash_status.aead_ap_boot_nonce));
+        crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
     }
     
     // Initialize board link interface
@@ -421,14 +565,7 @@ void attempt_boot() {
         print_error("Failed to boot all components\n");
         return;
     }
-    // Reference design flag
-    // Remove this in your design
-    char flag[37];
-    for (int i = 0; aseiFuengleR[i]; i++) {
-        flag[i] = deobfuscate(aseiFuengleR[i], djFIehjkklIH[i]);
-        flag[i+1] = 0;
-    }
-    print_debug("%s\n", flag);
+
     // Print boot message
     // This always needs to be printed when booting
     print_info("AP>%s\n", AP_BOOT_MSG);

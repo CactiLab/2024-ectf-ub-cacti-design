@@ -21,6 +21,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "monocypher.h"
+#include "mpu_init.h"
+#include "simple_flash.h"
+#include "syscalls.h"
+
 #include "simple_i2c_peripheral.h"
 #include "board_link.h"
 
@@ -36,18 +41,27 @@
 #endif
 
 /********************************* CONSTANTS **********************************/
-
-// Passed in through ectf-params.h
-// Example of format of ectf-params.h shown here
-/*
-#define COMPONENT_ID 0x11111124
-#define COMPONENT_BOOT_MSG "Component boot"
-#define ATTESTATION_LOC "McLean"
-#define ATTESTATION_DATE "08/08/08"
-#define ATTESTATION_CUSTOMER "Fritz"
-*/
+// Flash Macros
+#define FLASH_ADDR ((MXC_FLASH_MEM_BASE + MXC_FLASH_MEM_SIZE) - (2 * MXC_FLASH_PAGE_SIZE))
+#define FLASH_MAGIC 0xDEADBEEF
+#define CP_PRIV_KEY_OFFSET      offsetof(flash_entry, cp_priv_key)
+#define AP_PUB_KEY_OFFSET       offsetof(flash_entry, ap_pub_key)
+#define ATTEST_CIPHER_OFFSET    offsetof(flash_entry, cipher_attest_data)
+#define CIPHER_BOOT_TEXT_OFFSET offsetof(flash_entry, cipher_boot_text)
 
 /******************************** TYPE DEFINITIONS ********************************/
+#define PRIV_KEY_SIZE           64
+#define PUB_KEY_SIZE            32
+#define NONCE_SIZE              64
+#define SIGNATURE_SIZE          64
+#define MAX_POST_BOOT_MSG_LEN   64
+#define CIPHER_ATTESTATION_DATA_LEN 243
+#define CIPHER_ATTESTATION_DATA_LEN_ROUND 244
+#define COMPONENT_ID_SIZE       4
+#define AEAD_MAC_SIZE           16
+#define BOOT_MSG_PLAIN_TEXT_SIZE        128
+#define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + AEAD_MAC_SIZE
+
 // Commands received by Component using 32 bit integer
 typedef enum {
     COMPONENT_CMD_NONE,
@@ -72,6 +86,16 @@ typedef struct {
     uint32_t component_id;
 } scan_message;
 
+// Datatype for information stored in flash
+typedef struct {
+    uint32_t flash_magic;
+    uint8_t cp_priv_key[PRIV_KEY_SIZE];
+    uint8_t ap_pub_key[PUB_KEY_SIZE];
+    uint8_t cipher_attest_data[CIPHER_ATTESTATION_DATA_LEN_ROUND];
+    uint8_t cipher_boot_text[BOOT_MSG_CIPHER_TEXT_SIZE];
+    uint32_t mode;   // 0: normal, 1: defense, refers to system_modes
+} flash_entry;
+
 /********************************* FUNCTION DECLARATIONS **********************************/
 // Core function definitions
 void component_process_cmd(void);
@@ -84,6 +108,8 @@ void process_attest(void);
 // Global varaibles
 uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
 uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+// Variable for information stored in flash memory
+flash_entry flash_status;
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
@@ -202,6 +228,20 @@ void process_attest() {
     send_packet_and_ack(len, transmit_buffer);
 }
 
+// write current value in flast_status to the flash memory
+// for defense/normal mode for the current design
+#define WRITE_FLASH_MEMORY  \
+    retrive_ap_pub_key();   \
+    retrive_cp_priv_key();  \
+    retrive_attest_cipher();    \
+    retrive_attest_cipher();    \
+    flash_simple_erase_page(FLASH_ADDR);    \
+    flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));  \
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));    \
+    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));  \
+    crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+
 void init() {
     // initialize the MPU
     mpu_init();
@@ -209,9 +249,42 @@ void init() {
     // Enable Global Interrupts
     __enable_irq();
 
+
+    // Setup Flash
+    flash_simple_init();
+
+    // Test application has been booted before
+    flash_simple_read(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+
+    // Write Component IDs from flash if first boot e.g. flash unwritten
+    if (flash_status.flash_magic != FLASH_MAGIC) {
+        flash_status.flash_magic = FLASH_MAGIC;
+
+        uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
+        uint8_t ap_public_key[] = {AP_PUBLIC_KEY};
+        uint8_t attest_cipher[] = {ATTESTATION_CIPHER_DATA};
+        uint8_t boot_cipher[] = {CIPHER_CP_BOOT_MSG};
+        memcpy(flash_status.cp_priv_key, cp_private_key, PRIV_KEY_SIZE);
+        memcpy(flash_status.ap_pub_key, ap_public_key, PUB_KEY_SIZE);
+        memcpy(flash_status.cipher_attest_data, attest_cipher, CIPHER_ATTESTATION_DATA_LEN);
+        memcpy(flash_status.cipher_boot_text, boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+
+        flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+
+        crypto_wipe(cp_private_key, sizeof(cp_private_key));
+        crypto_wipe(ap_public_key, sizeof(ap_public_key));
+        crypto_wipe(attest_cipher, sizeof(attest_cipher));
+        crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+        crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+        crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+    }
+
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
     board_link_init(addr);
+
+    
 
     LED_On(LED2);
 }

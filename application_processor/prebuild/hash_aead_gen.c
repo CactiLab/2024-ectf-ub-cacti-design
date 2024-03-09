@@ -18,7 +18,7 @@
     "    aead_key=%%s                e.g.: aead_key.bin\n"    \
     "\n"
 #define PIN_LEN 6
-#define TOKEN_LEN 8
+#define TOKEN_LEN 16
 #define KEY_LEN 128
 #define SALT_LEN 128
 #define NB_BLOCKS_PIN 108
