@@ -37,5 +37,5 @@ void recv_input(const char *msg, char *buf) {
     // fflush(0);
     // fflush(stdin);
     
-    puts("");
+    // puts("");
 }
