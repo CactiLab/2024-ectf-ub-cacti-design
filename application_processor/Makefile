@@ -420,7 +420,13 @@ MAKECMDGOALS:=$(.DEFAULT_GOAL)
 endif
 
 
-all:
+pre:
+	gcc -o ./hash_aead_gen.elf ./prebuild/hash_aead_gen.c ../deployment/monocypher.c
+	./hash_aead_gen.elf hash_key=hash_key.bin hash_salt=hash_salt.bin hash_pin=hash_pin.bin hash_token=hash_token.bin nonce_ap=nonce_ap.bin cipher_ap_boot=cipher_ap_boot.bin aead_key=../deployment/aead_key.bin
+	python preprocess.py --header-file inc/ectf_params.h --ap-priv-key-file ../deployment/ap_priv.bin --cp-pub-key-file ../deployment/cp_pub.bin --hash-key-file hash_key.bin --hash-salt-file hash_salt.bin --hash-pin-file hash_pin.bin --hash-token-file hash_token.bin --aead-key-file ../deployment/aead_key.bin --aead-nonce-file ../deployment/aead_nonce.bin --aead-nonce-cp-boot-file ../deployment/aead_nonce_cp_boot.bin --aead-nonce-cp-boot-file ../deployment/aead_nonce_cp_boot.bin --aead-nonce-ap-boot-file nonce_ap.bin --aead-cipher-ap-boot-file cipher_ap_boot.bin
+
+
+all: pre
 # 	Extend the functionality of the "all" recipe here
 	arm-none-eabi-size --format=berkeley $(BUILD_DIR)/$(PROJECT).elf
 

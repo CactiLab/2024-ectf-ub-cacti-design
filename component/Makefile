@@ -422,8 +422,12 @@ ifeq "$(MAKECMDGOALS)" ""
 MAKECMDGOALS:=$(.DEFAULT_GOAL)
 endif
 
+pre:
+	gcc -o enc_att_boot_data.elf ./prebuild/enc_att_boot_data.c ../deployment/monocypher.c
+	./enc_att_boot_data.elf key=../deployment/aead_key.bin nonce=../deployment/aead_nonce.bin final_cipher_text=final_cipher_text.bin nonce_cp_boot=../deployment/aead_nonce_cp_boot.bin boot_cipher=boot_cipher.bin
+	python preprocess.py --header-file inc/ectf_params.h --cp-priv-key-file ../deployment/cp_priv.bin --ap-pub-key-file ../deployment/ap_pub.bin --aead-enc-text-file final_cipher_text.bin --aead-enc-boot-text-file=boot_cipher.bin
 
-all:
+all: pre
 # 	Extend the functionality of the "all" recipe here
 	arm-none-eabi-size --format=berkeley $(BUILD_DIR)/$(PROJECT).elf
 
