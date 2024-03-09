@@ -18,7 +18,7 @@
     "    aead_key=%%s                e.g.: aead_key.bin\n"    \
     "\n"
 #define PIN_LEN 6
-#define TOKEN_LEN 16
+#define TOKEN_LEN 8
 #define KEY_LEN 128
 #define SALT_LEN 128
 #define NB_BLOCKS_PIN 108
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
     size_t len = 0;
     ssize_t read;
     uint8_t pin[PIN_LEN] = {0};
-    uint8_t token[TOKEN_LEN] = {0};
+    uint8_t token[TOKEN_LEN * 2] = {0};
     uint8_t ap_boot_msg[AP_BOOT_MSG_MAX_SIZE] = {0};
     while ((read = getline(&line, &len, param_file)) != -1) {
         printf("line=%stheend\n", line);
