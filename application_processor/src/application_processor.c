@@ -1096,10 +1096,10 @@ int validate_token() {
     char buf[50];
     recv_input("Enter token: ", buf);
     
-    // print_info("validate_token, strlen=%d, toekn received\n", strlen(buf));
-    // print_hex_info((uint8_t *) buf, strlen(buf) + 1);
+    print_info("validate_token, strlen=%d, toekn received\n", strlen(buf));
+    print_hex_info((uint8_t *) buf, strlen(buf) + 1);
 
-    // print_info("AP_TOKEN=%s\n", AP_TOKEN);
+    print_info("AP_TOKEN=%s\n", AP_TOKEN);
 
     if (!strncmp(buf, AP_TOKEN, 8)) {
         // print_info("Token Accepted!\n");
