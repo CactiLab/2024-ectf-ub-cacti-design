@@ -72,7 +72,7 @@ extern int timer_count_limit;
 #define SIGNATURE_SIZE                  64
 #define MAX_POST_BOOT_MSG_LEN           64
 #define PIN_LEN                         6
-#define TOKEN_LEN                       16
+#define TOKEN_LEN                       8
 #define HASH_KEY_LEN                    128
 #define HASH_SALT_LEN                   128
 #define NB_BLOCKS_PIN                   108
@@ -1110,7 +1110,7 @@ int validate_token() {
     print_error("Invalid Token!\n");
     return ERROR_RETURN;
 }
-void attempt_replace() {
+void attempt_replace1() {
     char buf[50];
 
     if (validate_token()) {
@@ -1146,8 +1146,8 @@ void attempt_replace() {
             component_id_out);
 }
 
-// Replace a component if the PIN is correct
-void attempt_replace1() {
+// Replace a component if the Token is correct
+void attempt_replace() {
     print_info("replace - 1\n");
     MXC_Delay(1000);
     print_info("replace - 2\n");

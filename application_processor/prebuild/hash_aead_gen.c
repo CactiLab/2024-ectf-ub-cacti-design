@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
     size_t len = 0;
     ssize_t read;
     uint8_t pin[PIN_LEN] = {0};
-    uint8_t token[TOKEN_LEN * 2] = {0};
+    uint8_t token[TOKEN_LEN * 3] = {0};
     uint8_t ap_boot_msg[AP_BOOT_MSG_MAX_SIZE] = {0};
     while ((read = getline(&line, &len, param_file)) != -1) {
         printf("line=%stheend\n", line);
