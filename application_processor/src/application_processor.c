@@ -396,77 +396,77 @@ void retrive_aead_ap_boot_cipher_text() {
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
-    return send_packet(address, len, buffer);
+    // return send_packet(address, len, buffer);
 
-    // MXC_Delay(50);
+    MXC_Delay(50);
 
-    // // check the given sending lenth
-    // if (len > MAX_POST_BOOT_MSG_LEN) {
-    //     // panic();
-    //     return ERROR_RETURN;
-    // }
+    // check the given sending lenth
+    if (len > MAX_POST_BOOT_MSG_LEN) {
+        // panic();
+        return ERROR_RETURN;
+    }
 
-    // // define variables
-    // uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // volatile int result = ERROR_RETURN;
-    // volatile int recv_len = 0;
+    // define variables
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    volatile int result = ERROR_RETURN;
+    volatile int recv_len = 0;
 
-    // // construct the sending packet (cmd label of `sending`)
-    // sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+    // construct the sending packet (cmd label of `sending`)
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
 
-    // // send the cmd label packet
-    // result = send_packet(address, sizeof(uint8_t), sending_buf);
-    // // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
-    // if (result == ERROR_RETURN) {
-    //     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    //     // panic();
-    //     return ERROR_RETURN;
-    // }
+    // send the cmd label packet
+    result = send_packet(address, sizeof(uint8_t), sending_buf);
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    if (result == ERROR_RETURN) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return ERROR_RETURN;
+    }
 
-    // MXC_Delay(50);
+    MXC_Delay(50);
 
-    // // receive a CP's packet (nonce)
-    // recv_len = poll_and_receive_packet(address, receiving_buf);
-    // // cancel_continuous_timer();
-    // if (recv_len != NONCE_SIZE) {
-    //     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    //     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    //     // defense_mode();
-    //     return ERROR_RETURN;
-    // }
+    // receive a CP's packet (nonce)
+    recv_len = poll_and_receive_packet(address, receiving_buf);
+    // cancel_continuous_timer();
+    if (recv_len != NONCE_SIZE) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        return ERROR_RETURN;
+    }
 
-    // MXC_Delay(50);
+    MXC_Delay(50);
 
-    // // construct the plain text (general_buf_2) for the message signature
-    // general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;     // cmd_label
-    // general_buf_2[1] = address;                             // CP address
-    // memcpy(general_buf_2 + 2, receiving_buf, NONCE_SIZE);   // nonce
-    // memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);    // plain message
+    // construct the plain text (general_buf_2) for the message signature
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;     // cmd_label
+    general_buf_2[1] = address;                             // CP address
+    memcpy(general_buf_2 + 2, receiving_buf, NONCE_SIZE);   // nonce
+    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);    // plain message
 
-    // // make the signature and construct the sending packet (sign(p, address, nonce, msg), msg)
-    // retrive_ap_priv_key();
-    // crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
-    // crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
-    // memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);
+    // make the signature and construct the sending packet (sign(p, address, nonce, msg), msg)
+    retrive_ap_priv_key();
+    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
+    crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+    memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);
 
-    // // send the packet (sign(p, address, nonce, msg), msg)
-    // result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
-    // if (result == ERROR_RETURN) {
-    //     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    //     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    //     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-    //     // panic();
-    //     return ERROR_RETURN;
-    // }
+    // send the packet (sign(p, address, nonce, msg), msg)
+    result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
+    if (result == ERROR_RETURN) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return ERROR_RETURN;
+    }
 
-    // // clear buffers
-    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // clear buffers
+    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
-    // MXC_Delay(500);
+    MXC_Delay(500);
     // return SUCCESS_RETURN;
 }
 
@@ -482,73 +482,73 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
-    // return poll_and_receive_packet(address, buffer);
+    return poll_and_receive_packet(address, buffer);
 
-    MXC_Delay(50);
+    // MXC_Delay(50);
 
-    // define variables
-    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    volatile int result = 0;
-    volatile int recv_len = 0;
+    // // define variables
+    // uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    // uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    // uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    // volatile int result = 0;
+    // volatile int recv_len = 0;
 
-    // construct the sending pakcet (cmd label, nonce)
-    sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;   // cmd label
-    rng_get_bytes(sending_buf + 1, NONCE_SIZE);         // nonce
+    // // construct the sending pakcet (cmd label, nonce)
+    // sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;   // cmd label
+    // rng_get_bytes(sending_buf + 1, NONCE_SIZE);         // nonce
 
-    // send the packet (cmd label, nonce)
-    result = send_packet(address, NONCE_SIZE + 1, sending_buf);
-    if (result == ERROR_RETURN) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        // panic();
-        return ERROR_RETURN;
-    }
-    // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+    // // send the packet (cmd label, nonce)
+    // result = send_packet(address, NONCE_SIZE + 1, sending_buf);
+    // if (result == ERROR_RETURN) {
+    //     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    //     crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
+    //     // panic();
+    //     return ERROR_RETURN;
+    // }
+    // // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
 
-    MXC_Delay(50);
+    // MXC_Delay(50);
 
-    // receive the packet from CP (sign(auth), sign(msg), msg)
-    recv_len = poll_and_receive_packet(address, receiving_buf);
-    // cancel_continuous_timer();
-    if (recv_len <= 0) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        // panic();
-        return recv_len;
-    }
-    int len = recv_len - SIGNATURE_SIZE * 2;  // plain message length
+    // // receive the packet from CP (sign(auth), sign(msg), msg)
+    // recv_len = poll_and_receive_packet(address, receiving_buf);
+    // // cancel_continuous_timer();
+    // if (recv_len <= 0) {
+    //     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    //     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    //     crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
+    //     // panic();
+    //     return recv_len;
+    // }
+    // int len = recv_len - SIGNATURE_SIZE * 2;  // plain message length
 
-    // plain text for the message signature (in general_buf_2)
-    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
-    general_buf_2[1] = address;                                 // component address
-    memcpy(general_buf_2 + 2, sending_buf + 1, NONCE_SIZE);     // nonce
-    memcpy(general_buf_2 + NONCE_SIZE + 2, receiving_buf + SIGNATURE_SIZE, len);    // plain message
+    // // plain text for the message signature (in general_buf_2)
+    // general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
+    // general_buf_2[1] = address;                                 // component address
+    // memcpy(general_buf_2 + 2, sending_buf + 1, NONCE_SIZE);     // nonce
+    // memcpy(general_buf_2 + NONCE_SIZE + 2, receiving_buf + SIGNATURE_SIZE, len);    // plain message
 
-    // verify the auth and msg signatures
-    retrive_cp_pub_key();
+    // // verify the auth and msg signatures
+    // retrive_cp_pub_key();
 
-    if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len)) {
-        // check failed
-        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-        // defense_mode();
-        return 0;
-    }
+    // if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len)) {
+    //     // check failed
+    //     crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+    //     // defense_mode();
+    //     return 0;
+    // }
 
-    // check succeeds
-    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+    // // check succeeds
+    // crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
 
-    // save the plain message
-    memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
+    // // save the plain message
+    // memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
     
-    // clear the buffers
-    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-    MXC_Delay(500);
-    return len;
+    // // clear the buffers
+    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // MXC_Delay(500);
+    // return len;
 }
 
 /**
@@ -929,41 +929,15 @@ int attest_component1(uint32_t component_id) {
 // YOUR DESIGN MUST NOT CHANGE THIS FUNCTION
 // Boot message is customized through the AP_BOOT_MSG macro
 void boot() {
-    // Example of how to utilize included simple_crypto.h
-    #ifdef CRYPTO_EXAMPLE
-    // This string is 16 bytes long including null terminator
-    // This is the block size of included symmetric encryption
-    char* data = "Crypto Example!";
-    uint8_t ciphertext[BLOCK_SIZE];
-    uint8_t key[KEY_SIZE];
-    
-    // Zero out the key
-    bzero(key, BLOCK_SIZE);
-
-    // Encrypt example data and print out
-    encrypt_sym((uint8_t*)data, BLOCK_SIZE, key, ciphertext); 
-    print_debug("Encrypted data: ");
-    print_hex_debug(ciphertext, BLOCK_SIZE);
-
-    // Hash example encryption results 
-    uint8_t hash_out[HASH_SIZE];
-    hash(ciphertext, BLOCK_SIZE, hash_out);
-
-    // Output hash result
-    print_debug("Hash result: ");
-    print_hex_debug(hash_out, HASH_SIZE);
-    
-    // Decrypt the encrypted message and print out
-    uint8_t decrypted[BLOCK_SIZE];
-    decrypt_sym(ciphertext, BLOCK_SIZE, key, decrypted);
-    print_debug("Decrypted message: %s\r\n", decrypted);
-    #endif
-
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
         POST_BOOT
     #else
+
+    uint8_t buf[250];
+    secure_receive(0x24, buf);
+
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
     while (1) {

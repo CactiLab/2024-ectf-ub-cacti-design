@@ -243,53 +243,53 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
  * This function must be implemented by your team to align with the security requirements.
 */
 void secure_send(uint8_t* buffer, uint8_t len) {
-    // send_packet_and_ack(len, buffer);
+    send_packet_and_ack(len, buffer);
 
-    MXC_Delay(10);
+    // MXC_Delay(10);
 
-    // check the message length
-    if (len > MAX_I2C_MESSAGE_LEN) {
-        // panic();
-        return;
-    }
+    // // check the message length
+    // if (len > MAX_I2C_MESSAGE_LEN) {
+    //     // panic();
+    //     return;
+    // }
 
-    // define variables
-    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    volatile int result = ERROR_RETURN;
+    // // define variables
+    // uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    // uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    // uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    // volatile int result = ERROR_RETURN;
 
-    // receive AP's packet of the `reading` command and nonce
-    result = wait_and_receive_packet(receiving_buf);
-    if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
-        return;
-    }
+    // // receive AP's packet of the `reading` command and nonce
+    // result = wait_and_receive_packet(receiving_buf);
+    // if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
+    //     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    //     // panic();
+    //     return;
+    // }
 
-    MXC_Delay(50);
+    // MXC_Delay(50);
 
-    // plain text for the message signature (in general_buf_2)
-    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
-    general_buf_2[1] = COMPONENT_ADDRESS;                       // component address
-    memcpy(general_buf_2 + 2, receiving_buf + 1, NONCE_SIZE);   // nonce
-    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);        // plain message
+    // // plain text for the message signature (in general_buf_2)
+    // general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
+    // general_buf_2[1] = COMPONENT_ADDRESS;                       // component address
+    // memcpy(general_buf_2 + 2, receiving_buf + 1, NONCE_SIZE);   // nonce
+    // memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);        // plain message
 
-    // calculate the auth and msg singatures and construct the sneding packet (sign(auth), sign(msg), msg)
-    retrive_cp_priv_key();
-    crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
-    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
-    memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);      // plain message
+    // // calculate the auth and msg singatures and construct the sneding packet (sign(auth), sign(msg), msg)
+    // retrive_cp_priv_key();
+    // crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
+    // crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+    // memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);      // plain message
 
-    // send the packet (sign(auth), sign(msg), msg)
-    send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
+    // // send the packet (sign(auth), sign(msg), msg)
+    // send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
 
-    // clear the buffers
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // // clear the buffers
+    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     
-    MXC_Delay(200);
+    // MXC_Delay(200);
 }
 
 /**
@@ -303,61 +303,61 @@ void secure_send(uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(uint8_t* buffer) {
-    return wait_and_receive_packet(buffer);
+    // return wait_and_receive_packet(buffer);
 
-    // MXC_Delay(50);
+    MXC_Delay(50);
 
-    // // define variables
-    // uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // volatile int result = ERROR_RETURN;
+    // define variables
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    volatile int result = ERROR_RETURN;
 
-    // // receive AP's packet (cmd label)
-    // result = wait_and_receive_packet(receiving_buf);
-    // if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
-    //     return result;
-    // }
+    // receive AP's packet (cmd label)
+    result = wait_and_receive_packet(receiving_buf);
+    if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
+        return result;
+    }
 
-    // // construct the sending packet, generate a challenge (nonce)
-    // rng_get_bytes(sending_buf, NONCE_SIZE);
+    // construct the sending packet, generate a challenge (nonce)
+    rng_get_bytes(sending_buf, NONCE_SIZE);
 
-    // MXC_Delay(50);
+    MXC_Delay(50);
 
-    // // send the challenge packet
-    // send_packet_and_ack(NONCE_SIZE, sending_buf);
-    // // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    // send the challenge packet
+    send_packet_and_ack(NONCE_SIZE, sending_buf);
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
-    // MXC_Delay(50);
+    MXC_Delay(50);
 
-    // // receive sign(p,nonce,address) + sign(msg) + msg
-    // result = wait_and_receive_packet(receiving_buf);
-    // // cancel_continuous_timer();
-    // if (result <= 0) {
-    //     return result;
-    // }
+    // receive sign(p,nonce,address) + sign(msg) + msg
+    result = wait_and_receive_packet(receiving_buf);
+    // cancel_continuous_timer();
+    if (result <= 0) {
+        return result;
+    }
 
-    // // plain message length
-    // int len = result - SIGNATURE_SIZE * 2;
+    // plain message length
+    int len = result - SIGNATURE_SIZE * 2;
 
-    // // construct the plain text for verifying the message signature (in general_buf)
-    // general_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;               // cmd_label
-    // general_buf[1] = COMPONENT_ADDRESS;                             // CP address
-    // memcpy(general_buf + 2, sending_buf, NONCE_SIZE);               // nonce
-    // memcpy(general_buf + 2 + NONCE_SIZE, receiving_buf + SIGNATURE_SIZE, len);  // plain message
+    // construct the plain text for verifying the message signature (in general_buf)
+    general_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;               // cmd_label
+    general_buf[1] = COMPONENT_ADDRESS;                             // CP address
+    memcpy(general_buf + 2, sending_buf, NONCE_SIZE);               // nonce
+    memcpy(general_buf + 2 + NONCE_SIZE, receiving_buf + SIGNATURE_SIZE, len);  // plain message
 
-    // // calculate the msg signature and verify
-    // retrive_ap_pub_key();
+    // calculate the msg signature and verify
+    retrive_ap_pub_key();
 
-    // if (crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len)) {
-    //     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));        
-    //     // defense_mode();
-    //     return 0;
-    // }
-    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-    // memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
-    // MXC_Delay(500);
-    // return len;
+    if (crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len)) {
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));        
+        // defense_mode();
+        return 0;
+    }
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
+    MXC_Delay(500);
+    return len;
 }
 
 /******************************* FUNCTION DEFINITIONS *********************************/
@@ -371,6 +371,10 @@ void boot() {
     #ifdef POST_BOOT
         POST_BOOT
     #else
+
+    uint8_t buf[250] = "I love you.";
+    secure_send(buf, 11);
+
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems
     LED_Off(LED1);
