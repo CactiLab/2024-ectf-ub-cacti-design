@@ -221,55 +221,6 @@ typedef enum {
 // Variable for information stored in flash memory
 flash_entry flash_status;
 
-/******************************* POST BOOT FUNCTIONALITY *********************************/
-/**
- * @brief Secure Send 
- * 
- * @param address: i2c_addr_t, I2C address of recipient
- * @param buffer: uint8_t*, pointer to data to be send
- * @param len: uint8_t, size of data to be sent 
- * 
- * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
- * This function must be implemented by your team to align with the security requirements.
-
-*/
-int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
-    return send_packet(address, len, buffer);
-}
-
-/**
- * @brief Secure Receive
- * 
- * @param address: i2c_addr_t, I2C address of sender
- * @param buffer: uint8_t*, pointer to buffer to receive data to
- * 
- * @return int: number of bytes received, negative if error
- * 
- * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
- * This function must be implemented by your team to align with the security requirements.
-*/
-int secure_receive(i2c_addr_t address, uint8_t* buffer) {
-    return poll_and_receive_packet(address, buffer);
-}
-
-/**
- * @brief Get Provisioned IDs
- * 
- * @param uint32_t* buffer
- * 
- * @return int: number of ids
- * 
- * Return the currently provisioned IDs and the number of provisioned IDs
- * for the current AP. This functionality is utilized in POST_BOOT functionality.
- * This function must be implemented by your team.
-*/
-int get_provisioned_ids(uint32_t* buffer) {
-    memcpy(buffer, flash_status.component_ids, flash_status.component_cnt * sizeof(uint32_t));
-    return flash_status.component_cnt;
-}
-
-/********************************* UTILITIES **********************************/
-
 
 /**
  * @brief Retrieves AP's private key from flash memory.
@@ -431,6 +382,192 @@ void retrive_aead_ap_boot_cipher_text() {
     crypto_wipe(flash_status.aead_ap_boot_nonce, sizeof(flash_status.aead_ap_boot_nonce));  \
     crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
 
+
+/******************************* POST BOOT FUNCTIONALITY *********************************/
+/**
+ * @brief Secure Send 
+ * 
+ * @param address: i2c_addr_t, I2C address of recipient
+ * @param buffer: uint8_t*, pointer to data to be send
+ * @param len: uint8_t, size of data to be sent 
+ * 
+ * Securely send data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+
+*/
+int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
+    // return send_packet(address, len, buffer);
+
+    MXC_Delay(50);
+
+    // check the given sending lenth
+    if (len > MAX_POST_BOOT_MSG_LEN) {
+        // panic();
+        return ERROR_RETURN;
+    }
+
+    // define variables
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    volatile int result = ERROR_RETURN;
+    volatile int recv_len = 0;
+
+    // construct the sending packet (cmd label of `sending`)
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
+
+    // send the cmd label packet
+    result = send_packet(address, sizeof(uint8_t), sending_buf);
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    if (result == ERROR_RETURN) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return ERROR_RETURN;
+    }
+
+    MXC_Delay(50);
+
+    // receive a CP's packet (nonce)
+    recv_len = poll_and_receive_packet(address, receiving_buf);
+    // cancel_continuous_timer();
+    if (recv_len != NONCE_SIZE) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        return ERROR_RETURN;
+    }
+
+    MXC_Delay(50);
+
+    // construct the plain text (general_buf_2) for the message signature
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;     // cmd_label
+    general_buf_2[1] = address;                             // CP address
+    memcpy(general_buf_2 + 2, receiving_buf, NONCE_SIZE);   // nonce
+    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);    // plain message
+
+    // make the signature and construct the sending packet (sign(p, address, nonce, msg), msg)
+    retrive_ap_priv_key();
+    crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
+    crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+    memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);
+
+    // send the packet (sign(p, address, nonce, msg), msg)
+    result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
+    if (result == ERROR_RETURN) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return ERROR_RETURN;
+    }
+
+    // clear buffers
+    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+
+    MXC_Delay(500);
+    return SUCCESS_RETURN;
+}
+
+/**
+ * @brief Secure Receive
+ * 
+ * @param address: i2c_addr_t, I2C address of sender
+ * @param buffer: uint8_t*, pointer to buffer to receive data to
+ * 
+ * @return int: number of bytes received, negative if error
+ * 
+ * Securely receive data over I2C. This function is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team to align with the security requirements.
+*/
+int secure_receive(i2c_addr_t address, uint8_t* buffer) {
+    // return poll_and_receive_packet(address, buffer);
+
+    MXC_Delay(50);
+
+    // define variables
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    volatile int result = 0;
+    volatile int recv_len = 0;
+
+    // construct the sending pakcet (cmd label, nonce)
+    sending_buf[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;   // cmd label
+    rng_get_bytes(sending_buf + 1, NONCE_SIZE);         // nonce
+
+    // send the packet (cmd label, nonce)
+    result = send_packet(address, NONCE_SIZE + 1, sending_buf);
+    if (result == ERROR_RETURN) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
+        // panic();
+        return ERROR_RETURN;
+    }
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+
+    MXC_Delay(50);
+
+    // receive the packet from CP (sign(auth), sign(msg), msg)
+    recv_len = poll_and_receive_packet(address, receiving_buf);
+    // cancel_continuous_timer();
+    if (recv_len <= 0) {
+        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
+        // panic();
+        return recv_len;
+    }
+    int len = recv_len - SIGNATURE_SIZE * 2;  // plain message length
+
+    // plain text for the message signature (in general_buf_2)
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
+    general_buf_2[1] = address;                                 // component address
+    memcpy(general_buf_2 + 2, sending_buf + 1, NONCE_SIZE);     // nonce
+    memcpy(general_buf_2 + NONCE_SIZE + 2, receiving_buf + SIGNATURE_SIZE, len);    // plain message
+
+    // verify the auth and msg signatures
+    retrive_cp_pub_key();
+
+    if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len)) {
+        // check failed
+        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+        // defense_mode();
+        return 0;
+    }
+
+    // check succeeds
+    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+
+    // save the plain message
+    memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
+    
+    // clear the buffers
+    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    MXC_Delay(500);
+    return len;
+}
+
+/**
+ * @brief Get Provisioned IDs
+ * 
+ * @param uint32_t* buffer
+ * 
+ * @return int: number of ids
+ * 
+ * Return the currently provisioned IDs and the number of provisioned IDs
+ * for the current AP. This functionality is utilized in POST_BOOT functionality.
+ * This function must be implemented by your team.
+*/
+int get_provisioned_ids(uint32_t* buffer) {
+    memcpy(buffer, flash_status.component_ids, flash_status.component_cnt * sizeof(uint32_t));
+    return flash_status.component_cnt;
+}
+
+/********************************* UTILITIES **********************************/
 
 /** 
  * Convert an uint32_t to an array of uint8_t
