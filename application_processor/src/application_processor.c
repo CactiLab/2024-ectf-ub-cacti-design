@@ -27,6 +27,7 @@
 #include "board_link.h"
 #include "simple_flash.h"
 #include "host_messaging.h"
+#include "mpu_init.h"
 #ifdef CRYPTO_EXAMPLE
 #include "simple_crypto.h"
 #endif
@@ -246,6 +247,9 @@ int get_provisioned_ids(uint32_t* buffer) {
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
 void init() {
+    // Initialize the MPU
+    mpu_init();
+
     // Enable global interrupts    
     __enable_irq();
 
