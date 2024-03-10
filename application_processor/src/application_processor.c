@@ -481,7 +481,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
     MXC_Delay(500);
-    // return SUCCESS_RETURN;
+    return SUCCESS_RETURN;
 }
 
 /**
