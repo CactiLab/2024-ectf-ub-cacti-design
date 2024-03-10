@@ -372,8 +372,8 @@ void boot() {
         POST_BOOT
     #else
 
-    uint8_t buf[250] = "I love you.";
-    secure_send(buf, 11);
+    // uint8_t buf[250] = "I love you.";
+    // secure_send(buf, 11);
 
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems

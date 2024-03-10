@@ -949,8 +949,8 @@ void boot() {
         POST_BOOT
     #else
 
-    uint8_t buf[250];
-    secure_receive(0x24, buf);
+    // uint8_t buf[250];
+    // secure_receive(0x24, buf);
 
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
