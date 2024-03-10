@@ -108,7 +108,7 @@ void process_attest(void);
 uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
 uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 // Variable for information stored in flash memory
-flash_entry flash_status;
+// flash_entry flash_status;
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
@@ -247,34 +247,34 @@ void init() {
 
 
     // Setup Flash
-    flash_simple_init();
+    // flash_simple_init();
 
     // Test application has been booted before
-    flash_simple_read(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+    // flash_simple_read(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
     // Write Component IDs from flash if first boot e.g. flash unwritten
-    if (flash_status.flash_magic != FLASH_MAGIC) {
-        flash_status.flash_magic = FLASH_MAGIC;
+    // if (flash_status.flash_magic != FLASH_MAGIC) {
+    //     flash_status.flash_magic = FLASH_MAGIC;
 
-        uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
-        uint8_t ap_public_key[] = {AP_PUBLIC_KEY};
-        uint8_t attest_cipher[] = {ATTESTATION_CIPHER_DATA};
-        uint8_t boot_cipher[] = {CIPHER_CP_BOOT_MSG};
-        memcpy(flash_status.cp_priv_key, cp_private_key, PRIV_KEY_SIZE);
-        memcpy(flash_status.ap_pub_key, ap_public_key, PUB_KEY_SIZE);
-        memcpy(flash_status.cipher_attest_data, attest_cipher, CIPHER_ATTESTATION_DATA_LEN);
-        memcpy(flash_status.cipher_boot_text, boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+    //     uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
+    //     uint8_t ap_public_key[] = {AP_PUBLIC_KEY};
+    //     uint8_t attest_cipher[] = {ATTESTATION_CIPHER_DATA};
+    //     uint8_t boot_cipher[] = {CIPHER_CP_BOOT_MSG};
+    //     memcpy(flash_status.cp_priv_key, cp_private_key, PRIV_KEY_SIZE);
+    //     memcpy(flash_status.ap_pub_key, ap_public_key, PUB_KEY_SIZE);
+    //     memcpy(flash_status.cipher_attest_data, attest_cipher, CIPHER_ATTESTATION_DATA_LEN);
+    //     memcpy(flash_status.cipher_boot_text, boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
 
-        flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
+    //     flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
 
-        crypto_wipe(cp_private_key, sizeof(cp_private_key));
-        crypto_wipe(ap_public_key, sizeof(ap_public_key));
-        crypto_wipe(attest_cipher, sizeof(attest_cipher));
-        crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
-        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
-        crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
-    }
+    //     crypto_wipe(cp_private_key, sizeof(cp_private_key));
+    //     crypto_wipe(ap_public_key, sizeof(ap_public_key));
+    //     crypto_wipe(attest_cipher, sizeof(attest_cipher));
+    //     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+    //     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    //     crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+    //     crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+    // }
 
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
