@@ -25,6 +25,7 @@
 #include "simple_flash.h"
 #include "syscalls.h"
 #include "mpu_init.h"
+#include "common.h"
 
 #include "simple_i2c_peripheral.h"
 #include "board_link.h"
@@ -86,6 +87,23 @@ typedef struct {
     uint32_t component_id;
 } scan_message;
 
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[4];
+} packet_plain_with_id;
+
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_boot_1_ap_to_cp;
+
+typedef struct __attribute__((packed)) {
+    uint8_t sig_auth[SIGNATURE_SIZE];
+    uint8_t nonce[NONCE_SIZE];
+} packet_boot_1_cp_to_ap;
+
 // Datatype for information stored in flash
 typedef struct {
     uint32_t flash_magic;
@@ -106,8 +124,8 @@ void process_attest(void);
 
 /********************************* GLOBAL VARIABLES **********************************/
 // Global varaibles
-uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+uint8_t global_buffer_recv[MAX_I2C_MESSAGE_LEN + 1];
+uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN + 1];
 
 // Variable for information stored in flash memory
 flash_entry flash_status;
@@ -141,6 +159,104 @@ int secure_receive(uint8_t* buffer) {
 }
 
 /******************************* FUNCTION DEFINITIONS *********************************/
+
+
+/**
+ * @brief Retrieves CP's private key from flash memory.
+ * 
+ * This function reads CP's private key from the specified flash address
+ * and stores it in the global `flash_status.cp_priv_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_cp_priv_key() {
+    flash_simple_read(FLASH_ADDR + CP_PRIV_KEY_OFFSET, (uint32_t*)flash_status.cp_priv_key, PRIV_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves AP's public key from flash memory.
+ * 
+ * This function reads AP's public key from the specified flash address
+ * and stores it in the global `flash_status.ap_pub_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_ap_pub_key() {
+    flash_simple_read(FLASH_ADDR + AP_PUB_KEY_OFFSET, (uint32_t*)flash_status.ap_pub_key, PUB_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves encrypted attestation data from flash memory.
+ * 
+ * This function reads encrypted attestation data from the specified flash address
+ * and stores it in the global `flash_status.cipher_attest_data` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_attest_cipher() {
+    flash_simple_read(FLASH_ADDR + ATTEST_CIPHER_OFFSET, (uint32_t*)flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
+}
+
+/**
+ * @brief Retrieves encrypted boot message from flash memory.
+ * 
+ * This function reads encrypted boot message from the specified flash address
+ * and stores it in the global `flash_status.cipher_boot_text` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_boot_cipher() {
+    flash_simple_read(FLASH_ADDR + CIPHER_BOOT_TEXT_OFFSET, (uint32_t*)flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+}
+
+// write current value in flast_status to the flash memory
+// for defense/normal mode for the current design
+#define WRITE_FLASH_MEMORY  \
+    retrive_ap_pub_key();   \
+    retrive_cp_priv_key();  \
+    retrive_attest_cipher();    \
+    retrive_attest_cipher();    \
+    flash_simple_erase_page(FLASH_ADDR);    \
+    flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));  \
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));    \
+    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));  \
+    crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+
+
+/** 
+ * Convert an uint32_t to an array of uint8_t
+ * @param buf at least 4 elements
+ * @param i the uint32_t variable
+*/
+void convert_32_to_8(uint8_t *buf, uint32_t i) {
+    if (!buf)
+        return;
+    buf[0] = i & 0xff;
+    buf[1] = (i >> 8) & 0xff;
+    buf[2] = (i >> 16) & 0xff;
+    buf[3] = (i >> 24) & 0xff;
+}
+
+/**
+ * compare an integer @param i with the array of uint8_t array @param buf (4 elements)
+ * @return 0 if they are the same
+*/
+int compare_32_and_8(uint8_t *buf, uint32_t i) {
+    uint8_t tarray[4] = {0};
+    convert_32_to_8(tarray, i);
+    if (tarray[0] - buf[0] == 0) {
+        if (tarray[1] - buf[1] == 0) {
+            if (tarray[2] - buf[2] == 0) {
+                if (tarray[3] - buf[3] == 0) {
+                    return 0;
+                }
+            }
+        }
+    }
+
+    return -1;
+}
 
 // Example boot sequence
 // Your design does not need to change this
@@ -176,7 +292,7 @@ void boot() {
 
 // Handle a transaction from the AP
 void component_process_cmd() {
-    command_message* command = (command_message*) receive_buffer;
+    command_message* command = (command_message*) global_buffer_recv;
 
     // Output to application processor dependent on command received
     switch (command->opcode) {
@@ -224,24 +340,64 @@ void process_validate() {
 
 void process_attest() {
     // The AP requested attestation. Respond with the attestation data
-    uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
-                ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) + 1;
-    send_packet_and_ack(len, transmit_buffer);
-}
+    // uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
+    //             ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) + 1;
+    // send_packet_and_ack(len, transmit_buffer);
 
-// write current value in flast_status to the flash memory
-// for defense/normal mode for the current design
-#define WRITE_FLASH_MEMORY  \
-    retrive_ap_pub_key();   \
-    retrive_cp_priv_key();  \
-    retrive_attest_cipher();    \
-    retrive_attest_cipher();    \
-    flash_simple_erase_page(FLASH_ADDR);    \
-    flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
-    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));  \
-    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));    \
-    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));  \
-    crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+
+
+    // defeine variables
+    uint8_t general_buffer[MAX_I2C_MESSAGE_LEN + 1];
+
+    // generate a challenge (nonce)
+    rng_get_bytes(transmit_buffer, NONCE_SIZE);
+
+    // send nonce
+    send_packet_and_ack(NONCE_SIZE, transmit_buffer);
+
+    // receive the response sign(p, nonce, id)
+    volatile uint8_t len = wait_and_receive_packet(global_buffer_recv);
+    if (len != SIGNATURE_SIZE) {
+        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return;
+    }
+
+    // construct the plain text for verifying the auth signature (in general_buffer)
+    uint32_t component_id = COMPONENT_ID;
+    packet_plain_with_id *plain_auth = (packet_plain_with_id *) general_buffer;
+    plain_auth->cmd_label = COMPONENT_CMD_ATTEST;
+    memcpy(plain_auth->nonce, transmit_buffer, NONCE_SIZE);
+    convert_32_to_8(plain_auth->id, component_id);
+
+    MXC_Delay(50);
+
+    // verify
+    retrive_ap_pub_key();
+    if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buffer, NONCE_SIZE + 5)) {
+        // verification failed
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        return;
+    }
+    // verification passed
+
+    // wipe
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+
+    // retrive encrypted attest data and send
+    retrive_attest_cipher();
+    memcpy(transmit_buffer, flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
+    send_packet_and_ack(CIPHER_ATTESTATION_DATA_LEN, transmit_buffer);
+    crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+    crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
+    crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
+}
 
 void init() {
     // Initialize the MPU
@@ -285,7 +441,8 @@ void init() {
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
     board_link_init(addr);
 
-    
+    // Initialize TRNG
+    rng_init();
 
     LED_On(LED2);
 }
@@ -298,7 +455,7 @@ int main(void) {
     printf("Component Started\n");
 
     while (1) {
-        wait_and_receive_packet(receive_buffer);
+        wait_and_receive_packet(global_buffer_recv);
 
         component_process_cmd();
     }

@@ -28,6 +28,8 @@
 #include "simple_flash.h"
 #include "host_messaging.h"
 #include "mpu_init.h"
+#include "common.h"
+
 #ifdef CRYPTO_EXAMPLE
 #include "simple_crypto.h"
 #endif
@@ -127,6 +129,55 @@ typedef struct {
 typedef struct {
     uint32_t component_id;
 } scan_message;
+
+// Data structure for sending and receiving commands to component for more secure protocols
+// packet structure for plain text for signature contains component I2C address
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t address;
+} packet_plain_with_addr;
+
+// packet structure for plain text for signature contains compontent ID
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_plain_with_id;
+
+// packet structure for plain text for signature of transmitting message
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t address;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t msg[MAX_POST_BOOT_MSG_LEN];
+} packet_plain_msg;
+
+// packet structure for sending message
+typedef struct __attribute__((packed)) {
+    uint8_t sig_auth[SIGNATURE_SIZE];
+    uint8_t sig_msg[SIGNATURE_SIZE];
+    uint8_t msg[MAX_POST_BOOT_MSG_LEN];
+} packet_sign_sign_msg;
+
+// packet structure for reading message (post boot) request
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+} packet_read_msg;
+
+// packet structure for post boot from AP to CP
+typedef struct __attribute__((packed)) {
+    uint8_t cmd_label;
+    uint8_t nonce[NONCE_SIZE];
+    uint8_t id[COMPONENT_ID_SIZE];
+} packet_boot_1_ap_to_cp;
+
+// packet structure for post boot from CP to AP
+typedef struct __attribute__((packed)) {
+    uint8_t sig_auth[SIGNATURE_SIZE];
+    uint8_t nonce[NONCE_SIZE];
+} packet_boot_1_cp_to_ap;
 
 // Datatype for information stored in flash
 typedef struct {
@@ -377,6 +428,21 @@ void retrive_aead_ap_boot_cipher_text() {
     crypto_wipe(flash_status.aead_ap_boot_nonce, sizeof(flash_status.aead_ap_boot_nonce));  \
     crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
 
+
+/** 
+ * Convert an uint32_t to an array of uint8_t
+ * @param buf at least 4 elements
+ * @param i the uint32_t variable
+*/
+void convert_32_to_8(uint8_t *buf, uint32_t i) {
+    if (!buf)
+        return;
+    buf[0] = i & 0xff;
+    buf[1] = (i >> 8) & 0xff;
+    buf[2] = (i >> 16) & 0xff;
+    buf[3] = (i >> 24) & 0xff;
+}
+
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
 void init() {
@@ -465,6 +531,9 @@ void init() {
     
     // Initialize board link interface
     board_link_init();
+
+    // Initialize TRNG
+    rng_init();
 }
 
 // Send a command to a component and receive the result
@@ -578,7 +647,118 @@ int boot_components() {
     return SUCCESS_RETURN;
 }
 
+
 int attest_component(uint32_t component_id) {
+    MXC_Delay(50);
+
+    // check if component_id exists in the flash memory
+    volatile int r = 0;
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        if (flash_status.component_ids[i] == component_id) {
+            r = 1;
+            break;
+        }
+    }
+    if (r == 0) {
+        // defense_mode();
+        return ERROR_RETURN;
+    }
+
+    // define variables
+    volatile int result = ERROR_RETURN;
+    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN + 1];
+    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN + 1];
+    uint8_t general_buffer[MAX_I2C_MESSAGE_LEN + 1];
+    i2c_addr_t addr = component_id_to_i2c_addr(component_id);    // Set the I2C address of the component
+
+    // construct sending packet (attestation command)
+    transmit_buffer[0] = COMPONENT_CMD_ATTEST;  // cmd label
+
+    // send the attestation command
+    result = send_packet(addr, 1, transmit_buffer);
+    if (result == ERROR_RETURN) {
+        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return ERROR_RETURN;
+    }
+
+    // receive nonce from CP
+    volatile int recv_len = poll_and_receive_packet(addr, receive_buffer);
+    if (recv_len != NONCE_SIZE) {
+        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return ERROR_RETURN;
+    }
+
+    MXC_Delay(20);
+
+    // construct the plain text for authentication signature
+    packet_plain_with_id *plain_auth = (packet_plain_with_id *)general_buffer;
+    plain_auth->cmd_label = COMPONENT_CMD_ATTEST;
+    memcpy(plain_auth->nonce, receive_buffer, NONCE_SIZE);
+    convert_32_to_8(plain_auth->id, component_id);
+
+    MXC_Delay(50);
+
+    // calculate the signature sign(p, nonce, id)
+    retrive_ap_priv_key();
+    crypto_eddsa_sign(transmit_buffer, flash_status.ap_priv_key, general_buffer, NONCE_SIZE + 5);
+    crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+
+    // send the signature
+    send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
+    crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
+
+    MXC_Delay(20);
+
+    // receive the ecnrypted attestation data
+    recv_len = poll_and_receive_packet(addr, receive_buffer);
+    if (recv_len != ATT_FINAL_TEXT_SIZE) {
+        crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        return ERROR_RETURN;
+    }
+
+    // decrypt the attestation message
+    retrive_aead_key();
+    retrive_aead_nonce();
+    // tweak the nonce
+    convert_32_to_8(flash_status.aead_nonce, component_id);
+    flash_status.aead_nonce[4] = ENC_ATTESTATION_MAGIC;
+    crypto_blake2b(flash_status.aead_nonce, AEAD_NONCE_SIZE, flash_status.aead_nonce, AEAD_NONCE_SIZE);
+    // wipe general_buffer
+    crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
+    // decrypt
+    if (crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE) != 0) {
+        // decryption failed
+        crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+        crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+        crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        return ERROR_RETURN;
+    }
+    // decryption ok
+
+    // wipe
+    crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+    crypto_wipe(receive_buffer, sizeof(receive_buffer));
+
+    // Print out attestation data
+    general_buffer[ATT_LOC_POS + general_buffer[ATT_LOC_LEN_POS]] = '\0';
+    general_buffer[ATT_DATE_POS + general_buffer[ATT_DATE_LEN_POS]] = '\0';
+    general_buffer[ATT_CUSTOMER_POS + general_buffer[ATT_CUSTOMER_LEN_POS]] = '\0';
+    print_info("C>0x%08x\n", component_id);
+    print_info("LOC>%s\nDATE>%s\nCUST>%s\n", general_buffer + ATT_LOC_POS, general_buffer + ATT_DATE_POS, general_buffer + ATT_CUSTOMER_POS);
+
+    crypto_wipe(general_buffer, sizeof(general_buffer));
+    return SUCCESS_RETURN;
+}
+
+int attest_component1(uint32_t component_id) {
     // Buffers for board link communication
     uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
     uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
@@ -832,8 +1012,88 @@ void attempt_replace1() {
             component_id_out);
 }
 
+
 // Attest a component if the PIN is correct
 void attempt_attest() {
+    MXC_Delay(50);
+
+    // buffer for host input
+    char buf[HOST_INPUT_BUF_SIZE];
+
+    // host input
+    recv_input("Enter pin: ", buf);
+
+    // length check
+    if (strlen(buf) != PIN_LEN) {
+        crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
+        // defense_mode();
+        print_error("len\n");
+        return;
+    }
+
+    MXC_Delay(50);
+
+    // for hash the inputted PIN
+    uint8_t hash[HASH_LEN] = {0};
+
+    // configuration of Argon2
+    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_PIN, NB_PASSES, NB_LANES};
+    uint8_t *workarea = malloc(1024 * NB_BLOCKS_PIN);
+    retrive_hash_salt();
+    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, PIN_LEN, sizeof(flash_status.hash_salt)};
+    retrive_hash_key();
+    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+
+    // hash the inputted PIN
+    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
+
+    // wipe
+    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
+    free(workarea);
+
+    // mitigate brute-force
+    // random_delay_us(1200000);
+    MXC_Delay(100);
+
+    // retieve the stored correct hashed PIN, compare it with the inputted hashed PIN
+    retrive_pin_hash();
+
+    // check if the hash value is correct
+    if (crypto_verify64(hash, flash_status.pin_hash)) {
+        crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+        crypto_wipe(hash, sizeof(hash));
+        print_error("PIN\n");
+        return;
+    }
+
+    crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+    crypto_wipe(hash, sizeof(hash));
+    
+    // a valid PIN
+    MXC_Delay(100);
+    
+    // host input component ID
+    uint32_t component_id;
+    recv_input("Component ID: ", buf);
+    sscanf(buf, "%x", &component_id);
+    crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
+
+    // get the attestaion data for this specific component
+    if(attest_component(component_id) == SUCCESS_RETURN) {
+        // SUCC return
+        print_success("Attest\n");
+        return;
+    }
+
+    print_error("Attest\n");
+    // defense_mode();
+    return;
+}
+
+// Attest a component if the PIN is correct
+void attempt_attest1() {
     char buf[50];
 
     if (validate_pin()) {
@@ -842,7 +1102,7 @@ void attempt_attest() {
     uint32_t component_id;
     recv_input("Component ID: ", buf);
     sscanf(buf, "%x", &component_id);
-    if (attest_component(component_id) == SUCCESS_RETURN) {
+    if (attest_component1(component_id) == SUCCESS_RETURN) {
         print_success("Attest\n");
     }
 }
