@@ -313,11 +313,16 @@ int secure_receive(uint8_t* buffer) {
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     volatile int result = ERROR_RETURN;
 
+    printf("recv - 1\n");
+
     // receive AP's packet (cmd label)
     result = wait_and_receive_packet(receiving_buf);
+    printf("recv - 2, result=%d, [0]=0x%x\n", result, receiving_buf[0]);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
+        printf("recv - 3\n");
         return result;
     }
+    printf("recv - 4\n");
 
     // construct the sending packet, generate a challenge (nonce)
     rng_get_bytes(sending_buf, NONCE_SIZE);
@@ -329,16 +334,19 @@ int secure_receive(uint8_t* buffer) {
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     MXC_Delay(50);
+    printf("recv - 5\n");
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     result = wait_and_receive_packet(receiving_buf);
+    printf("recv - 6, result=%d\n", result);
     // cancel_continuous_timer();
     if (result <= 0) {
         return result;
     }
 
     // plain message length
-    int len = result - SIGNATURE_SIZE * 2;
+    int len = result - SIGNATURE_SIZE;
+    printf("recv - 7, len=%d\n", len);
 
     // construct the plain text for verifying the message signature (in general_buf)
     general_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;               // cmd_label
@@ -349,11 +357,11 @@ int secure_receive(uint8_t* buffer) {
     // calculate the msg signature and verify
     retrive_ap_pub_key();
 
-    // if (crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len)) {
-    //     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));        
-    //     // defense_mode();
-    //     return 0;
-    // }
+    if (crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len)) {
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+        // defense_mode();
+        return 0;
+    }
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
     MXC_Delay(500);
@@ -374,6 +382,10 @@ void boot() {
 
     // uint8_t buf[250] = "I love you.";
     // secure_send(buf, 11);
+
+    // uint8_t buf[250];
+    // secure_receive(buf);
+    // printf("msg=%s\n", buf);
 
     // Anything after this macro can be changed by your design
     // but will not be run on provisioned systems

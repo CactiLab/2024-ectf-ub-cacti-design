@@ -952,6 +952,9 @@ void boot() {
     // uint8_t buf[250];
     // secure_receive(0x24, buf);
 
+    // uint8_t buf[250] = "I want to pass.";
+    // secure_send(0x24, buf, strlen(buf));
+
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
     while (1) {
