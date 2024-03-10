@@ -243,53 +243,53 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
  * This function must be implemented by your team to align with the security requirements.
 */
 void secure_send(uint8_t* buffer, uint8_t len) {
-    send_packet_and_ack(len, buffer);
+    // send_packet_and_ack(len, buffer);
 
-    // MXC_Delay(10);
+    MXC_Delay(10);
 
-    // // check the message length
-    // if (len > MAX_I2C_MESSAGE_LEN) {
-    //     // panic();
-    //     return;
-    // }
+    // check the message length
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        // panic();
+        return;
+    }
 
-    // // define variables
-    // uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
-    // volatile int result = ERROR_RETURN;
+    // define variables
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf_2[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    volatile int result = ERROR_RETURN;
 
-    // // receive AP's packet of the `reading` command and nonce
-    // result = wait_and_receive_packet(receiving_buf);
-    // if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
-    //     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    //     // panic();
-    //     return;
-    // }
+    // receive AP's packet of the `reading` command and nonce
+    result = wait_and_receive_packet(receiving_buf);
+    if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return;
+    }
 
-    // MXC_Delay(50);
+    MXC_Delay(50);
 
-    // // plain text for the message signature (in general_buf_2)
-    // general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
-    // general_buf_2[1] = COMPONENT_ADDRESS;                       // component address
-    // memcpy(general_buf_2 + 2, receiving_buf + 1, NONCE_SIZE);   // nonce
-    // memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);        // plain message
+    // plain text for the message signature (in general_buf_2)
+    general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
+    general_buf_2[1] = COMPONENT_ADDRESS;                       // component address
+    memcpy(general_buf_2 + 2, receiving_buf + 1, NONCE_SIZE);   // nonce
+    memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);        // plain message
 
-    // // calculate the auth and msg singatures and construct the sneding packet (sign(auth), sign(msg), msg)
-    // retrive_cp_priv_key();
-    // crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
-    // crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
-    // memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);      // plain message
+    // calculate the auth and msg singatures and construct the sneding packet (sign(auth), sign(msg), msg)
+    retrive_cp_priv_key();
+    crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+    memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);      // plain message
 
-    // // send the packet (sign(auth), sign(msg), msg)
-    // send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
+    // send the packet (sign(auth), sign(msg), msg)
+    send_packet_and_ack(SIGNATURE_SIZE * 2 + len, sending_buf);
 
-    // // clear the buffers
-    // crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-    // crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-    // crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    // clear the buffers
+    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     
-    // MXC_Delay(200);
+    MXC_Delay(200);
 }
 
 /**
@@ -381,7 +381,7 @@ void boot() {
     #else
 
     // uint8_t buf[250] = "I love you.";
-    // secure_send(buf, 11);
+    // secure_send(buf, strlen(buf) + 1);
 
     // uint8_t buf[250];
     // secure_receive(buf);
