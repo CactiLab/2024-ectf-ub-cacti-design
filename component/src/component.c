@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "monocypher.h"
-#include "mpu_init.h"
 #include "simple_flash.h"
 #include "syscalls.h"
 
@@ -243,9 +242,6 @@ void process_attest() {
     crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
 
 void init() {
-    // initialize the MPU
-    mpu_init();
-
     // Enable Global Interrupts
     __enable_irq();
 
