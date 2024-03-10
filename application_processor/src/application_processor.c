@@ -216,6 +216,139 @@ int get_provisioned_ids(uint32_t* buffer) {
 
 /********************************* UTILITIES **********************************/
 
+
+/**
+ * @brief Retrieves AP's private key from flash memory.
+ * 
+ * This function reads AP's private key from the specified flash address
+ * and stores it in the global `flash_status.ap_priv_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_ap_priv_key() {
+    flash_simple_read(FLASH_ADDR + AP_PRIV_KEY_OFFSET, (uint32_t*)flash_status.ap_priv_key, PRIV_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves CP's public key from flash memory.
+ * 
+ * This function reads CP's public key from the specified flash address
+ * and stores it in the global `flash_status.cp_pub_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_cp_pub_key() {
+    flash_simple_read(FLASH_ADDR + CP_PUB_KEY_OFFSET, (uint32_t*)flash_status.cp_pub_key, PUB_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves hash key from flash memory.
+ * 
+ * This function reads the hash key from the specified flash address
+ * and stores it in the global `flash_status.hash_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_hash_key() {
+    flash_simple_read(FLASH_ADDR + HASH_KEY_OFFSET, (uint32_t*)flash_status.hash_key, HASH_KEY_LEN);
+}
+
+/**
+ * @brief Retrieves hash salt from flash memory.
+ * 
+ * This function reads the hash salt from the specified flash address
+ * and stores it in the global `flash_status.hash_salt` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_hash_salt() {
+    flash_simple_read(FLASH_ADDR + HASH_SALT_OFFSET, (uint32_t*)flash_status.hash_salt, HASH_SALT_LEN);
+}
+
+/**
+ * @brief Retrieves pin hash value from flash memory.
+ * 
+ * This function reads the pin hash value from the specified flash address
+ * and stores it in the global `flash_status.pin_hash` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_pin_hash() {
+    flash_simple_read(FLASH_ADDR + PIN_HASH_OFFSET, (uint32_t*)flash_status.pin_hash, HASH_LEN);
+}
+
+/**
+ * @brief Retrieves token hash value from flash memory.
+ * 
+ * This function reads the token hash value from the specified flash address
+ * and stores it in the global `flash_status.pin_token` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_token_hash() {
+    flash_simple_read(FLASH_ADDR + TOKEN_HASH_OFFSET, (uint32_t*)flash_status.token_hash, HASH_LEN);
+}
+
+/**
+ * @brief Retrieves AEAD key value from flash memory.
+ * 
+ * This function reads the AEAD key value from the specified flash address
+ * and stores it in the global `flash_status.aead_key` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_key() {
+    flash_simple_read(FLASH_ADDR + AEAD_KEY_OFFSET, (uint32_t*)flash_status.aead_key, AEAD_KEY_SIZE);
+}
+
+/**
+ * @brief Retrieves AEAD nonce value from flash memory.
+ * 
+ * This function reads the AEAD nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_nonce() {
+    flash_simple_read(FLASH_ADDR + AEAD_NONCE_OFFSET, (uint32_t*)flash_status.aead_nonce, AEAD_NONCE_SIZE);
+}
+
+/**
+ * @brief Retrieves AEAD CP boot nonce value from flash memory.
+ * 
+ * This function reads the AEAD CP boot nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_cp_boot_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_cp_boot_nonce() {
+    flash_simple_read(FLASH_ADDR + AEAD_CP_BOOT_NONCE_OFFSET, (uint32_t*)flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+}
+
+/**
+ * @brief Retrieves AEAD AP boot nonce value from flash memory.
+ * 
+ * This function reads the AEAD AP boot nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_ap_boot_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_ap_boot_nonce() {
+    flash_simple_read(FLASH_ADDR + AEAD_AP_BOOT_NONCE_OFFSET, (uint32_t*)flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
+}
+
+/**
+ * @brief Retrieves AEAD AP boot cipher text from flash memory.
+ * 
+ * This function reads the AEAD AP boot nonce value from the specified flash address
+ * and stores it in the global `flash_status.aead_ap_boot_nonce` array.
+ * 
+ * @note Make sure to wipe the key using `crypto_wipe` after use.
+ */
+void retrive_aead_ap_boot_cipher_text() {
+    flash_simple_read(FLASH_ADDR + AEAD_AP_BOOT_CIPHER_OFFSET, (uint32_t*)flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+}
+
 // write current value in flast_status to the flash memory
 // for defense/normal mode and replace for the current design
 #define WRITE_FLASH_MEMORY  \
@@ -574,8 +707,96 @@ void attempt_boot() {
     boot();
 }
 
-// Replace a component if the PIN is correct
+
+// Replace a component if the Token is correct
 void attempt_replace() {
+    MXC_Delay(200);
+
+    // buffer for host input
+    char buf[HOST_INPUT_BUF_SIZE] = {0};
+
+    // read host input
+    recv_input("Enter token: ", buf);
+    // RANDOM_DELAY_TINY;
+
+    // length check
+    if (strlen(buf) != TOKEN_LEN) {
+        crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
+        // defense_mode();
+        print_error("len\n");
+        return;
+    }
+
+    MXC_Delay(50);
+
+    // for hash the inputted token
+    uint8_t hash[HASH_LEN] = {0};
+
+    // configuration of Argon2
+    crypto_argon2_config cac = {CRYPTO_ARGON2_ID, NB_BLOCKS_TOKEN, NB_PASSES, NB_LANES};
+    uint8_t *workarea = malloc(1024 * cac.nb_blocks);
+    retrive_hash_salt();
+    crypto_argon2_inputs cai = {(const uint8_t *)buf, flash_status.hash_salt, TOKEN_LEN, sizeof(flash_status.hash_salt)};
+    retrive_hash_key();
+    crypto_argon2_extras cae = {flash_status.hash_key, NULL, sizeof(flash_status.hash_key), 0};
+
+    // hash the inputted token
+    crypto_argon2(hash, HASH_LEN, workarea, cac, cai, cae);
+
+    // free and wipe
+    free(workarea);
+    crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
+    crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
+    crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
+
+    // mitigate brute-force
+    // random_delay_us(1500000);
+    MXC_Delay(50);
+
+    // print_info("replace - 4\n");
+    // compare the hash of inputted token with the stored corect token hash
+    retrive_token_hash();
+
+    if (crypto_verify64(hash, flash_status.token_hash)) {
+        crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+        crypto_wipe(hash, sizeof(hash));
+        print_error("Token\n");
+        return;
+    }
+
+    // print_info("replace - 5\n");
+    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    crypto_wipe(hash, sizeof(hash));
+
+    // input IDs from the host
+    uint32_t component_id_in = 0;
+    uint32_t component_id_out = 0;
+    recv_input("Component ID In: ", buf);
+    sscanf(buf, "%x", &component_id_in);
+    recv_input("Component ID Out: ", buf);
+    sscanf(buf, "%x", &component_id_out);
+    crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
+
+    // Find the component to swap out
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        // print_info("replace - 7, id=%x\n", flash_status.component_ids[i]);
+        if (flash_status.component_ids[i] == component_id_out) {
+            // print_info("replace - 8, id=%x\n", flash_status.component_ids[i]);
+            // find it, replace
+            flash_status.component_ids[i] = component_id_in;
+            WRITE_FLASH_MEMORY;
+            // print replace success information
+            print_success("Replace\n");
+            MXC_Delay(500);
+            return;
+        }
+    }
+    print_error("ID\n");
+    return;
+}
+
+// Replace a component if the PIN is correct
+void attempt_replace1() {
     char buf[50];
 
     if (validate_token()) {
