@@ -69,7 +69,10 @@ typedef enum {
     COMPONENT_CMD_SCAN,
     COMPONENT_CMD_VALIDATE,
     COMPONENT_CMD_BOOT,
-    COMPONENT_CMD_ATTEST
+    COMPONENT_CMD_ATTEST,
+    COMPONENT_CMD_MSG_FROM_AP_TO_CP,
+    COMPONENT_CMD_MSG_FROM_CP_TO_AP,
+    COMPONENT_CMD_BOOT_2
 } component_cmd_t;
 
 /******************************** TYPE DEFINITIONS ********************************/
@@ -315,11 +318,112 @@ void component_process_cmd() {
 }
 
 void process_boot() {
-    // The AP requested a boot. Set `component_boot` for the main loop and
-    // respond with the boot message
-    uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
-    memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
-    send_packet_and_ack(len, transmit_buffer);
+    // // The AP requested a boot. Set `component_boot` for the main loop and
+    // // respond with the boot message
+    // uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
+    // memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
+    // send_packet_and_ack(len, transmit_buffer);
+    // // Call the boot function
+    // boot();
+
+
+    MXC_Delay(200);
+
+    // define variables
+    uint32_t component_id = COMPONENT_ID;       // component ID
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    volatile int result = ERROR_RETURN;
+
+    // receive the `boot` command and nonce from the AP (already in the global_buffer_recv)
+    // global_buffer_recv already has the data
+    // check the cmd label
+    packet_boot_1_ap_to_cp *pkt_receive_1 = (packet_boot_1_ap_to_cp *) global_buffer_recv;
+    if (pkt_receive_1->cmd_label != COMPONENT_CMD_BOOT) {
+        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        return;
+    }
+
+    // check the component ID
+    if (compare_32_and_8(pkt_receive_1->id, component_id)) {
+        // ID check failure
+        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
+        // defense_mode();
+        return;
+    }
+    // ID check ok
+
+    MXC_Delay(50);
+
+    // the whole sending packet (sign(p, nonce, address), nonce)
+    packet_boot_1_cp_to_ap *pkt_send_1 = (packet_boot_1_cp_to_ap *) transmit_buffer;
+
+    // construct the plain text of the auth signature (in general_buf)
+    packet_plain_with_id *plain_auth = (packet_plain_with_id *) general_buf;
+    plain_auth->cmd_label = COMPONENT_CMD_BOOT;
+    convert_32_to_8(plain_auth->id, component_id);
+    memcpy(plain_auth->nonce, pkt_receive_1->nonce, NONCE_SIZE);
+
+    // construct the sending packet
+    // sign the AP's nonce
+    retrive_cp_priv_key();
+    crypto_eddsa_sign(pkt_send_1->sig_auth, flash_status.cp_priv_key, global_buffer_recv, NONCE_SIZE + 5);
+    crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
+    // generate a nonce
+    rng_get_bytes(pkt_send_1->nonce, NONCE_SIZE);
+
+    // send
+    send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
+    // start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+    // printf("3\n");
+
+    // receive the response
+    MXC_Delay(50);
+    result = wait_and_receive_packet(global_buffer_recv);
+    // cancel_continuous_timer();
+    if (result <= 0) {
+        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
+        crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+        // panic();
+        return;
+    }
+
+    // construct the plaintext for verifying the auth signature
+    packet_plain_with_id *plain_auth_2 = (packet_plain_with_id *) general_buf;
+    plain_auth_2->cmd_label = COMPONENT_CMD_BOOT_2;
+    convert_32_to_8(plain_auth_2->id, component_id);
+    memcpy(plain_auth_2->nonce, pkt_send_1->nonce, NONCE_SIZE);
+
+    // verify the auth signature
+    retrive_ap_pub_key();
+    if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 5)) {
+        // verification failure
+        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+        // defense_mode();
+        return;
+    }
+    // verification passes
+
+    // wipe
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+
+    MXC_Delay(50);
+
+    // respond with the encrypted cp boot message
+    retrive_boot_cipher();
+    memcpy((void*)transmit_buffer, flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+    send_packet_and_ack(BOOT_MSG_CIPHER_TEXT_SIZE, transmit_buffer);
+    MXC_Delay(30);
+    crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
+
+    // clear buffers
+    crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+
+    MXC_Delay(50);
+
     // Call the boot function
     boot();
 }

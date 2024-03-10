@@ -211,7 +211,10 @@ typedef enum {
     COMPONENT_CMD_SCAN,
     COMPONENT_CMD_VALIDATE,
     COMPONENT_CMD_BOOT,
-    COMPONENT_CMD_ATTEST
+    COMPONENT_CMD_ATTEST,
+    COMPONENT_CMD_MSG_FROM_AP_TO_CP,
+    COMPONENT_CMD_MSG_FROM_CP_TO_AP,
+    COMPONENT_CMD_BOOT_2
 } component_cmd_t;
 
 /********************************* GLOBAL VARIABLES **********************************/
@@ -867,8 +870,189 @@ int validate_token() {
     return ERROR_RETURN;
 }
 
-// Boot the components and board if the components validate
 void attempt_boot() {
+    // define variables
+    uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
+    volatile int result = ERROR_RETURN;
+    volatile int recv_len = 0;
+    uint8_t *signatures = malloc(SIGNATURE_SIZE * flash_status.component_cnt);  // store signatures for each CP
+
+    // send `boot` command + challenge + ID to each provisioned component
+    // RANDOM_DELAY_TINY;
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        // get the CP's I2C address
+        i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
+
+        // construct sending pakcet (boot command + nonce + id)
+        packet_boot_1_ap_to_cp *pkt_send_1 = (packet_boot_1_ap_to_cp *) sending_buf;
+        pkt_send_1->cmd_label = COMPONENT_CMD_BOOT;
+        rng_get_bytes(pkt_send_1->nonce, NONCE_SIZE);
+
+        convert_32_to_8(pkt_send_1->id, flash_status.component_ids[i]);
+
+        // send the pakcet (boot command + nonce + id)
+        result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
+        // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+        if (result == ERROR_RETURN) {
+            crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+            free(signatures);
+            // panic();
+            return;
+        }
+
+        // RANDOM_DELAY_TINY;
+        MXC_Delay(50);
+
+        // receive response + cp's nonce
+        recv_len = poll_and_receive_packet(addr, receiving_buf);
+        // cancel_continuous_timer();
+        if (recv_len != SIGNATURE_SIZE + NONCE_SIZE) {
+            crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+            free(signatures);
+            // defense_mode();
+            return;
+        }
+        packet_boot_1_cp_to_ap *pkt_recv_1 = (packet_boot_1_cp_to_ap *) receiving_buf;
+        // RANDOM_DELAY_TINY;
+
+        // retrieve the key
+        retrive_cp_pub_key();
+
+        // verify the signature
+        if (crypto_eddsa_check(pkt_recv_1->sig_auth, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 5)) {
+            // validation fails
+            crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+            crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+            free(signatures);
+            // defense_mode();
+            return;
+        }
+
+        // validation passes
+        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+        packet_plain_with_id *plain_cp_resp = (packet_plain_with_id *) general_buf;
+        plain_cp_resp->cmd_label = COMPONENT_CMD_BOOT_2;
+        memcpy(plain_cp_resp->nonce, pkt_recv_1->nonce, NONCE_SIZE);
+        convert_32_to_8(plain_cp_resp->id, flash_status.component_ids[i]);
+
+        // calcuate the signature and save it to the signatures array
+        retrive_ap_priv_key();
+        crypto_eddsa_sign(signatures + SIGNATURE_SIZE * i, flash_status.ap_priv_key, general_buf, NONCE_SIZE + 5);
+        crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
+        
+        MXC_Delay(50);
+    }   // end for
+
+    // clear buffers
+    crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
+    crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
+
+    // boot each provisioned component (send signature to each CP)
+    // RANDOM_DELAY_TINY;
+    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+        // get CP's I2C address
+        i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
+
+        // send
+        MXC_Delay(50);
+        result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
+        // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+        if (result == ERROR_RETURN) {
+            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+            free(signatures);
+            // panic();
+            return;
+        }
+
+        // receive and print the CP booting message
+        // RANDOM_DELAY_TINY;
+        recv_len = poll_and_receive_packet(addr, receiving_buf);
+        // cancel_continuous_timer();
+        if (recv_len < 0) {
+            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+            free(signatures);
+            // panic();
+            return;
+        }
+
+        // decrypt the CP boot message
+        // retrive
+        retrive_aead_cp_boot_nonce();
+        retrive_aead_key();
+        // tweak the nonce
+        convert_32_to_8(flash_status.aead_cp_boot_nonce, flash_status.component_ids[i]);
+        flash_status.aead_cp_boot_nonce[4] = ENC_BOOT_MAGIC;
+        crypto_blake2b(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE, flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+        // decrypt
+        uint8_t cp_boot_msg[BOOT_MSG_PLAIN_TEXT_SIZE] = {0};
+        crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+        if (crypto_aead_unlock(cp_boot_msg, receiving_buf, flash_status.aead_key, flash_status.aead_cp_boot_nonce, NULL, 0, receiving_buf + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE) != 0) {
+            // decryption failure
+            crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+            crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+            crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+            free(signatures);
+            // defense_mode();
+            return;
+        }
+
+        //decyrption success
+        crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+        crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+
+        // print decrpted CP boot message
+        // RANDOM_DELAY_TINY;
+        print_info("0x%08x>%s\n", flash_status.component_ids[i], cp_boot_msg);
+        crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+
+        MXC_Delay(50);
+    }
+
+    // clear buffers and free signatures
+    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    free(signatures);
+    
+    // retrieve the encrypted ap boot message
+    retrive_aead_ap_boot_cipher_text();
+    retrive_aead_ap_boot_nonce();
+    retrive_aead_key();
+
+    // decrypt
+    uint8_t plain_ap_boot_msg[BOOT_MSG_PLAIN_TEXT_SIZE] = {0};
+    crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+    if (crypto_aead_unlock(plain_ap_boot_msg, flash_status.aead_ap_boot_cipher, flash_status.aead_key, flash_status.aead_ap_boot_nonce, NULL, 0, flash_status.aead_ap_boot_cipher + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE) != 0) {
+        // decryption failure
+        crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
+        crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+        crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+        crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+        // defense_mode();
+        return;
+    }
+    // decryption success
+
+    // wipe
+    crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
+    crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+    crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+
+    // print boot message
+    // RANDOM_DELAY_TINY;
+    print_info("AP>%s\n", plain_ap_boot_msg);
+    crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
+    // RANDOM_DELAY_TINY;
+    print_success("Boot\n");
+
+    // Boot
+    boot();
+}
+
+// Boot the components and board if the components validate
+void attempt_boot1() {
     if (validate_components()) {
         print_error("Components could not be validated\n");
         return;
