@@ -406,6 +406,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         return ERROR_RETURN;
     }
 
+    print_info("secure_send - 1\n");
+
     // define variables
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     uint8_t receiving_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -416,14 +418,17 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // construct the sending packet (cmd label of `sending`)
     sending_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;
 
+    print_info("secure_send - 2, sending_buf[0]=%x\n", sending_buf[0]);
     // send the cmd label packet
     result = send_packet(address, sizeof(uint8_t), sending_buf);
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result == ERROR_RETURN) {
+        print_info("secure_send - 3\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // panic();
         return ERROR_RETURN;
     }
+    print_info("secure_send - 4\n");
 
     MXC_Delay(50);
 
@@ -431,11 +436,15 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     // cancel_continuous_timer();
     if (recv_len != NONCE_SIZE) {
+        print_info("secure_send - 5, len=%d\n", recv_len);
+        print_hex_info(receiving_buf, recv_len);
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         // defense_mode();
         return ERROR_RETURN;
     }
+    print_info("secure_send - 6, len=%d\n", recv_len);
+    print_hex_info(receiving_buf, recv_len);
 
     MXC_Delay(50);
 
@@ -451,15 +460,20 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);
 
+    print_info("secure_send - 7, len=%d\n", SIGNATURE_SIZE + len);
+    print_hex_info(sending_buf, SIGNATURE_SIZE + len);
+
     // send the packet (sign(p, address, nonce, msg), msg)
     result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
     if (result == ERROR_RETURN) {
+        print_info("secure_send - 8\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
         // panic();
         return ERROR_RETURN;
     }
+    print_info("secure_send - 9\n");
 
     // clear buffers
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
