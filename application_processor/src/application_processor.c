@@ -1445,6 +1445,7 @@ int main() {
     // Handle commands forever
     char buf[100];
     while (1) {
+
         recv_input("Enter Command: ", buf);
 
         // Execute requested command
@@ -1456,7 +1457,10 @@ int main() {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
-        } else {
+        } else if (!strcmp(buf, "panic")) {
+            panic();
+        }
+            else {
             print_error("Unrecognized command '%s'\n", buf);
         }
     }
