@@ -438,7 +438,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // check the given sending lenth
     if (len > MAX_POST_BOOT_MSG_LEN) {
-        panic();
+        // panic();
         return ERROR_RETURN;
     }
 
@@ -461,7 +461,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     if (result == ERROR_RETURN) {
         print_info("secure_send - 3\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // panic();
         return ERROR_RETURN;
     }
     print_info("secure_send - 4\n");
@@ -506,7 +506,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-        panic();
+        // panic();
         return ERROR_RETURN;
     }
     print_info("secure_send - 9\n");
@@ -552,7 +552,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     if (result == ERROR_RETURN) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        panic();
+        // panic();
         return ERROR_RETURN;
     }
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
@@ -566,7 +566,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        panic();
+        // panic();
         return recv_len;
     }
     int len = recv_len - SIGNATURE_SIZE;  // plain message length
