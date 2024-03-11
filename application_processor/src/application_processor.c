@@ -127,7 +127,7 @@ typedef struct {
 
 // Data structure for sending and receiving commands to component for more secure protocols
 // packet structure for plain text for signature contains component I2C address
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed))  __packed {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t address;
@@ -443,6 +443,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     }
 
     print_info("secure_send - 1\n");
+    print_hex_info(buffer, len);
 
     // define variables
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -458,8 +459,8 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // send the cmd label packet
     result = send_packet(address, sizeof(uint8_t), sending_buf);
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
-    if (result == ERROR_RETURN) {
-        print_info("secure_send - 3\n");
+    if (result != SUCCESS_RETURN) {
+        print_info("secure_send - 3, result=%d\n", result);
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         // panic();
         return ERROR_RETURN;
