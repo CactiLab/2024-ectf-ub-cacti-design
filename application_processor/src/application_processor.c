@@ -693,9 +693,7 @@ void init() {
     }
     
     // Initialize board link interface
-    if (board_link_init() != E_NO_ERROR) {
-        panic();
-    }
+    board_link_init();
 
     // Initialize TRNG
     if (rng_init() != E_NO_ERROR) {

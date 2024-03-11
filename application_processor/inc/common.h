@@ -13,7 +13,7 @@ int rng_get_bytes(uint8_t* buffer, int size);
 void panic(void);
 unsigned int get_current_cpu_cycle();
 void random_delay_us(uint32_t);
-void enable_defense_bit();       // defined in application_processor.c
+// void enable_defense_bit();       // defined in application_processor.c
 
 #define RANDOM_DELAY_TINY do { \
     uint8_t non_volatile_delay_cycles; \

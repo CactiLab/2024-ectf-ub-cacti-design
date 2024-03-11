@@ -12,7 +12,7 @@ int rng_init(void);
 int rng_get_bytes(uint8_t* buffer, int size);
 int get_current_cpu_cycle();
 void panic(void);
-void enable_defense_bit();       // defined in component.c
+// void enable_defense_bit();       // defined in component.c
 
 
 #define RANDOM_DELAY_TINY do { \
