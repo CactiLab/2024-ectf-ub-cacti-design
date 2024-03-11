@@ -29,11 +29,6 @@
 #include "host_messaging.h"
 #include "mpu_init.h"
 #include "common.h"
-
-#ifdef CRYPTO_EXAMPLE
-#include "simple_crypto.h"
-#endif
-
 #include "monocypher.h"
 #include "syscalls.h"
 
@@ -221,7 +216,7 @@ typedef enum {
 // Variable for information stored in flash memory
 flash_entry flash_status;
 
-
+/***************************** FLASH RELATED OPERATIONS ******************************/
 /**
  * @brief Retrieves AP's private key from flash memory.
  * 
@@ -611,19 +606,6 @@ void init() {
 
     // Test application has been booted before
     flash_simple_read(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
-
-    // // Write Component IDs from flash if first boot e.g. flash unwritten
-    // if (flash_status.flash_magic != FLASH_MAGIC) {
-    //     print_debug("First boot, setting flash!\n");
-
-    //     flash_status.flash_magic = FLASH_MAGIC;
-    //     flash_status.component_cnt = COMPONENT_CNT;
-    //     uint32_t component_ids[COMPONENT_CNT] = {COMPONENT_IDS};
-    //     memcpy(flash_status.component_ids, component_ids, 
-    //         COMPONENT_CNT*sizeof(uint32_t));
-
-    //     flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
-    // }
 
     // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {

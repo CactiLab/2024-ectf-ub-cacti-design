@@ -50,7 +50,6 @@
 #define ATTEST_CIPHER_OFFSET    offsetof(flash_entry, cipher_attest_data)
 #define CIPHER_BOOT_TEXT_OFFSET offsetof(flash_entry, cipher_boot_text)
 
-/******************************** TYPE DEFINITIONS ********************************/
 #define PRIV_KEY_SIZE           64
 #define PUB_KEY_SIZE            32
 #define NONCE_SIZE              64
@@ -63,6 +62,7 @@
 #define BOOT_MSG_PLAIN_TEXT_SIZE        128
 #define BOOT_MSG_CIPHER_TEXT_SIZE       BOOT_MSG_PLAIN_TEXT_SIZE + AEAD_MAC_SIZE
 
+/******************************** TYPE DEFINITIONS ********************************/
 // Commands received by Component using 32 bit integer
 typedef enum {
     COMPONENT_CMD_NONE,
@@ -75,7 +75,6 @@ typedef enum {
     COMPONENT_CMD_BOOT_2
 } component_cmd_t;
 
-/******************************** TYPE DEFINITIONS ********************************/
 // Data structure for receiving messages from the AP
 typedef struct {
     uint8_t opcode;
@@ -133,8 +132,7 @@ uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN + 1];
 // Variable for information stored in flash memory
 flash_entry flash_status;
 
-
-
+/***************************** FLASH RELATED OPERATIONS ******************************/
 /**
  * @brief Retrieves CP's private key from flash memory.
  * 
@@ -198,6 +196,7 @@ void retrive_boot_cipher() {
     crypto_wipe(flash_status.cipher_boot_text, BOOT_MSG_CIPHER_TEXT_SIZE);
 
 
+/***************************** UTILITY FUNCTIONS ******************************/
 /** 
  * Convert an uint32_t to an array of uint8_t
  * @param buf at least 4 elements
