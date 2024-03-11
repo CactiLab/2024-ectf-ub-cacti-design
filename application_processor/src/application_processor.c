@@ -1043,7 +1043,7 @@ void attempt_boot() {
         if (result == ERROR_RETURN) {
             crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            // panic();
+            panic();
             return;
         }
 
@@ -1057,7 +1057,7 @@ void attempt_boot() {
             crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
             crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            // defense_mode();
+            defense_mode();
             return;
         }
         packet_boot_1_cp_to_ap *pkt_recv_1 = (packet_boot_1_cp_to_ap *) receiving_buf;
@@ -1073,7 +1073,7 @@ void attempt_boot() {
             crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
             crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            // defense_mode();
+            defense_mode();
             return;
         }
 
@@ -1107,9 +1107,8 @@ void attempt_boot() {
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
         // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
-            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            // panic();
+            panic();
             return;
         }
 
@@ -1120,7 +1119,7 @@ void attempt_boot() {
         if (recv_len < 0) {
             crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            // panic();
+            panic();
             return;
         }
 
@@ -1175,7 +1174,7 @@ void attempt_boot() {
         crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
         crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
         crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
-        // defense_mode();
+        defense_mode();
         return;
     }
     // decryption success

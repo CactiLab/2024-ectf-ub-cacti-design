@@ -488,7 +488,7 @@ void process_boot() {
     packet_boot_1_ap_to_cp *pkt_receive_1 = (packet_boot_1_ap_to_cp *) global_buffer_recv;
     if (pkt_receive_1->cmd_label != COMPONENT_CMD_BOOT) {
         crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
-        // defense_mode();
+        defense_mode();
         return;
     }
 
@@ -496,7 +496,7 @@ void process_boot() {
     if (compare_32_and_8(pkt_receive_1->id, component_id)) {
         // ID check failure
         crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
-        // defense_mode();
+        defense_mode();
         return;
     }
     // ID check ok
@@ -533,7 +533,7 @@ void process_boot() {
         crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
+        defense_mode();
         return;
     }
 
@@ -548,7 +548,7 @@ void process_boot() {
     if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 5)) {
         // verification failure
         crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        // defense_mode();
+        defense_mode();
         return;
     }
     // verification passes
