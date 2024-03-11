@@ -378,6 +378,46 @@ void retrive_aead_ap_boot_cipher_text() {
     crypto_wipe(flash_status.aead_ap_boot_cipher, sizeof(flash_status.aead_ap_boot_cipher));
 
 
+
+/******************************* UTILITIES *********************************/
+/** 
+ * Convert an uint32_t to an array of uint8_t
+ * @param buf at least 4 elements
+ * @param i the uint32_t variable
+*/
+void convert_32_to_8(uint8_t *buf, uint32_t i) {
+    if (!buf)
+        return;
+    buf[0] = i & 0xff;
+    buf[1] = (i >> 8) & 0xff;
+    buf[2] = (i >> 16) & 0xff;
+    buf[3] = (i >> 24) & 0xff;
+}
+
+/**
+ * When the system detects a possible attack, go to the defense mode
+ * delay 4 seconds
+*/
+void defense_mode() {
+    __disable_irq();
+    // cancel_continuous_timer();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+    MXC_Delay(4000000); // 4 seconds
+    flash_status.mode = SYS_MODE_NORMAL;
+    WRITE_FLASH_MEMORY;
+    __enable_irq();
+}
+
+/**
+ * Set the system to defense mode, but do not delay
+*/
+void enable_defense_bit() {
+    __disable_irq();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+}
+
 /******************************* POST BOOT FUNCTIONALITY *********************************/
 /**
  * @brief Secure Send 
@@ -397,7 +437,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // check the given sending lenth
     if (len > MAX_POST_BOOT_MSG_LEN) {
-        // panic();
+        panic();
         return ERROR_RETURN;
     }
 
@@ -420,7 +460,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     if (result == ERROR_RETURN) {
         print_info("secure_send - 3\n");
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
+        panic();
         return ERROR_RETURN;
     }
     print_info("secure_send - 4\n");
@@ -435,7 +475,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         print_hex_info(receiving_buf, recv_len);
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // defense_mode();
+        defense_mode();
         return ERROR_RETURN;
     }
     print_info("secure_send - 6, len=%d\n", recv_len);
@@ -465,7 +505,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
+        panic();
         return ERROR_RETURN;
     }
     print_info("secure_send - 9\n");
@@ -511,7 +551,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     if (result == ERROR_RETURN) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        // panic();
+        panic();
         return ERROR_RETURN;
     }
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
@@ -525,10 +565,10 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
         crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        // panic();
+        panic();
         return recv_len;
     }
-    int len = recv_len - SIGNATURE_SIZE * 2;  // plain message length
+    int len = recv_len - SIGNATURE_SIZE;  // plain message length
 
     // plain text for the message signature (in general_buf_2)
     general_buf_2[0] = COMPONENT_CMD_MSG_FROM_CP_TO_AP;         // cmd label
@@ -542,7 +582,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len)) {
         // check failed
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-        // defense_mode();
+        defense_mode();
         return 0;
     }
 
@@ -576,45 +616,7 @@ int get_provisioned_ids(uint32_t* buffer) {
     return flash_status.component_cnt;
 }
 
-/********************************* UTILITIES **********************************/
-
-/** 
- * Convert an uint32_t to an array of uint8_t
- * @param buf at least 4 elements
- * @param i the uint32_t variable
-*/
-void convert_32_to_8(uint8_t *buf, uint32_t i) {
-    if (!buf)
-        return;
-    buf[0] = i & 0xff;
-    buf[1] = (i >> 8) & 0xff;
-    buf[2] = (i >> 16) & 0xff;
-    buf[3] = (i >> 24) & 0xff;
-}
-
-/**
- * When the system detects a possible attack, go to the defense mode
- * delay 4 seconds
-*/
-void defense_mode() {
-    __disable_irq();
-    // cancel_continuous_timer();
-    flash_status.mode = SYS_MODE_DEFENSE;
-    WRITE_FLASH_MEMORY;
-    MXC_Delay(4000000); // 4 seconds
-    flash_status.mode = SYS_MODE_NORMAL;
-    WRITE_FLASH_MEMORY;
-    __enable_irq();
-}
-
-/**
- * Set the system to defense mode, but do not delay
-*/
-void enable_defense_bit() {
-    __disable_irq();
-    flash_status.mode = SYS_MODE_DEFENSE;
-    WRITE_FLASH_MEMORY;
-}
+/********************************* FUNCTIONS **********************************/
 
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
