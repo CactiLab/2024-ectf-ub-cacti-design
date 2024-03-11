@@ -13,6 +13,7 @@
 
 
 #include "simple_i2c_controller.h"
+#include "common.h"
 
 /******************************** FUNCTION PROTOTYPES ********************************/
 /**
@@ -36,6 +37,7 @@ int i2c_simple_controller_init(void) {
     // Initialize the I2C Interface
     error = MXC_I2C_Init(I2C_INTERFACE, true, 0);
     if (error != E_NO_ERROR) {
+        panic();
         printf("Failed to initialize I2C.\n");
         return error;
     }
@@ -132,6 +134,9 @@ int i2c_simple_write_receive_done(i2c_addr_t addr, bool done) {
  * specified value
 */
 int i2c_simple_write_receive_len(i2c_addr_t addr, uint8_t len) {
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
     return i2c_simple_write_status_generic(addr, RECEIVE_LEN, len); 
 }
 
@@ -162,6 +167,9 @@ int i2c_simple_write_transmit_done(i2c_addr_t addr, bool done) {
  * specified value
 */
 int i2c_simple_write_transmit_len(i2c_addr_t addr, uint8_t len) {
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
     return i2c_simple_write_status_generic(addr, TRANSMIT_LEN, len); 
 }
 
@@ -180,6 +188,9 @@ int i2c_simple_write_transmit_len(i2c_addr_t addr, uint8_t len) {
 */
 int i2c_simple_read_data_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t len, uint8_t* buf)
 {
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
     mxc_i2c_req_t request;
     request.i2c = I2C_INTERFACE;
     request.addr = addr;
@@ -207,6 +218,9 @@ int i2c_simple_read_data_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t len
  * Can be used to write the PARAMS or RESULT register
 */
 int i2c_simple_write_data_generic(i2c_addr_t addr, ECTF_I2C_REGS reg, uint8_t len, uint8_t* buf) {
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
+    }
     uint8_t packet[257];
     packet[0] = reg;
     memcpy(&packet[1], buf, len);

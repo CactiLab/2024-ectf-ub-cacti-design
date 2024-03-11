@@ -15,6 +15,7 @@
 
 #include "board_link.h"
 #include "mxc_delay.h"
+#include "common.h"
 
 /******************************** FUNCTION DEFINITIONS ********************************/
 /**
@@ -92,6 +93,9 @@ int poll_and_receive_packet(i2c_addr_t address, uint8_t* packet) {
     int len = i2c_simple_read_transmit_len(address);
     if (len < SUCCESS_RETURN) {
         return ERROR_RETURN;
+    }
+    if (len > MAX_I2C_MESSAGE_LEN) {
+        panic();
     }
     result = i2c_simple_read_data_generic(address, TRANSMIT, (uint8_t)len, packet);
     if (result < SUCCESS_RETURN) {

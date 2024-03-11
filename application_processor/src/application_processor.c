@@ -1451,13 +1451,6 @@ int main() {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
-        }
-        else if (!strcmp(buf, "panic")) {
-            panic();
-        } else if (!strcmp(buf, "defense")) {
-            defense_mode();
-        } else if (!strcmp(buf, "db")) {
-            enable_defense_bit();
         } else {
             print_error("Unrecognized command '%s'\n", buf);
         }
