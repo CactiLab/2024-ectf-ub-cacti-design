@@ -693,10 +693,14 @@ void init() {
     }
     
     // Initialize board link interface
-    board_link_init();
+    if (board_link_init() != E_NO_ERROR) {
+        panic();
+    }
 
     // Initialize TRNG
-    rng_init();
+    if (rng_init() != E_NO_ERROR) {
+        panic();
+    }
 
     // check if the system status is defense mode
     if (flash_status.mode != SYS_MODE_NORMAL) {
