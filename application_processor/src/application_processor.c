@@ -416,6 +416,7 @@ void enable_defense_bit() {
     // __disable_irq();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
+    MXC_Delay(500000);
 }
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
