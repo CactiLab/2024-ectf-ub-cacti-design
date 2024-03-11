@@ -40,34 +40,34 @@ int rng_get_bytes(uint8_t* buffer, int size) {
     return r;
 }
 
-// /**
-//  * @brief Panic function
-//  * 
-//  * This function is called when a critical error occurs. It disables interrupts and enters an infinite loop.
-//  */
-// void __attribute__((noreturn)) panic(void) {
-//     enable_defense_bit();
-//     cancel_continuous_timer();
-//     __disable_irq();
+/**
+ * @brief Panic function
+ * 
+ * This function is called when a critical error occurs. It disables interrupts and enters an infinite loop.
+ */
+void __attribute__((noreturn)) panic(void) {
+    enable_defense_bit();
+    // cancel_continuous_timer();
+    __disable_irq();
 
-//     volatile uint32_t counter = 0;
-//     while (1) {
-//         counter++;
+    volatile uint32_t counter = 0;
+    while (1) {
+        counter++;
 
-//         // Additional fault injection tolerance: 
-//         // Implement a check that verifies the loop is still executing correctly.
-//         // If the counter wraps around (an unlikely event in a tight loop),
-//         // it indicates the loop has been running for a long time or
-//         // an attempt to manipulate the execution path has occurred.
-//         if (counter == 0) {
-//             // Forcefully reset the counter to maintain the loop's visibility to the compiler,
-//             counter = 1;
-//         }
-//     }
+        // Additional fault injection tolerance: 
+        // Implement a check that verifies the loop is still executing correctly.
+        // If the counter wraps around (an unlikely event in a tight loop),
+        // it indicates the loop has been running for a long time or
+        // an attempt to manipulate the execution path has occurred.
+        if (counter == 0) {
+            // Forcefully reset the counter to maintain the loop's visibility to the compiler,
+            counter = 1;
+        }
+    }
 
-//     // End of function, which should never be reached.
-//     while (1); // Additional safety loop, redundant but ensures noreturn.
-// }
+    // End of function, which should never be reached.
+    while (1); // Additional safety loop, redundant but ensures noreturn.
+}
 
 /**
  * @brief return current CPU cycle in int

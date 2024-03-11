@@ -14,6 +14,8 @@
 #ifndef __HOST_MESSAGING__
 #define __HOST_MESSAGING__
 
+#define HOST_MESSAGE_MAX_LENGTH 18
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>

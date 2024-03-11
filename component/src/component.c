@@ -116,6 +116,13 @@ typedef struct {
     uint32_t mode;   // 0: normal, 1: defense, refers to system_modes
 } flash_entry;
 
+// system mode
+// when in the defense mode, system will be delayed for 4 seconds
+typedef enum {
+    SYS_MODE_NORMAL,
+    SYS_MODE_DEFENSE
+} system_modes;
+
 /********************************* FUNCTION DECLARATIONS **********************************/
 // Core function definitions
 void component_process_cmd(void);
@@ -229,6 +236,30 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
     }
 
     return -1;
+}
+
+/**
+ * When the system detects a possible attack, go to the defense mode
+ * delay 4 seconds
+*/
+void defense_mode() {
+    __disable_irq();
+    // cancel_continuous_timer();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+    MXC_Delay(4000000); // 4 seconds
+    flash_status.mode = SYS_MODE_NORMAL;
+    WRITE_FLASH_MEMORY;
+    __enable_irq();
+}
+
+/**
+ * Set the system to defense mode, but do not delay
+*/
+void enable_defense_bit() {
+    __disable_irq();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
 }
 
 /******************************* POST BOOT FUNCTIONALITY *********************************/
@@ -372,7 +403,6 @@ int secure_receive(uint8_t* buffer) {
 // Example boot sequence
 // Your design does not need to change this
 void boot() {
-
     // POST BOOT FUNCTIONALITY
     // DO NOT REMOVE IN YOUR DESIGN
     #ifdef POST_BOOT
@@ -626,7 +656,6 @@ void init() {
     // Enable Global Interrupts
     __enable_irq();
 
-
     // Setup Flash
     flash_simple_init();
 
@@ -636,6 +665,7 @@ void init() {
     // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {
         flash_status.flash_magic = FLASH_MAGIC;
+        flash_status.mode = SYS_MODE_NORMAL;
 
         uint8_t cp_private_key[] = {CP_PRIVATE_KEY};
         uint8_t ap_public_key[] = {AP_PUBLIC_KEY};
@@ -664,6 +694,11 @@ void init() {
     // Initialize TRNG
     rng_init();
 
+    // check if the system status is defense mode
+    if (flash_status.mode != SYS_MODE_NORMAL) {
+        defense_mode();
+    }
+
     LED_On(LED2);
 }
 
@@ -676,7 +711,7 @@ int main(void) {
 
     while (1) {
         wait_and_receive_packet(global_buffer_recv);
-
+        printf("received %s\n", global_buffer_recv);
         component_process_cmd();
     }
 }

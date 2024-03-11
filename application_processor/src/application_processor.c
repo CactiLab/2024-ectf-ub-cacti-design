@@ -592,6 +592,30 @@ void convert_32_to_8(uint8_t *buf, uint32_t i) {
     buf[3] = (i >> 24) & 0xff;
 }
 
+/**
+ * When the system detects a possible attack, go to the defense mode
+ * delay 4 seconds
+*/
+void defense_mode() {
+    __disable_irq();
+    // cancel_continuous_timer();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+    MXC_Delay(4000000); // 4 seconds
+    flash_status.mode = SYS_MODE_NORMAL;
+    WRITE_FLASH_MEMORY;
+    __enable_irq();
+}
+
+/**
+ * Set the system to defense mode, but do not delay
+*/
+void enable_defense_bit() {
+    __disable_irq();
+    flash_status.mode = SYS_MODE_DEFENSE;
+    WRITE_FLASH_MEMORY;
+}
+
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
 void init() {
@@ -670,6 +694,11 @@ void init() {
 
     // Initialize TRNG
     rng_init();
+
+    // check if the system status is defense mode
+    if (flash_status.mode != SYS_MODE_NORMAL) {
+        defense_mode();
+    }
 }
 
 // Send a command to a component and receive the result
@@ -1408,10 +1437,6 @@ int main() {
     // Initialize board
     init();
 
-    // Print the component IDs to be helpful
-    // Your design does not need to do this
-    print_info("Application Processor Started\n");
-
     // Handle commands forever
     char buf[100];
     while (1) {
@@ -1426,6 +1451,13 @@ int main() {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
+        }
+        else if (!strcmp(buf, "panic")) {
+            panic();
+        } else if (!strcmp(buf, "defense")) {
+            defense_mode();
+        } else if (!strcmp(buf, "db")) {
+            enable_defense_bit();
         } else {
             print_error("Unrecognized command '%s'\n", buf);
         }

@@ -18,7 +18,13 @@ void recv_input(const char *msg, char *buf) {
     print_debug(msg);
     fflush(0);
     print_ack();
-    gets(buf);
+    fgets(buf, HOST_MESSAGE_MAX_LENGTH, stdin);
+    for (int i = 0; i < HOST_MESSAGE_MAX_LENGTH; ++i) {
+        if (buf[i] == '\n') {
+            buf[i] = '\0';
+            break;
+        }
+    }
     puts("");
 }
 
