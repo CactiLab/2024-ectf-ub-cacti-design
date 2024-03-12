@@ -112,7 +112,7 @@
 // design but can be utilized by your design.
 typedef struct {
     uint8_t opcode;
-    uint8_t params[MAX_I2C_MESSAGE_LEN-1];
+    uint8_t params[MAX_I2C_MESSAGE_LEN + 1];
 } command_message;
 
 // Data type for receiving a validate message
@@ -580,7 +580,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-    
+
     MXC_Delay(500);
     return len;
 }
@@ -715,10 +715,10 @@ int scan_components() {
     }
 
     // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN + 1];
+    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN + 1];
 
-    // Scan scan command to each component 
+    // Send scan command to each component 
     for (i2c_addr_t addr = 0x8; addr < 0x78; addr++) {
         // I2C Blacklist:
         // 0x18, 0x28, and 0x36 conflict with separate devices on MAX78000FTHR
@@ -743,65 +743,6 @@ int scan_components() {
     return SUCCESS_RETURN;
 }
 
-int validate_components() {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
-
-    // Send validate command to each component
-    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
-        // Set the I2C address of the component
-        i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
-
-        // Create command message
-        command_message* command = (command_message*) transmit_buffer;
-        command->opcode = COMPONENT_CMD_VALIDATE;
-        
-        // Send out command and receive result
-        int len = issue_cmd(addr, transmit_buffer, receive_buffer);
-        if (len == ERROR_RETURN) {
-            print_error("Could not validate component\n");
-            return ERROR_RETURN;
-        }
-
-        validate_message* validate = (validate_message*) receive_buffer;
-        // Check that the result is correct
-        if (validate->component_id != flash_status.component_ids[i]) {
-            print_error("Component ID: 0x%08x invalid\n", flash_status.component_ids[i]);
-            return ERROR_RETURN;
-        }
-    }
-    return SUCCESS_RETURN;
-}
-
-int boot_components() {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
-
-    // Send boot command to each component
-    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
-        // Set the I2C address of the component
-        i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
-        
-        // Create command message
-        command_message* command = (command_message*) transmit_buffer;
-        command->opcode = COMPONENT_CMD_BOOT;
-        
-        // Send out command and receive result
-        int len = issue_cmd(addr, transmit_buffer, receive_buffer);
-        if (len == ERROR_RETURN) {
-            print_error("Could not boot component\n");
-            return ERROR_RETURN;
-        }
-
-        // Print boot message from component
-        print_info("0x%08x>%s\n", flash_status.component_ids[i], receive_buffer);
-    }
-    return SUCCESS_RETURN;
-}
-
-
 int attest_component(uint32_t component_id) {
     MXC_Delay(50);
 
@@ -814,7 +755,7 @@ int attest_component(uint32_t component_id) {
         }
     }
     if (r == 0) {
-        // defense_mode();
+        defense_mode();
         return ERROR_RETURN;
     }
 
@@ -830,18 +771,13 @@ int attest_component(uint32_t component_id) {
 
     // send the attestation command
     result = send_packet(addr, 1, transmit_buffer);
-    if (result == ERROR_RETURN) {
-        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
+    if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
 
     // receive nonce from CP
     volatile int recv_len = poll_and_receive_packet(addr, receive_buffer);
     if (recv_len != NONCE_SIZE) {
-        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
         return ERROR_RETURN;
     }
 
@@ -869,9 +805,6 @@ int attest_component(uint32_t component_id) {
     // receive the ecnrypted attestation data
     recv_len = poll_and_receive_packet(addr, receive_buffer);
     if (recv_len != ATT_FINAL_TEXT_SIZE) {
-        crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        // defense_mode();
         return ERROR_RETURN;
     }
 
@@ -889,9 +822,6 @@ int attest_component(uint32_t component_id) {
         // decryption failed
         crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
         crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
-        crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receive_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        // defense_mode();
         return ERROR_RETURN;
     }
     // decryption ok
@@ -899,7 +829,6 @@ int attest_component(uint32_t component_id) {
     // wipe
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
     crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
-    crypto_wipe(receive_buffer, sizeof(receive_buffer));
 
     // Print out attestation data
     general_buffer[ATT_LOC_POS + general_buffer[ATT_LOC_LEN_POS]] = '\0';
@@ -908,32 +837,8 @@ int attest_component(uint32_t component_id) {
     print_info("C>0x%08x\n", component_id);
     print_info("LOC>%s\nDATE>%s\nCUST>%s\n", general_buffer + ATT_LOC_POS, general_buffer + ATT_DATE_POS, general_buffer + ATT_CUSTOMER_POS);
 
+    // wipe the attestation text (plaintext)
     crypto_wipe(general_buffer, sizeof(general_buffer));
-    return SUCCESS_RETURN;
-}
-
-int attest_component1(uint32_t component_id) {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
-
-    // Set the I2C address of the component
-    i2c_addr_t addr = component_id_to_i2c_addr(component_id);
-
-    // Create command message
-    command_message* command = (command_message*) transmit_buffer;
-    command->opcode = COMPONENT_CMD_ATTEST;
-
-    // Send out command and receive result
-    int len = issue_cmd(addr, transmit_buffer, receive_buffer);
-    if (len == ERROR_RETURN) {
-        print_error("Could not attest component\n");
-        return ERROR_RETURN;
-    }
-
-    // Print out attestation data 
-    print_info("C>0x%08x\n", component_id);
-    print_info("%s", receive_buffer);
     return SUCCESS_RETURN;
 }
 
@@ -973,30 +878,6 @@ void boot() {
         MXC_Delay(500000);
     }
     #endif
-}
-
-// Compare the entered PIN to the correct PIN
-int validate_pin() {
-    char buf[50];
-    recv_input("Enter pin: ", buf);
-    if (!strcmp(buf, AP_PIN)) {
-        print_debug("Pin Accepted!\n");
-        return SUCCESS_RETURN;
-    }
-    print_error("Invalid PIN!\n");
-    return ERROR_RETURN;
-}
-
-// Function to validate the replacement token
-int validate_token() {
-    char buf[50];
-    recv_input("Enter token: ", buf);
-    if (!strcmp(buf, AP_TOKEN)) {
-        print_debug("Token Accepted!\n");
-        return SUCCESS_RETURN;
-    }
-    print_error("Invalid Token!\n");
-    return ERROR_RETURN;
 }
 
 void attempt_boot() {
@@ -1124,7 +1005,6 @@ void attempt_boot() {
             crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
             crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
             free(signatures);
-            // defense_mode();
             return;
         }
 
@@ -1158,7 +1038,6 @@ void attempt_boot() {
         crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
         crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
         crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
-        defense_mode();
         return;
     }
     // decryption success
@@ -1179,26 +1058,6 @@ void attempt_boot() {
     boot();
 }
 
-// Boot the components and board if the components validate
-void attempt_boot1() {
-    if (validate_components()) {
-        print_error("Components could not be validated\n");
-        return;
-    }
-    print_debug("All Components validated\n");
-    if (boot_components()) {
-        print_error("Failed to boot all components\n");
-        return;
-    }
-
-    // Print boot message
-    // This always needs to be printed when booting
-    print_info("AP>%s\n", AP_BOOT_MSG);
-    print_success("Boot\n");
-    // Boot
-    boot();
-}
-
 
 // Replace a component if the Token is correct
 void attempt_replace() {
@@ -1213,8 +1072,7 @@ void attempt_replace() {
 
     // length check
     if (strlen(buf) != TOKEN_LEN) {
-        crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
-        // defense_mode();
+        defense_mode();
         print_error("len\n");
         return;
     }
@@ -1239,7 +1097,6 @@ void attempt_replace() {
     free(workarea);
     crypto_wipe(flash_status.hash_salt, sizeof(flash_status.hash_salt));
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
-    crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
 
     // mitigate brute-force
     // random_delay_us(1500000);
@@ -1252,6 +1109,7 @@ void attempt_replace() {
     if (crypto_verify64(hash, flash_status.token_hash)) {
         crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
         crypto_wipe(hash, sizeof(hash));
+        defense_mode();
         print_error("Token\n");
         return;
     }
@@ -1267,7 +1125,6 @@ void attempt_replace() {
     sscanf(buf, "%x", &component_id_in);
     recv_input("Component ID Out: ", buf);
     sscanf(buf, "%x", &component_id_out);
-    crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
 
     // Find the component to swap out
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
@@ -1283,47 +1140,10 @@ void attempt_replace() {
             return;
         }
     }
+    defense_mode();
     print_error("ID\n");
     return;
 }
-
-// Replace a component if the PIN is correct
-void attempt_replace1() {
-    char buf[50];
-
-    if (validate_token()) {
-        return;
-    }
-
-    uint32_t component_id_in = 0;
-    uint32_t component_id_out = 0;
-
-    recv_input("Component ID In: ", buf);
-    sscanf(buf, "%x", &component_id_in);
-    recv_input("Component ID Out: ", buf);
-    sscanf(buf, "%x", &component_id_out);
-
-    // Find the component to swap out
-    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
-        if (flash_status.component_ids[i] == component_id_out) {
-            flash_status.component_ids[i] = component_id_in;
-
-            // write updated component_ids to flash
-            flash_simple_erase_page(FLASH_ADDR);
-            flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));
-
-            print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
-                    component_id_in);
-            print_success("Replace\n");
-            return;
-        }
-    }
-
-    // Component Out was not found
-    print_error("Component 0x%08x is not provisioned for the system\r\n",
-            component_id_out);
-}
-
 
 // Attest a component if the PIN is correct
 void attempt_attest() {
@@ -1337,9 +1157,7 @@ void attempt_attest() {
 
     // length check
     if (strlen(buf) != PIN_LEN) {
-        crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
-        // defense_mode();
-        print_error("len\n");
+        defense_mode();
         return;
     }
 
@@ -1376,6 +1194,7 @@ void attempt_attest() {
     if (crypto_verify64(hash, flash_status.pin_hash)) {
         crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
         crypto_wipe(hash, sizeof(hash));
+        defense_mode();
         print_error("PIN\n");
         return;
     }
@@ -1399,24 +1218,9 @@ void attempt_attest() {
         return;
     }
 
+    defense_mode();
     print_error("Attest\n");
-    // defense_mode();
     return;
-}
-
-// Attest a component if the PIN is correct
-void attempt_attest1() {
-    char buf[50];
-
-    if (validate_pin()) {
-        return;
-    }
-    uint32_t component_id;
-    recv_input("Component ID: ", buf);
-    sscanf(buf, "%x", &component_id);
-    if (attest_component1(component_id) == SUCCESS_RETURN) {
-        print_success("Attest\n");
-    }
 }
 
 /*********************************** MAIN *************************************/
@@ -1440,11 +1244,8 @@ int main() {
             attempt_replace();
         } else if (!strcmp(buf, "attest")) {
             attempt_attest();
-        } else if (!strcmp(buf, "panic")) {
-            panic();
-        }
-            else {
-            print_error("Unrecognized command '%s'\n", buf);
+        } else {
+            defense_mode();
         }
     }
 

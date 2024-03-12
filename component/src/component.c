@@ -448,27 +448,16 @@ void component_process_cmd() {
     case COMPONENT_CMD_SCAN:
         process_scan();
         break;
-    case COMPONENT_CMD_VALIDATE:
-        process_validate();
-        break;
     case COMPONENT_CMD_ATTEST:
         process_attest();
         break;
     default:
-        printf("Error: Unrecognized command received %d\n", command->opcode);
+        defense_mode();
         break;
     }
 }
 
 void process_boot() {
-    // // The AP requested a boot. Set `component_boot` for the main loop and
-    // // respond with the boot message
-    // uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
-    // memcpy((void*)transmit_buffer, COMPONENT_BOOT_MSG, len);
-    // send_packet_and_ack(len, transmit_buffer);
-    // // Call the boot function
-    // boot();
-
 
     MXC_Delay(200);
 
@@ -482,15 +471,12 @@ void process_boot() {
     // check the cmd label
     packet_boot_1_ap_to_cp *pkt_receive_1 = (packet_boot_1_ap_to_cp *) global_buffer_recv;
     if (pkt_receive_1->cmd_label != COMPONENT_CMD_BOOT) {
-        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
-        defense_mode();
         return;
     }
 
     // check the component ID
     if (compare_32_and_8(pkt_receive_1->id, component_id)) {
         // ID check failure
-        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
         defense_mode();
         return;
     }
@@ -528,7 +514,6 @@ void process_boot() {
         crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
-        defense_mode();
         return;
     }
 
@@ -578,21 +563,7 @@ void process_scan() {
     send_packet_and_ack(sizeof(scan_message), transmit_buffer);
 }
 
-void process_validate() {
-    // The AP requested a validation. Respond with the Component ID
-    validate_message* packet = (validate_message*) transmit_buffer;
-    packet->component_id = COMPONENT_ID;
-    send_packet_and_ack(sizeof(validate_message), transmit_buffer);
-}
-
 void process_attest() {
-    // The AP requested attestation. Respond with the attestation data
-    // uint8_t len = sprintf((char*)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
-    //             ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) + 1;
-    // send_packet_and_ack(len, transmit_buffer);
-
-
-
     // defeine variables
     uint8_t general_buffer[MAX_I2C_MESSAGE_LEN + 1];
 
@@ -605,9 +576,6 @@ void process_attest() {
     // receive the response sign(p, nonce, id)
     volatile uint8_t len = wait_and_receive_packet(global_buffer_recv);
     if (len != SIGNATURE_SIZE) {
-        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
         return;
     }
 
@@ -625,10 +593,8 @@ void process_attest() {
     if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buffer, NONCE_SIZE + 5)) {
         // verification failed
         crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
         crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        // defense_mode();
+        defense_mode();
         return;
     }
     // verification passed
@@ -712,7 +678,6 @@ int main(void) {
 
     while (1) {
         wait_and_receive_packet(global_buffer_recv);
-        printf("received %s\n", global_buffer_recv);
         component_process_cmd();
     }
 }
