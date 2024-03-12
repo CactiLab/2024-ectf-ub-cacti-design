@@ -311,7 +311,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // calculate the auth and msg singatures and construct the sneding packet (sign(auth), sign(msg), msg)
     retrive_cp_priv_key();
     crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
-    RANDOM_DELAY_TINY;
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);      // plain message
 
@@ -324,7 +323,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     
-    RANDOM_DELAY_TINY;
     MXC_Delay(200);
 }
 
@@ -408,7 +406,6 @@ int secure_receive(uint8_t* buffer) {
         defense_mode();
         return 0;
     }
-    RANDOM_DELAY_TINY;
     // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
     

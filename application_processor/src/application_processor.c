@@ -511,7 +511,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
     MXC_Delay(500);
-    RANDOM_DELAY_TINY;
     return SUCCESS_RETURN;
 }
 
@@ -583,7 +582,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
         defense_mode();
         return 0;
     }
-    RANDOM_DELAY_TINY;
 
     // check succeeds
     // crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
