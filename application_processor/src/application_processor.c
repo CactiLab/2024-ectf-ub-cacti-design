@@ -973,7 +973,6 @@ void attempt_boot() {
         // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
             free(signatures);
-            panic();
             return;
         }
 
@@ -984,7 +983,6 @@ void attempt_boot() {
         if (recv_len < 0) {
             crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            panic();
             return;
         }
 
@@ -999,19 +997,17 @@ void attempt_boot() {
         // decrypt
         uint8_t cp_boot_msg[BOOT_MSG_PLAIN_TEXT_SIZE] = {0};
         crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
-        if (crypto_aead_unlock(cp_boot_msg, receiving_buf, flash_status.aead_key, flash_status.aead_cp_boot_nonce, NULL, 0, receiving_buf + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE) != 0) {
+        volatile int r = crypto_aead_unlock(cp_boot_msg, receiving_buf, flash_status.aead_key, flash_status.aead_cp_boot_nonce, NULL, 0, receiving_buf + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE);
+        crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
+        crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+        if (r!= 0) {
             // decryption failure
-            crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
-            crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
             crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
             free(signatures);
             return;
         }
 
         //decyrption success
-        crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
-        crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
-
         // print decrpted CP boot message
         // RANDOM_DELAY_TINY;
         print_info("0x%08x>%s\n", flash_status.component_ids[i], cp_boot_msg);
@@ -1032,11 +1028,12 @@ void attempt_boot() {
     // decrypt
     uint8_t plain_ap_boot_msg[BOOT_MSG_PLAIN_TEXT_SIZE] = {0};
     crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
-    if (crypto_aead_unlock(plain_ap_boot_msg, flash_status.aead_ap_boot_cipher, flash_status.aead_key, flash_status.aead_ap_boot_nonce, NULL, 0, flash_status.aead_ap_boot_cipher + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE) != 0) {
+    volatile int r = crypto_aead_unlock(plain_ap_boot_msg, flash_status.aead_ap_boot_cipher, flash_status.aead_key, flash_status.aead_ap_boot_nonce, NULL, 0, flash_status.aead_ap_boot_cipher + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE);
+    crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
+    crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
+    crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+    if (r != 0) {
         // decryption failure
-        crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
-        crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);
-        crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
         crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
         return;
     }
