@@ -31,6 +31,7 @@
 #include "common.h"
 #include "monocypher.h"
 #include "syscalls.h"
+#include "timer.h"
 
 #ifdef POST_BOOT
 #include "mxc_delay.h"
