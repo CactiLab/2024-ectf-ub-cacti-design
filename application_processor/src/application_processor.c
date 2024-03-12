@@ -905,9 +905,7 @@ void attempt_boot() {
         result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
         // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
         if (result == ERROR_RETURN) {
-            crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            panic();
             return;
         }
 
@@ -918,10 +916,7 @@ void attempt_boot() {
         recv_len = poll_and_receive_packet(addr, receiving_buf);
         // cancel_continuous_timer();
         if (recv_len != SIGNATURE_SIZE + NONCE_SIZE) {
-            crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
-            defense_mode();
             return;
         }
         packet_boot_1_cp_to_ap *pkt_recv_1 = (packet_boot_1_cp_to_ap *) receiving_buf;
@@ -931,18 +926,24 @@ void attempt_boot() {
         retrive_cp_pub_key();
 
         // verify the signature
-        if (crypto_eddsa_check(pkt_recv_1->sig_auth, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 5)) {
-            // validation fails
-            crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-            crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+        EXPR_EXECUTE(crypto_eddsa_check(pkt_recv_1->sig_auth, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 5), ERR_VALUE);
+        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+        EXPR_CHECK(ERR_VALUE);
+        RANDOM_DELAY_TINY;
+        if (if_val_2 != 0) {
             free(signatures);
             defense_mode();
             return;
         }
+        RANDOM_DELAY_TINY;
+        if (if_val_2 != 0) {
+            free(signatures);
+            defense_mode();
+            return;
+        }
+        RANDOM_DELAY_TINY;
 
         // validation passes
-        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
         packet_plain_with_id *plain_cp_resp = (packet_plain_with_id *) general_buf;
         plain_cp_resp->cmd_label = COMPONENT_CMD_BOOT_2;
         memcpy(plain_cp_resp->nonce, pkt_recv_1->nonce, NONCE_SIZE);
