@@ -816,7 +816,7 @@ int attest_component(uint32_t component_id) {
     // wipe general_buffer
     crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
     // decrypt
-    volatile int r = crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE);
+    r = crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE);
     crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
     crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
     if (r != 0) {
