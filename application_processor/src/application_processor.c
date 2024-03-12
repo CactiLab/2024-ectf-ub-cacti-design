@@ -957,7 +957,6 @@ void attempt_boot() {
             defense_mode();
             return;
         }
-        RANDOM_DELAY_TINY;
 
         // validation passes
         packet_plain_with_id *plain_cp_resp = (packet_plain_with_id *) general_buf;

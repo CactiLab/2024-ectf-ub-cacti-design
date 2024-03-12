@@ -509,7 +509,6 @@ void process_boot() {
         defense_mode();
         return;
     }
-    RANDOM_DELAY_TINY;
     // ID check ok
 
     MXC_Delay(50);
@@ -567,7 +566,6 @@ void process_boot() {
         defense_mode();
         return;
     }
-    RANDOM_DELAY_TINY;
     // verification passes
 
     // wipe
