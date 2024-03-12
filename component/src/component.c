@@ -480,11 +480,20 @@ void process_boot() {
     }
 
     // check the component ID
-    if (compare_32_and_8(pkt_receive_1->id, component_id)) {
+    EXPR_EXECUTE_CHECK(compare_32_and_8(pkt_receive_1->id, component_id), ERROR_RETURN);
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
         // ID check failure
         defense_mode();
         return;
     }
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        // ID check failure
+        defense_mode();
+        return;
+    }
+    RANDOM_DELAY_TINY;
     // ID check ok
 
     MXC_Delay(50);
@@ -516,9 +525,6 @@ void process_boot() {
     result = wait_and_receive_packet(global_buffer_recv);
     // cancel_continuous_timer();
     if (result <= 0) {
-        crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(transmit_buffer, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
         return;
     }
 
@@ -530,16 +536,26 @@ void process_boot() {
 
     // verify the auth signature
     retrive_ap_pub_key();
-    if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 5)) {
+    EXPR_EXECUTE(crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 5), ERR_VALUE);
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
         // verification failure
-        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
         defense_mode();
         return;
     }
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        // verification failure
+        defense_mode();
+        return;
+    }
+    RANDOM_DELAY_TINY;
     // verification passes
 
     // wipe
-    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
     MXC_Delay(50);
 
