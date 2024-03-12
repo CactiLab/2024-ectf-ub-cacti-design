@@ -127,21 +127,21 @@ typedef struct {
 
 // Data structure for sending and receiving commands to component for more secure protocols
 // packet structure for plain text for signature contains component I2C address
-typedef struct __attribute__((packed))  __packed {
+typedef struct __attribute__((packed)) __packed {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t address;
 } packet_plain_with_addr;
 
 // packet structure for plain text for signature contains compontent ID
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t id[COMPONENT_ID_SIZE];
 } packet_plain_with_id;
 
 // packet structure for plain text for signature of transmitting message
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t cmd_label;
     uint8_t address;
     uint8_t nonce[NONCE_SIZE];
@@ -149,27 +149,27 @@ typedef struct __attribute__((packed)) {
 } packet_plain_msg;
 
 // packet structure for sending message
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t sig_auth[SIGNATURE_SIZE];
     uint8_t sig_msg[SIGNATURE_SIZE];
     uint8_t msg[MAX_POST_BOOT_MSG_LEN];
 } packet_sign_sign_msg;
 
 // packet structure for reading message (post boot) request
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
 } packet_read_msg;
 
 // packet structure for post boot from AP to CP
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t id[COMPONENT_ID_SIZE];
 } packet_boot_1_ap_to_cp;
 
 // packet structure for post boot from CP to AP
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t sig_auth[SIGNATURE_SIZE];
     uint8_t nonce[NONCE_SIZE];
 } packet_boot_1_cp_to_ap;
@@ -437,7 +437,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // check the given sending lenth
     if (len > MAX_POST_BOOT_MSG_LEN) {
-        // panic();
         return ERROR_RETURN;
     }
 
@@ -460,8 +459,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result != SUCCESS_RETURN) {
         print_info("secure_send - 3, result=%d\n", result);
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
         return ERROR_RETURN;
     }
     print_info("secure_send - 4\n");
@@ -474,9 +471,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     if (recv_len != NONCE_SIZE) {
         print_info("secure_send - 5, len=%d\n", recv_len);
         print_hex_info(receiving_buf, recv_len);
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        defense_mode();
         return ERROR_RETURN;
     }
     print_info("secure_send - 6, len=%d\n", recv_len);
@@ -503,10 +497,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
     if (result == ERROR_RETURN) {
         print_info("secure_send - 8\n");
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
-        // panic();
         return ERROR_RETURN;
     }
     print_info("secure_send - 9\n");
@@ -550,9 +540,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // send the packet (cmd label, nonce)
     result = send_packet(address, NONCE_SIZE + 1, sending_buf);
     if (result == ERROR_RETURN) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        // panic();
         return ERROR_RETURN;
     }
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
@@ -563,10 +550,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     recv_len = poll_and_receive_packet(address, receiving_buf);
     // cancel_continuous_timer();
     if (recv_len <= 0) {
-        crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        crypto_wipe(buffer, MAX_I2C_MESSAGE_LEN);
-        // panic();
         return recv_len;
     }
     int len = recv_len - SIGNATURE_SIZE;  // plain message length
@@ -597,6 +580,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
+    
     MXC_Delay(500);
     return len;
 }

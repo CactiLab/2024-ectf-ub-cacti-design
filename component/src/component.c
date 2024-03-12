@@ -89,19 +89,19 @@ typedef struct {
     uint32_t component_id;
 } scan_message;
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t id[4];
 } packet_plain_with_id;
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t cmd_label;
     uint8_t nonce[NONCE_SIZE];
     uint8_t id[COMPONENT_ID_SIZE];
 } packet_boot_1_ap_to_cp;
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __packed {
     uint8_t sig_auth[SIGNATURE_SIZE];
     uint8_t nonce[NONCE_SIZE];
 } packet_boot_1_cp_to_ap;
@@ -279,7 +279,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 
     // check the message length
     if (len > MAX_I2C_MESSAGE_LEN) {
-        // panic();
         return;
     }
 
@@ -292,8 +291,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     // receive AP's packet of the `reading` command and nonce
     result = wait_and_receive_packet(receiving_buf);
     if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
-        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
-        defense_mode();
         return;
     }
 
@@ -350,7 +347,6 @@ int secure_receive(uint8_t* buffer) {
     printf("recv - 2, result=%d, [0]=0x%x\n", result, receiving_buf[0]);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
         printf("recv - 3\n");
-        defense_mode();
         return result;
     }
     printf("recv - 4\n");
