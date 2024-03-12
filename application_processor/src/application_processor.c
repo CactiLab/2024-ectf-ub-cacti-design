@@ -110,10 +110,6 @@
 // Params allows for up to MAX_I2C_MESSAGE_LEN - 1 bytes to be send
 // along with the opcode through board_link. This is not utilized by the example
 // design but can be utilized by your design.
-typedef struct {
-    uint8_t opcode;
-    uint8_t params[MAX_I2C_MESSAGE_LEN + 1];
-} command_message;
 
 // Data type for receiving a validate message
 typedef struct {
@@ -215,6 +211,9 @@ typedef enum {
 /********************************* GLOBAL VARIABLES **********************************/
 // Variable for information stored in flash memory
 flash_entry flash_status;
+
+volatile uint32_t if_val_1;
+volatile uint32_t if_val_2;
 
 /***************************** FLASH RELATED OPERATIONS ******************************/
 /**
@@ -727,8 +726,7 @@ int scan_components() {
         }
 
         // Create command message 
-        command_message* command = (command_message*) transmit_buffer;
-        command->opcode = COMPONENT_CMD_SCAN;
+        transmit_buffer[0] = COMPONENT_CMD_SCAN;
         
         // Send out command and receive result
         int len = issue_cmd(addr, transmit_buffer, receive_buffer);
@@ -1073,7 +1071,7 @@ void attempt_replace() {
     // length check
     if (strlen(buf) != TOKEN_LEN) {
         defense_mode();
-        print_error("len\n");
+        // print_error("len\n");
         return;
     }
 
@@ -1106,13 +1104,29 @@ void attempt_replace() {
     // compare the hash of inputted token with the stored corect token hash
     retrive_token_hash();
 
-    if (crypto_verify64(hash, flash_status.token_hash)) {
-        crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-        crypto_wipe(hash, sizeof(hash));
+    EXPR_EXECUTE(crypto_verify64(hash, flash_status.token_hash), ERR_VALUE);
+    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    crypto_wipe(hash, sizeof(hash));
+    EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
         defense_mode();
-        print_error("Token\n");
         return;
     }
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        defense_mode();
+        return;
+    }
+    RANDOM_DELAY_TINY;
+
+    // if (crypto_verify64(hash, flash_status.token_hash)) {
+    //     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    //     crypto_wipe(hash, sizeof(hash));
+    //     defense_mode();
+    //     print_error("Token\n");
+    //     return;
+    // }
 
     // print_info("replace - 5\n");
     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
@@ -1141,7 +1155,7 @@ void attempt_replace() {
         }
     }
     defense_mode();
-    print_error("ID\n");
+    // print_error("ID\n");
     return;
 }
 
