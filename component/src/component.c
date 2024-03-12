@@ -295,7 +295,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 
     // receive AP's packet of the `reading` command and nonce
     result = wait_and_receive_packet(receiving_buf);
-    RANDOM_DELAY_TINY;
     if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
         return;
     }
@@ -316,7 +315,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 
     // send the packet (sign(auth), sign(msg), msg)
     send_packet_and_ack(SIGNATURE_SIZE + len, sending_buf);
-    RANDOM_DELAY_TINY;
 
     // clear the buffers
     crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
@@ -351,7 +349,6 @@ int secure_receive(uint8_t* buffer) {
 
     // receive AP's packet (cmd label)
     result = wait_and_receive_packet(receiving_buf);
-    RANDOM_DELAY_TINY;
     printf("recv - 2, result=%d, [0]=0x%x\n", result, receiving_buf[0]);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
         printf("recv - 3\n");
@@ -366,7 +363,6 @@ int secure_receive(uint8_t* buffer) {
 
     // send the challenge packet
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    RANDOM_DELAY_TINY;
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     MXC_Delay(50);
@@ -374,7 +370,6 @@ int secure_receive(uint8_t* buffer) {
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     result = wait_and_receive_packet(receiving_buf);
-    RANDOM_DELAY_TINY;
     printf("recv - 6, result=%d\n", result);
     // cancel_continuous_timer();
     if (result <= 0) {

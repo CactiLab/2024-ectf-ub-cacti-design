@@ -456,7 +456,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     print_info("secure_send - 2, sending_buf[0]=%x\n", sending_buf[0]);
     // send the cmd label packet
     result = send_packet(address, sizeof(uint8_t), sending_buf);
-    RANDOM_DELAY_TINY;
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
     if (result != SUCCESS_RETURN) {
         print_info("secure_send - 3, result=%d\n", result);
@@ -468,7 +467,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // receive a CP's packet (nonce)
     recv_len = poll_and_receive_packet(address, receiving_buf);
-    RANDOM_DELAY_TINY;
     // cancel_continuous_timer();
     if (recv_len != NONCE_SIZE) {
         print_info("secure_send - 5, len=%d\n", recv_len);
@@ -543,7 +541,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
 
     // send the packet (cmd label, nonce)
     result = send_packet(address, NONCE_SIZE + 1, sending_buf);
-    RANDOM_DELAY_TINY;
     if (result == ERROR_RETURN) {
         return ERROR_RETURN;
     }
@@ -554,7 +551,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // receive the packet from CP (sign(auth), sign(msg), msg)
     ;
     recv_len = poll_and_receive_packet(address, receiving_buf);
-    RANDOM_DELAY_TINY;
     // cancel_continuous_timer();
     if (recv_len <= 0) {
         return recv_len;
