@@ -388,13 +388,21 @@ int secure_receive(uint8_t* buffer) {
 
     // calculate the msg signature and verify
     retrive_ap_pub_key();
-
-    if (crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len)) {
-        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    EXPR_EXECUTE(crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len), ERR_VALUE);
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
         defense_mode();
         return 0;
     }
-    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        defense_mode();
+        return 0;
+    }
+    RANDOM_DELAY_TINY;
+    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
     MXC_Delay(500);
     return len;

@@ -561,16 +561,23 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
 
     // verify the auth and msg signatures
     retrive_cp_pub_key();
-
-    if (crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len)) {
-        // check failed
-        crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+    EXPR_EXECUTE(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len), ERR_VALUE);
+    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+    EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
         defense_mode();
         return 0;
     }
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        defense_mode();
+        return 0;
+    }
+    RANDOM_DELAY_TINY;
 
     // check succeeds
-    crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
+    // crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
 
     // save the plain message
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
