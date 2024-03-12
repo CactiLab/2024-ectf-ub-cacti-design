@@ -42,6 +42,8 @@
 #endif
 
 /********************************* CONSTANTS **********************************/
+#define ERR_VALUE -15   // an error value that functions will never return
+
 // Flash Macros
 #define FLASH_ADDR ((MXC_FLASH_MEM_BASE + MXC_FLASH_MEM_SIZE) - (2 * MXC_FLASH_PAGE_SIZE))
 #define FLASH_MAGIC 0xDEADBEEF
@@ -138,6 +140,9 @@ uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN + 1];
 
 // Variable for information stored in flash memory
 flash_entry flash_status;
+
+volatile uint32_t if_val_1;
+volatile uint32_t if_val_2;
 
 /***************************** FLASH RELATED OPERATIONS ******************************/
 /**
@@ -590,23 +595,33 @@ void process_attest() {
 
     // verify
     retrive_ap_pub_key();
-    if (crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buffer, NONCE_SIZE + 5)) {
-        // verification failed
-        crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-        crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
+    EXPR_EXECUTE(crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buffer, NONCE_SIZE + 5), ERR_VALUE);
+    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
         defense_mode();
         return;
     }
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        defense_mode();
+        return;
+    }
+    RANDOM_DELAY_TINY;
     // verification passed
 
     // wipe
-    crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
+    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
 
     // retrive encrypted attest data and send
     retrive_attest_cipher();
     memcpy(transmit_buffer, flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
     send_packet_and_ack(CIPHER_ATTESTATION_DATA_LEN, transmit_buffer);
+    // wipe cipher text
     crypto_wipe(flash_status.cipher_attest_data, sizeof(flash_status.cipher_attest_data));
+    
+    // wipe buffers
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
     crypto_wipe(global_buffer_recv, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);

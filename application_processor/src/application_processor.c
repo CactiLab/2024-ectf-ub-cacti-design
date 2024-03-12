@@ -816,17 +816,18 @@ int attest_component(uint32_t component_id) {
     // wipe general_buffer
     crypto_wipe(general_buffer, MAX_I2C_MESSAGE_LEN + 1);
     // decrypt
-    if (crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE) != 0) {
+    volatile int r = crypto_aead_unlock(general_buffer, receive_buffer, flash_status.aead_key, flash_status.aead_nonce, NULL, 0, receive_buffer + AEAD_MAC_SIZE, ATT_PLAIN_TEXT_SIZE);
+    crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+    if (r != 0) {
         // decryption failed
-        crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
-        crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
         return ERROR_RETURN;
-    }
+    }        
     // decryption ok
 
     // wipe
-    crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
-    crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
+    // crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
+    // crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
 
     // Print out attestation data
     general_buffer[ATT_LOC_POS + general_buffer[ATT_LOC_LEN_POS]] = '\0';
@@ -1129,8 +1130,8 @@ void attempt_replace() {
     // }
 
     // print_info("replace - 5\n");
-    crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-    crypto_wipe(hash, sizeof(hash));
+    // crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
+    // crypto_wipe(hash, sizeof(hash));
 
     // input IDs from the host
     uint32_t component_id_in = 0;
@@ -1198,23 +1199,39 @@ void attempt_attest() {
     free(workarea);
 
     // mitigate brute-force
-    // random_delay_us(1200000);
+    random_delay_us(1200000);
     MXC_Delay(100);
 
     // retieve the stored correct hashed PIN, compare it with the inputted hashed PIN
     retrive_pin_hash();
 
     // check if the hash value is correct
-    if (crypto_verify64(hash, flash_status.pin_hash)) {
-        crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
-        crypto_wipe(hash, sizeof(hash));
-        defense_mode();
-        print_error("PIN\n");
-        return;
-    }
-
+    EXPR_EXECUTE(crypto_verify64(hash, flash_status.pin_hash), ERR_VALUE);
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
+    EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        defense_mode();
+        return;
+    }
+    RANDOM_DELAY_TINY;
+    if (if_val_2 != 0) {
+        defense_mode();
+        return;
+    }
+    RANDOM_DELAY_TINY;
+
+    // if (crypto_verify64(hash, flash_status.pin_hash)) {
+    //     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+    //     crypto_wipe(hash, sizeof(hash));
+    //     defense_mode();
+    //     print_error("PIN\n");
+    //     return;
+    // }
+
+    // crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
+    // crypto_wipe(hash, sizeof(hash));
     
     // a valid PIN
     MXC_Delay(100);
