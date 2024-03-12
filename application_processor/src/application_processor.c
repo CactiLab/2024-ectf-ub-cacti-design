@@ -1097,7 +1097,7 @@ void attempt_replace() {
     crypto_wipe(flash_status.hash_key, sizeof(flash_status.hash_key));
 
     // mitigate brute-force
-    // random_delay_us(1500000);
+    random_delay_us(2500000);
     MXC_Delay(50);
 
     // print_info("replace - 4\n");
