@@ -280,7 +280,6 @@ void enable_defense_bit() {
 void secure_send(uint8_t* buffer, uint8_t len) {
     // send_packet_and_ack(len, buffer);
 
-    RANDOM_DELAY_TINY;
     MXC_Delay(10);
 
     // check the message length
@@ -295,7 +294,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     volatile int result = ERROR_RETURN;
 
     // receive AP's packet of the `reading` command and nonce
-    RANDOM_DELAY_TINY;
     result = wait_and_receive_packet(receiving_buf);
     RANDOM_DELAY_TINY;
     if (result <= 0 || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_CP_TO_AP) {
@@ -312,14 +310,12 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 
     // calculate the auth and msg singatures and construct the sneding packet (sign(auth), sign(msg), msg)
     retrive_cp_priv_key();
-    RANDOM_DELAY_TINY;
     crypto_eddsa_sign(sending_buf, flash_status.cp_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // msg sign
     RANDOM_DELAY_TINY;
     crypto_wipe(flash_status.cp_priv_key, sizeof(flash_status.cp_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);      // plain message
 
     // send the packet (sign(auth), sign(msg), msg)
-    RANDOM_DELAY_TINY;
     send_packet_and_ack(SIGNATURE_SIZE + len, sending_buf);
     RANDOM_DELAY_TINY;
 
@@ -345,7 +341,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
 int secure_receive(uint8_t* buffer) {
     // return wait_and_receive_packet(buffer);
 
-    RANDOM_DELAY_TINY;
     MXC_Delay(50);
 
     // define variables
@@ -357,7 +352,6 @@ int secure_receive(uint8_t* buffer) {
     printf("recv - 1\n");
 
     // receive AP's packet (cmd label)
-    RANDOM_DELAY_TINY;
     result = wait_and_receive_packet(receiving_buf);
     RANDOM_DELAY_TINY;
     printf("recv - 2, result=%d, [0]=0x%x\n", result, receiving_buf[0]);
@@ -373,7 +367,6 @@ int secure_receive(uint8_t* buffer) {
     MXC_Delay(50);
 
     // send the challenge packet
-    RANDOM_DELAY_TINY;
     send_packet_and_ack(NONCE_SIZE, sending_buf);
     RANDOM_DELAY_TINY;
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
@@ -382,7 +375,6 @@ int secure_receive(uint8_t* buffer) {
     printf("recv - 5\n");
 
     // receive sign(p,nonce,address) + sign(msg) + msg
-    RANDOM_DELAY_TINY;
     result = wait_and_receive_packet(receiving_buf);
     RANDOM_DELAY_TINY;
     printf("recv - 6, result=%d\n", result);
@@ -404,7 +396,6 @@ int secure_receive(uint8_t* buffer) {
     // calculate the msg signature and verify
     retrive_ap_pub_key();
     EXPR_EXECUTE(crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len), ERR_VALUE);
-    RANDOM_DELAY_TINY;
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     EXPR_CHECK(ERR_VALUE);
     RANDOM_DELAY_TINY;
@@ -421,7 +412,6 @@ int secure_receive(uint8_t* buffer) {
     // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
     
-    RANDOM_DELAY_TINY;
     MXC_Delay(500);
     return len;
 }

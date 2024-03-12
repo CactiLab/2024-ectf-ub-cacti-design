@@ -433,7 +433,6 @@ void enable_defense_bit() {
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // return send_packet(address, len, buffer);
 
-    RANDOM_DELAY_TINY;
     MXC_Delay(50);
 
     // check the given sending lenth
@@ -456,7 +455,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     print_info("secure_send - 2, sending_buf[0]=%x\n", sending_buf[0]);
     // send the cmd label packet
-    RANDOM_DELAY_TINY;
     result = send_packet(address, sizeof(uint8_t), sending_buf);
     RANDOM_DELAY_TINY;
     // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
@@ -469,7 +467,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     MXC_Delay(50);
 
     // receive a CP's packet (nonce)
-    RANDOM_DELAY_TINY;
     recv_len = poll_and_receive_packet(address, receiving_buf);
     RANDOM_DELAY_TINY;
     // cancel_continuous_timer();
@@ -490,7 +487,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     memcpy(general_buf_2 + 2 + NONCE_SIZE, buffer, len);    // plain message
 
     // make the signature and construct the sending packet (sign(p, address, nonce, msg), msg)
-    RANDOM_DELAY_TINY;
     retrive_ap_priv_key();
     crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
     RANDOM_DELAY_TINY;
@@ -501,7 +497,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     print_hex_info(sending_buf, SIGNATURE_SIZE + len);
 
     // send the packet (sign(p, address, nonce, msg), msg)
-    RANDOM_DELAY_TINY;
     result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
     RANDOM_DELAY_TINY;
     if (result == ERROR_RETURN) {
@@ -534,7 +529,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // return poll_and_receive_packet(address, buffer);
 
-    RANDOM_DELAY_TINY;
     MXC_Delay(50);
 
     // define variables
@@ -549,7 +543,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     rng_get_bytes(sending_buf + 1, NONCE_SIZE);         // nonce
 
     // send the packet (cmd label, nonce)
-    RANDOM_DELAY_TINY;
     result = send_packet(address, NONCE_SIZE + 1, sending_buf);
     RANDOM_DELAY_TINY;
     if (result == ERROR_RETURN) {
@@ -560,7 +553,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(50);
 
     // receive the packet from CP (sign(auth), sign(msg), msg)
-    RANDOM_DELAY_TINY;
+    ;
     recv_len = poll_and_receive_packet(address, receiving_buf);
     RANDOM_DELAY_TINY;
     // cancel_continuous_timer();
@@ -578,7 +571,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     // verify the auth and msg signatures
     retrive_cp_pub_key();
     EXPR_EXECUTE(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len), ERR_VALUE);
-    RANDOM_DELAY_TINY;
     crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
     EXPR_CHECK(ERR_VALUE);
     RANDOM_DELAY_TINY;
@@ -605,7 +597,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
 
     MXC_Delay(500);
-    RANDOM_DELAY_TINY;
     return len;
 }
 
