@@ -389,7 +389,7 @@ int secure_receive(uint8_t* buffer) {
     }
     RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
-        defense_mode();
+        panic();
         return 0;
     }
     // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
@@ -465,7 +465,7 @@ void process_boot() {
     RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         // ID check failure
-        defense_mode();
+        panic();
         return;
     }
     // ID check ok
@@ -520,7 +520,7 @@ void process_boot() {
     RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         // verification failure
-        defense_mode();
+        panic();
         return;
     }
 
@@ -591,7 +591,7 @@ void process_attest() {
     }
     RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
-        defense_mode();
+        panic();
         return;
     }
     

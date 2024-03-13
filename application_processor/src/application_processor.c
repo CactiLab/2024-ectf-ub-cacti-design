@@ -554,7 +554,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     }
     RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
-        defense_mode();
+        panic();
         return 0;
     }
 
@@ -905,7 +905,7 @@ void attempt_boot() {
         RANDOM_DELAY_TINY;
         if (if_val_2 != 0) {
             free(signatures);
-            defense_mode();
+            panic();
             return;
         }
 
@@ -1072,7 +1072,7 @@ void attempt_replace() {
     }
     RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
-        defense_mode();
+        panic();        
         return;
     }
 
@@ -1159,7 +1159,7 @@ void attempt_attest() {
     }
     RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
-        defense_mode();
+        panic();
         return;
     }
     
