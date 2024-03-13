@@ -1120,7 +1120,6 @@ void attempt_attest() {
 
     // host input
     recv_input("Enter pin: ", buf);
-    RANDOM_DELAY_TINY;
 
     // length check
     if (strlen(buf) != PIN_LEN) {
@@ -1162,7 +1161,6 @@ void attempt_attest() {
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
     EXPR_CHECK(ERR_VALUE);
-    RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         defense_mode();
         return;
