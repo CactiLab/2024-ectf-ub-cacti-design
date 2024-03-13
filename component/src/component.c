@@ -485,7 +485,6 @@ void process_boot() {
 
     // check the component ID
     EXPR_EXECUTE_CHECK(compare_32_and_8(pkt_receive_1->id, component_id), ERROR_RETURN);
-    RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         // ID check failure
         defense_mode();
@@ -541,7 +540,6 @@ void process_boot() {
     EXPR_EXECUTE(crypto_eddsa_check(global_buffer_recv, flash_status.ap_pub_key, general_buf, NONCE_SIZE + 5), ERR_VALUE);
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     EXPR_CHECK(ERR_VALUE);
-    RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         // verification failure
         defense_mode();
@@ -553,7 +551,7 @@ void process_boot() {
         defense_mode();
         return;
     }
-    
+
     // verification passes
     MXC_Delay(50);
 
