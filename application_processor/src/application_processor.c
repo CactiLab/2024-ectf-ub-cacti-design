@@ -1062,12 +1062,11 @@ void attempt_replace() {
 
     // read host input
     recv_input("Enter token: ", buf);
-    // RANDOM_DELAY_TINY;
+    RANDOM_DELAY_TINY;
 
     // length check
     if (strlen(buf) != TOKEN_LEN) {
         defense_mode();
-        // print_error("len\n");
         return;
     }
 
@@ -1114,26 +1113,15 @@ void attempt_replace() {
         defense_mode();
         return;
     }
-    RANDOM_DELAY_TINY;
-
-    // if (crypto_verify64(hash, flash_status.token_hash)) {
-    //     crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-    //     crypto_wipe(hash, sizeof(hash));
-    //     defense_mode();
-    //     print_error("Token\n");
-    //     return;
-    // }
-
-    // print_info("replace - 5\n");
-    // crypto_wipe(flash_status.token_hash, sizeof(flash_status.token_hash));
-    // crypto_wipe(hash, sizeof(hash));
 
     // input IDs from the host
     uint32_t component_id_in = 0;
     uint32_t component_id_out = 0;
     recv_input("Component ID In: ", buf);
+    RANDOM_DELAY_TINY;
     sscanf(buf, "%x", &component_id_in);
     recv_input("Component ID Out: ", buf);
+    RANDOM_DELAY_TINY;
     sscanf(buf, "%x", &component_id_out);
 
     // Find the component to swap out
@@ -1146,12 +1134,12 @@ void attempt_replace() {
             WRITE_FLASH_MEMORY;
             // print replace success information
             print_success("Replace\n");
+            RANDOM_DELAY_TINY;
             MXC_Delay(500);
             return;
         }
     }
     defense_mode();
-    // print_error("ID\n");
     return;
 }
 
