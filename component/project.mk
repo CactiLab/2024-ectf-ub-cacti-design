@@ -17,6 +17,10 @@
 # so we override the BOARD value to hard-set it.
 override BOARD=FTHR_RevA
 
+PROJ_CFLAGS += -DBLAKE2_NO_UNROLLING
+
+PROJ_LDFLAGS += -Wl,--no-warn-rwx-segments
+
 IPATH+=../deployment
 IPATH+=inc/
 VPATH+=src/

@@ -18,6 +18,10 @@
 override BOARD=FTHR_RevA
 MFLOAT_ABI=soft
 
+PROJ_CFLAGS += -DBLAKE2_NO_UNROLLING
+
+PROJ_LDFLAGS += -Wl,--no-warn-rwx-segments
+
 IPATH+=../deployment
 IPATH+=inc/
 VPATH+=src/
