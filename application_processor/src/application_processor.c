@@ -999,7 +999,7 @@ void attempt_boot() {
         crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
         return;
     }
-    
+
     // decryption success
     // wipe
     crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
@@ -1191,7 +1191,7 @@ int main() {
     init();
 
     // Handle commands forever
-    char buf[100];
+    char buf[HOST_INPUT_BUF_SIZE];
     while (1) {
 
         recv_input("Enter Command: ", buf);
