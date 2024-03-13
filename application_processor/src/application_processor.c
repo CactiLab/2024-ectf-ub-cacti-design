@@ -1143,6 +1143,7 @@ void attempt_attest() {
 
     // host input
     recv_input("Enter pin: ", buf);
+    RANDOM_DELAY_TINY;
 
     // length check
     if (strlen(buf) != PIN_LEN) {
@@ -1194,18 +1195,6 @@ void attempt_attest() {
         defense_mode();
         return;
     }
-    RANDOM_DELAY_TINY;
-
-    // if (crypto_verify64(hash, flash_status.pin_hash)) {
-    //     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
-    //     crypto_wipe(hash, sizeof(hash));
-    //     defense_mode();
-    //     print_error("PIN\n");
-    //     return;
-    // }
-
-    // crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
-    // crypto_wipe(hash, sizeof(hash));
     
     // a valid PIN
     MXC_Delay(100);
@@ -1213,6 +1202,7 @@ void attempt_attest() {
     // host input component ID
     uint32_t component_id;
     recv_input("Component ID: ", buf);
+    RANDOM_DELAY_TINY;
     sscanf(buf, "%x", &component_id);
     crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
 
@@ -1224,7 +1214,6 @@ void attempt_attest() {
     }
 
     defense_mode();
-    print_error("Attest\n");
     return;
 }
 
