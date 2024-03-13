@@ -16,10 +16,6 @@
  * @return Success/Fail, see MXC_Error_Codes for a list of return codes.
  */
 int rng_init(void) {
-    STRVR = 0xFFFFFF;  // max count
-    STCVR = 0;         // force a re-load of the counter value register
-    STCSR = 5;         // enable FCLK count without interrupt
-
     return MXC_TRNG_Init();
 }
 
@@ -56,13 +52,6 @@ void panic(void) {
         :
         : "memory"
     );
-}
-
-/**
- * @brief return current CPU cycle in int
-*/
-unsigned int get_current_cpu_cycle() {
-    return STCVR;
 }
 
 /**

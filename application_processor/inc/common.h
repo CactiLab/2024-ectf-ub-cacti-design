@@ -1,17 +1,12 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define STCSR (*(int *)0xE000E010)
-#define STRVR (*(int *)0xE000E014)
-#define STCVR (*(int *)0xE000E018)
-
 #include <stdint.h>
 #include <stddef.h>
 
 int rng_init(void);
 int rng_get_bytes(uint8_t* buffer, int size);
 void panic(void);
-unsigned int get_current_cpu_cycle();
 void random_delay_us(uint32_t);
 void enable_defense_bit();       // defined in application_processor.c
 

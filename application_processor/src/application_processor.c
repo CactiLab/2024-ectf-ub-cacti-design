@@ -399,7 +399,6 @@ void convert_32_to_8(uint8_t *buf, uint32_t i) {
 */
 void defense_mode() {
     __disable_irq();
-    // cancel_continuous_timer();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
     MXC_Delay(4000000); // 4 seconds
@@ -430,7 +429,6 @@ void enable_defense_bit() {
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
-
     MXC_Delay(50);
 
     // check the given sending lenth
@@ -480,7 +478,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // send the packet (sign(p, address, nonce, msg), msg)
     result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
-    // RANDOM_DELAY_TINY;
     if (result == ERROR_RETURN) {
         return ERROR_RETURN;
     }
@@ -506,8 +503,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
  * This function must be implemented by your team to align with the security requirements.
 */
 int secure_receive(i2c_addr_t address, uint8_t* buffer) {
-    // return poll_and_receive_packet(address, buffer);
-
     MXC_Delay(50);
 
     // define variables
@@ -564,8 +559,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     }
 
     // check succeeds
-    // crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
-
     // save the plain message
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
     
@@ -851,7 +844,6 @@ void boot() {
     #else
 
     // Everything after this point is modifiable in your design
-    // LED loop to show that boot occurred
     while (1) {
 
     }
@@ -1007,8 +999,8 @@ void attempt_boot() {
         crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
         return;
     }
+    
     // decryption success
-
     // wipe
     crypto_wipe(flash_status.aead_ap_boot_nonce, AEAD_NONCE_SIZE);
     crypto_wipe(flash_status.aead_ap_boot_cipher, BOOT_MSG_CIPHER_TEXT_SIZE);

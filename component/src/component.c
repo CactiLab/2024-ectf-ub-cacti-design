@@ -249,7 +249,6 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
 */
 void defense_mode() {
     __disable_irq();
-    // cancel_continuous_timer();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
     MXC_Delay(4000000); // 4 seconds
@@ -278,8 +277,6 @@ void enable_defense_bit() {
  * This function must be implemented by your team to align with the security requirements.
 */
 void secure_send(uint8_t* buffer, uint8_t len) {
-    // send_packet_and_ack(len, buffer);
-
     MXC_Delay(10);
 
     // check the message length
