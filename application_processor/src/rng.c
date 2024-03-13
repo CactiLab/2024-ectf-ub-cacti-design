@@ -50,23 +50,6 @@ void panic(void) {
     // cancel_continuous_timer();
     __disable_irq();
 
-    // volatile uint32_t counter = 0;
-    // volatile uint32_t value = 10;
-    // while (value != 5) {
-    //     counter++;
-
-    //     // Additional fault injection tolerance: 
-    //     // Implement a check that verifies the loop is still executing correctly.
-    //     // If the counter wraps around (an unlikely event in a tight loop),
-    //     // it indicates the loop has been running for a long time or
-    //     // an attempt to manipulate the execution path has occurred.
-    //     if (counter == 0) {
-    //         // Forcefully reset the counter to maintain the loop's visibility to the compiler,
-    //         counter = 1;
-    //     }
-    // }
-
-
     asm volatile(
         "udf #0\n"  // Execute an undefined instruction to trigger HardFault
         :

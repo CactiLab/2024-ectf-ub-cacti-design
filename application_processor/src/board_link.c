@@ -54,15 +54,15 @@ int send_packet(i2c_addr_t address, uint8_t len, uint8_t* packet) {
     int result;
     result = i2c_simple_write_receive_len(address, len);
     if (result < SUCCESS_RETURN) {
-        return result;
+        return ERROR_RETURN;
     }
     result = i2c_simple_write_data_generic(address, RECEIVE, len, packet);
     if (result < SUCCESS_RETURN) {
-        return result - 128;
+        return ERROR_RETURN;
     }
     result = i2c_simple_write_receive_done(address, true);
     if (result < SUCCESS_RETURN) {
-        return result - 256;
+        return ERROR_RETURN;
     }
 
     return SUCCESS_RETURN;
