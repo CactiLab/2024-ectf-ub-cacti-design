@@ -765,7 +765,7 @@ int attest_component(uint32_t component_id) {
 
     // send the attestation command
     result = send_packet(addr, 1, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_8);
     if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
@@ -794,7 +794,7 @@ int attest_component(uint32_t component_id) {
 
     // send the signature
     send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_8);
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
 
     MXC_Delay(20);
