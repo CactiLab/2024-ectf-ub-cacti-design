@@ -66,9 +66,6 @@ Poetry is a Python packaging and dependency management utility. Poetry is utiliz
 * [Google Scholar](https://scholar.google.com)
 * [Semantic Scholar](https://www.semanticscholar.org/)
 
-### CactiLab
-* [Github Repository](https://github.com/cactilab/2024-ectf-ub-cacti-design)
-
 ### Other
 * [Brainstorm](brainstorm.md) -- A place for brainstorming
 * [Nuggets](nuggets.md) -- A place to store bits of relevant knowledge
@@ -347,9 +344,3 @@ ectf_attestation -a /dev/ttyUSB0 -p 123456 -c 0x11111124
 
 ## Schedule
 Todo.
-
-
-## Tasks
-Tasks will be primarily tracked using the [Github Issues](https://github.com/CactiLab/2024-ectf-ub-cacti-design/issues) page of this
-repository. Using issues improves task accountability and visibility, and
-allows better collaboration through the comments system.
