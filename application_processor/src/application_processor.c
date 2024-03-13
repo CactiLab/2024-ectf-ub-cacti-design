@@ -430,7 +430,6 @@ void enable_defense_bit() {
 
 */
 int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
-    // return send_packet(address, len, buffer);
 
     MXC_Delay(50);
 
@@ -881,6 +880,7 @@ void attempt_boot() {
         convert_32_to_8(pkt_send_1->id, flash_status.component_ids[i]);
 
         // send the pakcet (boot command + nonce + id)
+        RANDOM_DELAY_TINY;
         result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
         start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
         if (result == ERROR_RETURN) {
@@ -942,6 +942,7 @@ void attempt_boot() {
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
 
         // send
+        RANDOM_DELAY_TINY;
         MXC_Delay(50);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
         start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
@@ -954,7 +955,6 @@ void attempt_boot() {
         recv_len = poll_and_receive_packet(addr, receiving_buf);
         cancel_continuous_timer();
         if (recv_len < 0) {
-            crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);
             return;
         }
@@ -973,6 +973,7 @@ void attempt_boot() {
         volatile int r = crypto_aead_unlock(cp_boot_msg, receiving_buf, flash_status.aead_key, flash_status.aead_cp_boot_nonce, NULL, 0, receiving_buf + AEAD_MAC_SIZE, BOOT_MSG_PLAIN_TEXT_SIZE);
         crypto_wipe(flash_status.aead_cp_boot_nonce, AEAD_NONCE_SIZE);
         crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
+        crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
         if (r!= 0) {
             // decryption failure
             crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
@@ -988,8 +989,7 @@ void attempt_boot() {
         MXC_Delay(50);
     }
 
-    // clear buffers and free signatures
-    crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
+    // free signatures
     free(signatures);
     
     // retrieve the encrypted ap boot message
