@@ -20,6 +20,7 @@
 #define TIMER_LIMIT_I2C_MSG_VAL_8 8
 #define TIMER_LIMIT_I2C_MSG_VAL_14 14
 #define TIMER_LIMIT_I2C_MSG_VAL_16 16
+#define TIMER_LIMIT_I2C_MSG_VAL_20 20
 
 void continuous_timer_handler();
 
