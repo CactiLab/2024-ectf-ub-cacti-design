@@ -26,6 +26,7 @@
 #include "syscalls.h"
 #include "mpu_init.h"
 #include "common.h"
+#include "timer.h"
 
 #include "simple_i2c_peripheral.h"
 #include "board_link.h"
@@ -345,16 +346,11 @@ int secure_receive(uint8_t* buffer) {
     uint8_t general_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
     volatile int result = ERROR_RETURN;
 
-    printf("recv - 1\n");
-
     // receive AP's packet (cmd label)
     result = wait_and_receive_packet(receiving_buf);
-    printf("recv - 2, result=%d, [0]=0x%x\n", result, receiving_buf[0]);
     if (result != sizeof(uint8_t) || receiving_buf[0] != COMPONENT_CMD_MSG_FROM_AP_TO_CP) {
-        printf("recv - 3\n");
         return result;
     }
-    printf("recv - 4\n");
 
     // construct the sending packet, generate a challenge (nonce)
     rng_get_bytes(sending_buf, NONCE_SIZE);
@@ -363,22 +359,22 @@ int secure_receive(uint8_t* buffer) {
 
     // send the challenge packet
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
 
     MXC_Delay(50);
-    printf("recv - 5\n");
 
     // receive sign(p,nonce,address) + sign(msg) + msg
     result = wait_and_receive_packet(receiving_buf);
-    printf("recv - 6, result=%d\n", result);
-    // cancel_continuous_timer();
+    cancel_continuous_timer();
     if (result <= 0) {
         return result;
     }
 
     // plain message length
-    int len = result - SIGNATURE_SIZE;
-    printf("recv - 7, len=%d\n", len);
+    volatile int len = result - SIGNATURE_SIZE;
+    if (len <= 0 || len > MAX_POST_BOOT_MSG_LEN) {
+        return 0;
+    }
 
     // construct the plain text for verifying the message signature (in general_buf)
     general_buf[0] = COMPONENT_CMD_MSG_FROM_AP_TO_CP;               // cmd_label
