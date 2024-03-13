@@ -15,7 +15,7 @@
 
 // Print a message through USB UART and then receive a line over USB UART
 void recv_input(const char *msg, char *buf) {
-    print_debug(msg);
+    // print_debug(msg);
     fflush(0);
     print_ack();
     fgets(buf, HOST_MESSAGE_MAX_LENGTH, stdin);

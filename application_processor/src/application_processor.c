@@ -14,7 +14,6 @@
 #include "board.h"
 #include "i2c.h"
 #include "icc.h"
-#include "led.h"
 #include "mxc_delay.h"
 #include "mxc_device.h"
 #include "nvic_table.h"
@@ -705,7 +704,7 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
 
 int scan_components() {
     MXC_Delay(200);
-    
+
     // Print out provisioned component IDs
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         print_info("P>0x%08x\n", flash_status.component_ids[i]);
@@ -852,28 +851,10 @@ void boot() {
         POST_BOOT
     #else
 
-    // uint8_t buf[250];
-    // secure_receive(0x24, buf);
-    // print_info("buf=%s\n", buf);
-
-    // uint8_t buf[250] = "I want to pass.";
-    // secure_send(0x24, buf, strlen(buf));
-
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
     while (1) {
-        LED_On(LED1);
-        MXC_Delay(500000);
-        LED_On(LED2);
-        MXC_Delay(500000);
-        LED_On(LED3);
-        MXC_Delay(500000);
-        LED_Off(LED1);
-        MXC_Delay(500000);
-        LED_Off(LED2);
-        MXC_Delay(500000);
-        LED_Off(LED3);
-        MXC_Delay(500000);
+
     }
     #endif
 }
@@ -1087,7 +1068,6 @@ void attempt_replace() {
     random_delay_us(2500000);
     MXC_Delay(50);
 
-    // print_info("replace - 4\n");
     // compare the hash of inputted token with the stored corect token hash
     retrive_token_hash();
 
@@ -1118,9 +1098,7 @@ void attempt_replace() {
 
     // Find the component to swap out
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
-        // print_info("replace - 7, id=%x\n", flash_status.component_ids[i]);
         if (flash_status.component_ids[i] == component_id_out) {
-            // print_info("replace - 8, id=%x\n", flash_status.component_ids[i]);
             // find it, replace
             flash_status.component_ids[i] = component_id_in;
             WRITE_FLASH_MEMORY;

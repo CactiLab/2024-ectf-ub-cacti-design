@@ -13,7 +13,6 @@
 
 #include "board.h"
 #include "i2c.h"
-#include "led.h"
 #include "mxc_delay.h"
 #include "mxc_errors.h"
 #include "nvic_table.h"
@@ -414,32 +413,9 @@ void boot() {
         POST_BOOT
     #else
 
-    // uint8_t buf[250] = "I love you.";
-    // secure_send(buf, strlen(buf) + 1);
-
-    // uint8_t buf[250];
-    // secure_receive(buf);
-    // printf("msg=%s\n", buf);
-
-    // Anything after this macro can be changed by your design
-    // but will not be run on provisioned systems
-    LED_Off(LED1);
-    LED_Off(LED2);
-    LED_Off(LED3);
     // LED loop to show that boot occurred
     while (1) {
-        LED_On(LED1);
-        MXC_Delay(500000);
-        LED_On(LED2);
-        MXC_Delay(500000);
-        LED_On(LED3);
-        MXC_Delay(500000);
-        LED_Off(LED1);
-        MXC_Delay(500000);
-        LED_Off(LED2);
-        MXC_Delay(500000);
-        LED_Off(LED3);
-        MXC_Delay(500000);
+        
     }
     #endif
 }
@@ -689,16 +665,12 @@ void init() {
     if (flash_status.mode != SYS_MODE_NORMAL) {
         defense_mode();
     }
-
-    LED_On(LED2);
 }
 
 /*********************************** MAIN *************************************/
 
 int main(void) {
     init();
-
-    printf("Component Started\n");
 
     while (1) {
         wait_and_receive_packet(global_buffer_recv);
