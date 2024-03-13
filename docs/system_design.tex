@@ -224,24 +224,19 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 	The CP generates a nonce as the challenge for the AP,
 	and the AP signs the reading purpose label,
 	nonce,
+	plain message,
 	and CP address using the first private key as the response.
 	The AP also signs the message with the same key.
-	The AP sends the response,
-	message,
-	and the message signature to the CP.
-	The CP verifies the response and the message signature by using the first public key.
+	The AP sends the response and the message to the CP.
+	The CP verifies the response by using the first public key.
 	It receives the message if validations pass.
 	
 	To read a message from a CP,
 	the AP sends the reading command and a nonce challenge to the CP.
 	The CP signs the challenge with the second private key as the response,
-	and puts the response,
-	message,
-	and the signature of the message (with the second private key) to the I2C buffer waiting for the AP to read.
-	The AP reads the response,
-	message,
-	and the signature.
-	It verifies the response and the message signature using the second public key.
+	and puts the response and message to the I2C buffer waiting for the AP to read.
+	The AP reads the response and message
+	It verifies the response using the second public key.
 	
 	The signing process includes the purpose label and CP ID to mitigate response reuse attacks (from other functionalities or other CPs).
 	
