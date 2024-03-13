@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2024-03-07T18:17:58.497Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="eV8ZQA1nxd3bvOc8iPsc" version="24.0.2" type="device">
+<mxfile host="app.diagrams.net" modified="2024-03-13T17:13:49.723Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" etag="YsmiTboKXk9Ck9Errn_K" version="24.0.5" type="device">
   <diagram name="Page-1" id="2YBvvXClWsGukQMizWep">
     <mxGraphModel dx="1835" dy="371" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
@@ -44,8 +44,8 @@
         <mxCell id="0H2hq_mlnMutdMI_ohXj-2" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};" parent="1" vertex="1">
           <mxGeometry x="40" y="160" width="10" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="0H2hq_mlnMutdMI_ohXj-3" value="Sign(nonce, p, address) +&lt;br&gt;&amp;nbsp;Sign (p, address, nonce + message) +&lt;div&gt;message&lt;/div&gt;" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" edge="1">
-          <mxGeometry x="0.002" relative="1" as="geometry">
+        <mxCell id="0H2hq_mlnMutdMI_ohXj-3" value="Sign (p, address, nonce + message) +&lt;div&gt;message&lt;/div&gt;" style="html=1;verticalAlign=bottom;endArrow=classic;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endFill=1;" parent="1" edge="1">
+          <mxGeometry x="0.0032" relative="1" as="geometry">
             <mxPoint x="50" y="210" as="sourcePoint" />
             <Array as="points">
               <mxPoint x="180" y="210" />

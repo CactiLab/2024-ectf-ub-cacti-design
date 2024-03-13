@@ -483,6 +483,7 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The CP generates a nonce as the challenge for the AP.
 		\item The AP signs the nonce,
 		sending purpose label,
+		plain message,
 		and the CP I2C address using the \texttt{K\_Pri1} key as the response for the CP.
 		The AP sends the response,
 		a signature of the message (signed sending purpose label,
@@ -492,10 +493,9 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		and message to the CP.
 		\item The CP verifies using the \texttt{K\_Pub1} key the response by checking if the reading purpose label,
 		nonce,
+		plain message,
 		and the address is correct to ensure authenticity.
-		\item The CP then verifies the message signature by using the \texttt{K\_Pub1} key to ensure the message integrity.
-		\item If the two verifications pass,
-		the CP receives the message.
+		\item If the validation passes, the CP receives the message.
 	\end{enumerate}
 	
 	\begin{figure}[h]
@@ -510,19 +510,21 @@ top=2.5cm, bottom=2.6cm, left=2.58cm, right=2.53cm]{geometry}
 		\item The AP sends the \texttt{reading} command and a generated nonce to one specific CP.
 		\item The CP signs the nonce,
 		reading purpose label,
+		plain message,
 		and the address with the \texttt{K\_Pri2} key as the response.
 		It puts the response,
 		a signature of the message (signed the reading purpose label,
 		address,
 		nonce,
+		plain message,
 		and message using the \texttt{K\_Pri2} key),
 		and the plain message in the I2C buffer,
 		waiting for the AP to read.
 		\item The AP reads the packet from the CP.
 		\item The AP verifies the response using the \texttt{K\_Pub2} key and checks if the reading purpose label,
 		nonce,
+		plain message,
 		and the CP I2C address are correct.
-		It then verifies the message signature by using the \texttt{K\_Pub2} to ensure the message integrity.
 		If verifications pass,
 		the AP accepts the message.
 	\end{enumerate}
