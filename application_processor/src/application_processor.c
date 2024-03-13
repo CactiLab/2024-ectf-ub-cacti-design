@@ -480,7 +480,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // send the packet (sign(p, address, nonce, msg), msg)
     result = send_packet(address, SIGNATURE_SIZE + len, sending_buf);
-    RANDOM_DELAY_TINY;
+    // RANDOM_DELAY_TINY;
     if (result == ERROR_RETURN) {
         return ERROR_RETURN;
     }
