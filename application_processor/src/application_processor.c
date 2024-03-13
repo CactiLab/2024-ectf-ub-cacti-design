@@ -887,7 +887,6 @@ void attempt_boot() {
     uint8_t *signatures = malloc(SIGNATURE_SIZE * flash_status.component_cnt);  // store signatures for each CP
 
     // send `boot` command + challenge + ID to each provisioned component
-    // RANDOM_DELAY_TINY;
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         // get the CP's I2C address
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
@@ -907,7 +906,6 @@ void attempt_boot() {
             return;
         }
 
-        // RANDOM_DELAY_TINY;
         MXC_Delay(50);
 
         // receive response + cp's nonce
@@ -918,7 +916,6 @@ void attempt_boot() {
             return;
         }
         packet_boot_1_cp_to_ap *pkt_recv_1 = (packet_boot_1_cp_to_ap *) receiving_buf;
-        // RANDOM_DELAY_TINY;
 
         // retrieve the key
         retrive_cp_pub_key();
@@ -959,7 +956,6 @@ void attempt_boot() {
     crypto_wipe(general_buf, MAX_I2C_MESSAGE_LEN + 1);
 
     // boot each provisioned component (send signature to each CP)
-    // RANDOM_DELAY_TINY;
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         // get CP's I2C address
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
@@ -974,7 +970,6 @@ void attempt_boot() {
         }
 
         // receive and print the CP booting message
-        // RANDOM_DELAY_TINY;
         recv_len = poll_and_receive_packet(addr, receiving_buf);
         // cancel_continuous_timer();
         if (recv_len < 0) {
@@ -1006,7 +1001,6 @@ void attempt_boot() {
 
         //decyrption success
         // print decrpted CP boot message
-        // RANDOM_DELAY_TINY;
         print_info("0x%08x>%s\n", flash_status.component_ids[i], cp_boot_msg);
         crypto_wipe(cp_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
 
@@ -1042,10 +1036,8 @@ void attempt_boot() {
     crypto_wipe(flash_status.aead_key, AEAD_KEY_SIZE);
 
     // print boot message
-    // RANDOM_DELAY_TINY;
     print_info("AP>%s\n", plain_ap_boot_msg);
     crypto_wipe(plain_ap_boot_msg, BOOT_MSG_PLAIN_TEXT_SIZE);
-    // RANDOM_DELAY_TINY;
     print_success("Boot\n");
 
     // Boot
