@@ -898,7 +898,7 @@ void attempt_boot() {
 
         // send the pakcet (boot command + nonce + id)
         result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
-        // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -908,7 +908,7 @@ void attempt_boot() {
 
         // receive response + cp's nonce
         recv_len = poll_and_receive_packet(addr, receiving_buf);
-        // cancel_continuous_timer();
+        cancel_continuous_timer();
         if (recv_len != SIGNATURE_SIZE + NONCE_SIZE) {
             free(signatures);
             return;
@@ -960,7 +960,7 @@ void attempt_boot() {
         // send
         MXC_Delay(50);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
-        // start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -968,7 +968,7 @@ void attempt_boot() {
 
         // receive and print the CP booting message
         recv_len = poll_and_receive_packet(addr, receiving_buf);
-        // cancel_continuous_timer();
+        cancel_continuous_timer();
         if (recv_len < 0) {
             crypto_wipe(receiving_buf, MAX_I2C_MESSAGE_LEN + 1);
             free(signatures);

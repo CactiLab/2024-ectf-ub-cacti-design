@@ -518,12 +518,12 @@ void process_boot() {
 
     // send
     send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
-    // start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
 
     // receive the response
     MXC_Delay(50);
     result = wait_and_receive_packet(global_buffer_recv);
-    // cancel_continuous_timer();
+    cancel_continuous_timer();
     if (result <= 0) {
         return;
     }
