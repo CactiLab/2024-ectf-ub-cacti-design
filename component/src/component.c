@@ -491,7 +491,7 @@ void process_boot() {
 
     // send
     send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
 
     // receive the response
     MXC_Delay(50);
@@ -561,7 +561,7 @@ void process_attest() {
 
     // send nonce
     send_packet_and_ack(NONCE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
 
     // receive the response sign(p, nonce, id)
     volatile uint8_t len = wait_and_receive_packet(global_buffer_recv);

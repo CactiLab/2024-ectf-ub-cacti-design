@@ -759,7 +759,7 @@ int attest_component(uint32_t component_id) {
 
     // send the attestation command
     result = send_packet(addr, 1, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
     if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
@@ -788,7 +788,7 @@ int attest_component(uint32_t component_id) {
 
     // send the signature
     send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
 
     MXC_Delay(20);
@@ -873,7 +873,7 @@ void attempt_boot() {
 
         // send the pakcet (boot command + nonce + id)
         result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
-        start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -935,7 +935,7 @@ void attempt_boot() {
         // send
         MXC_Delay(50);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
-        start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -1169,7 +1169,6 @@ void attempt_attest() {
     // host input component ID
     uint32_t component_id;
     recv_input("Component ID: ", buf);
-    RANDOM_DELAY_TINY;
     sscanf(buf, "%x", &component_id);
     crypto_wipe(buf, HOST_INPUT_BUF_SIZE);
 
