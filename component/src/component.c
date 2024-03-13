@@ -588,7 +588,7 @@ void process_attest() {
 
     // send nonce
     send_packet_and_ack(NONCE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
 
     // receive the response sign(p, nonce, id)
     volatile uint8_t len = wait_and_receive_packet(global_buffer_recv);

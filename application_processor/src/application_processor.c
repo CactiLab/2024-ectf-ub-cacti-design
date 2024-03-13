@@ -732,6 +732,7 @@ int scan_components() {
             scan_message* scan = (scan_message*) receive_buffer;
             print_info("F>0x%08x\n", scan->component_id);
         }
+        MXC_Delay(50);
     }
     print_success("List\n");
     return SUCCESS_RETURN;
@@ -765,7 +766,7 @@ int attest_component(uint32_t component_id) {
 
     // send the attestation command
     result = send_packet(addr, 1, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_8);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
     if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
@@ -794,7 +795,7 @@ int attest_component(uint32_t component_id) {
 
     // send the signature
     send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_8);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
 
     MXC_Delay(20);
@@ -898,7 +899,7 @@ void attempt_boot() {
 
         // send the pakcet (boot command + nonce + id)
         result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
-        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -960,7 +961,7 @@ void attempt_boot() {
         // send
         MXC_Delay(50);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
-        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -1172,7 +1173,7 @@ void attempt_attest() {
     free(workarea);
 
     // mitigate brute-force
-    random_delay_us(1200000);
+    random_delay_us(1000000);
     MXC_Delay(100);
 
     // retieve the stored correct hashed PIN, compare it with the inputted hashed PIN
