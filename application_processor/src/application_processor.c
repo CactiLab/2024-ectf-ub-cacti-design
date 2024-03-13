@@ -880,7 +880,6 @@ void attempt_boot() {
         convert_32_to_8(pkt_send_1->id, flash_status.component_ids[i]);
 
         // send the pakcet (boot command + nonce + id)
-        RANDOM_DELAY_TINY;
         result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
         start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
         if (result == ERROR_RETURN) {
@@ -942,7 +941,6 @@ void attempt_boot() {
         i2c_addr_t addr = component_id_to_i2c_addr(flash_status.component_ids[i]);
 
         // send
-        RANDOM_DELAY_TINY;
         MXC_Delay(50);
         result = send_packet(addr, SIGNATURE_SIZE, signatures + SIGNATURE_SIZE * i);
         start_continuous_timer(TIMER_LIMIT_I2C_MSG_4);
