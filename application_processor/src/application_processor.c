@@ -767,12 +767,14 @@ int attest_component(uint32_t component_id) {
 
     // send the attestation command
     result = send_packet(addr, 1, transmit_buffer);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
     if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
 
     // receive nonce from CP
     volatile int recv_len = poll_and_receive_packet(addr, receive_buffer);
+    cancel_continuous_timer();
     if (recv_len != NONCE_SIZE) {
         return ERROR_RETURN;
     }
@@ -794,12 +796,14 @@ int attest_component(uint32_t component_id) {
 
     // send the signature
     send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
 
     MXC_Delay(20);
 
     // receive the ecnrypted attestation data
     recv_len = poll_and_receive_packet(addr, receive_buffer);
+    cancel_continuous_timer();
     if (recv_len != ATT_FINAL_TEXT_SIZE) {
         return ERROR_RETURN;
     }
@@ -820,13 +824,9 @@ int attest_component(uint32_t component_id) {
     if (r != 0) {
         // decryption failed
         return ERROR_RETURN;
-    }        
+    }
+    
     // decryption ok
-
-    // wipe
-    // crypto_wipe(flash_status.aead_key, sizeof(flash_status.aead_key));
-    // crypto_wipe(flash_status.aead_nonce, sizeof(flash_status.aead_nonce));
-
     // Print out attestation data
     general_buffer[ATT_LOC_POS + general_buffer[ATT_LOC_LEN_POS]] = '\0';
     general_buffer[ATT_DATE_POS + general_buffer[ATT_DATE_LEN_POS]] = '\0';

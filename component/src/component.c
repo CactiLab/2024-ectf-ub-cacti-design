@@ -589,9 +589,11 @@ void process_attest() {
 
     // send nonce
     send_packet_and_ack(NONCE_SIZE, transmit_buffer);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
 
     // receive the response sign(p, nonce, id)
     volatile uint8_t len = wait_and_receive_packet(global_buffer_recv);
+    cancel_continuous_timer();
     if (len != SIGNATURE_SIZE) {
         return;
     }
@@ -620,12 +622,8 @@ void process_attest() {
         defense_mode();
         return;
     }
-    RANDOM_DELAY_TINY;
+    
     // verification passed
-
-    // wipe
-    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
-
     // retrive encrypted attest data and send
     retrive_attest_cipher();
     memcpy(transmit_buffer, flash_status.cipher_attest_data, CIPHER_ATTESTATION_DATA_LEN);
