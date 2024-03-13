@@ -359,7 +359,7 @@ int secure_receive(uint8_t* buffer) {
 
     // send the challenge packet
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
 
     MXC_Delay(50);
 
@@ -387,7 +387,6 @@ int secure_receive(uint8_t* buffer) {
     EXPR_EXECUTE(crypto_eddsa_check(receiving_buf , flash_status.ap_pub_key, general_buf, NONCE_SIZE + 2 + len), ERR_VALUE);
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     EXPR_CHECK(ERR_VALUE);
-    RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         defense_mode();
         return 0;

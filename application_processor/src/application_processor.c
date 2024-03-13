@@ -452,7 +452,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // send the cmd label packet
     result = send_packet(address, sizeof(uint8_t), sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
     if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
@@ -477,7 +477,6 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
     // make the signature and construct the sending packet (sign(p, address, nonce, msg), msg)
     retrive_ap_priv_key();
     crypto_eddsa_sign(sending_buf, flash_status.ap_priv_key, general_buf_2, NONCE_SIZE + 2 + len); // sign msg
-    RANDOM_DELAY_TINY;
     crypto_wipe(flash_status.ap_priv_key, sizeof(flash_status.ap_priv_key));
     memcpy(sending_buf + SIGNATURE_SIZE, buffer, len);
 
@@ -529,7 +528,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     if (result == ERROR_RETURN) {
         return ERROR_RETURN;
     }
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_2);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
 
     MXC_Delay(50);
 
@@ -556,7 +555,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     EXPR_EXECUTE(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len), ERR_VALUE);
     crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
     EXPR_CHECK(ERR_VALUE);
-    RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         defense_mode();
         return 0;
@@ -825,7 +823,7 @@ int attest_component(uint32_t component_id) {
         // decryption failed
         return ERROR_RETURN;
     }
-    
+
     // decryption ok
     // Print out attestation data
     general_buffer[ATT_LOC_POS + general_buffer[ATT_LOC_LEN_POS]] = '\0';
