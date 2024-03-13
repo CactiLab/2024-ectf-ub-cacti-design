@@ -491,7 +491,7 @@ void process_boot() {
 
     // send
     send_packet_and_ack(SIGNATURE_SIZE + NONCE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_16);
 
     // receive the response
     MXC_Delay(50);
