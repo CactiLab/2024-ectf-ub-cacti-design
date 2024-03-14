@@ -398,6 +398,8 @@ void convert_32_to_8(uint8_t *buf, uint32_t i) {
  * delay 4 seconds
 */
 void defense_mode() {
+    printf("defense_mode\n");
+    fflush(stdout);
     __disable_irq();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
@@ -411,6 +413,8 @@ void defense_mode() {
  * Set the system to defense mode, but do not delay
 */
 void enable_defense_bit() {
+    printf("enable_defense_bit\n");
+    fflush(stdout);
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
     MXC_Delay(500000);
@@ -526,7 +530,6 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     MXC_Delay(50);
 
     // receive the packet from CP (sign(auth), sign(msg), msg)
-    ;
     recv_len = poll_and_receive_packet(address, receiving_buf);
     cancel_continuous_timer();
     if (recv_len <= 0) {
@@ -999,7 +1002,6 @@ void attempt_boot() {
         POST_BOOT
     #else
 
-    // Everything after this point is modifiable in your design
     while (1) {
 
     }

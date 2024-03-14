@@ -199,7 +199,7 @@ void retrive_boot_cipher() {
     retrive_ap_pub_key();   \
     retrive_cp_priv_key();  \
     retrive_attest_cipher();    \
-    retrive_attest_cipher();    \
+    retrive_boot_cipher();    \
     flash_simple_erase_page(FLASH_ADDR);    \
     flash_simple_write(FLASH_ADDR, (uint32_t*)&flash_status, sizeof(flash_entry));  \
     crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));  \
@@ -248,6 +248,8 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
  * delay 4 seconds
 */
 void defense_mode() {
+    printf("defense_mode\n");
+    fflush(stdout);
     __disable_irq();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
@@ -261,6 +263,8 @@ void defense_mode() {
  * Set the system to defense mode, but do not delay
 */
 void enable_defense_bit() {
+    printf("enable_defense_bit\n");
+    fflush(stdout);
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
     MXC_Delay(500000);
@@ -318,7 +322,9 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     
-    MXC_Delay(200);
+    // printf("send done\n");
+    // fflush(stdout);
+    MXC_Delay(500);
 }
 
 /**
@@ -392,7 +398,6 @@ int secure_receive(uint8_t* buffer) {
         panic();
         return 0;
     }
-    // crypto_wipe(flash_status.ap_pub_key, sizeof(flash_status.ap_pub_key));
     memcpy(buffer, receiving_buf + SIGNATURE_SIZE, len);
     
     MXC_Delay(500);
@@ -527,16 +532,13 @@ void process_boot() {
 
     MXC_Delay(50);
 
-    // Call the boot function
-    // POST BOOT FUNCTIONALITY
-    // DO NOT REMOVE IN YOUR DESIGN
+    // Boot
     #ifdef POST_BOOT
         POST_BOOT
     #else
 
-    // LED loop to show that boot occurred
     while (1) {
-        
+
     }
     #endif
 }

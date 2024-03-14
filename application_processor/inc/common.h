@@ -20,15 +20,15 @@ void enable_defense_bit();       // defined in application_processor.c
     } while(!non_volatile_delay_cycles);   \
     delay_cycles = non_volatile_delay_cycles; /* Copy to volatile variable */ \
     volatile uint8_t dummy_var = 0; \
-    volatile uint8_t dummy_var_2 = 0; \
-    for (volatile uint8_t i = 0; i < delay_cycles; i++) { \
-        dummy_var += i; /* Trivial operation to avoid optimization */ \
-        dummy_var_2 |= i;   \
+    volatile uint8_t i = 0;     \
+    for (; i < delay_cycles; i++) { \
+        dummy_var += 1; /* Trivial operation to avoid optimization */ \
     } \
-    if ((dummy_var | dummy_var_2) == 0) { \
+    if (!((dummy_var == delay_cycles) && (i == delay_cycles))) { \
         panic();    \
     }   \
 } while(0)
+
 
 
 #define EXPR_EXECUTE(EXPR, ERR)     \
