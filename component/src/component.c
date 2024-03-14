@@ -355,7 +355,7 @@ int secure_receive(uint8_t* buffer) {
 
     // send the challenge packet
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_16);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_20);
 
     MXC_Delay(50);
 
