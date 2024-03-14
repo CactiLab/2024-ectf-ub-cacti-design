@@ -695,8 +695,6 @@ int issue_cmd(i2c_addr_t addr, uint8_t* transmit, uint8_t* receive) {
 /******************************** COMPONENT COMMS ********************************/
 
 int scan_components() {
-    MXC_Delay(200);
-
     // Print out provisioned component IDs
     for (unsigned i = 0; i < flash_status.component_cnt; i++) {
         print_info("P>0x%08x\n", flash_status.component_ids[i]);
@@ -725,7 +723,6 @@ int scan_components() {
             scan_message* scan = (scan_message*) receive_buffer;
             print_info("F>0x%08x\n", scan->component_id);
         }
-        MXC_Delay(50);
     }
     print_success("List\n");
     return SUCCESS_RETURN;
