@@ -547,6 +547,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     EXPR_EXECUTE(crypto_eddsa_check(receiving_buf, flash_status.cp_pub_key, general_buf_2, NONCE_SIZE + 2 + len), ERR_VALUE);
     crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
     EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         defense_mode();
         return 0;
@@ -879,6 +880,7 @@ void attempt_boot() {
         EXPR_EXECUTE(crypto_eddsa_check(pkt_recv_1->sig_auth, flash_status.cp_pub_key, sending_buf, NONCE_SIZE + 5), ERR_VALUE);
         crypto_wipe(flash_status.cp_pub_key, sizeof(flash_status.cp_pub_key));
         EXPR_CHECK(ERR_VALUE);
+        RANDOM_DELAY_TINY;
         if (if_val_2 != 0) {
             free(signatures);
             defense_mode();
@@ -1101,6 +1103,7 @@ void attempt_attest() {
 
     // host input
     recv_input("Enter pin: ", buf);
+    RANDOM_DELAY_TINY;
 
     // length check
     if (strlen(buf) != PIN_LEN) {
@@ -1131,7 +1134,7 @@ void attempt_attest() {
     free(workarea);
 
     // mitigate brute-force
-    random_delay_us(1000000);
+    random_delay_us(1500000);
     MXC_Delay(100);
 
     // retieve the stored correct hashed PIN, compare it with the inputted hashed PIN
@@ -1142,6 +1145,7 @@ void attempt_attest() {
     crypto_wipe(flash_status.pin_hash, sizeof(flash_status.pin_hash));
     crypto_wipe(hash, sizeof(hash));
     EXPR_CHECK(ERR_VALUE);
+    RANDOM_DELAY_TINY;
     if (if_val_2 != 0) {
         defense_mode();
         return;
@@ -1177,6 +1181,8 @@ void attempt_attest() {
 int main() {
     // Initialize board
     init();
+
+    MXC_Delay(500000);
 
     // Handle commands forever
     char buf[HOST_INPUT_BUF_SIZE];
