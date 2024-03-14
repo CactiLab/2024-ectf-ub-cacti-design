@@ -248,8 +248,6 @@ int compare_32_and_8(uint8_t *buf, uint32_t i) {
  * delay 4 seconds
 */
 void defense_mode() {
-    printf("defense_mode\n");
-    fflush(stdout);
     __disable_irq();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
@@ -263,8 +261,6 @@ void defense_mode() {
  * Set the system to defense mode, but do not delay
 */
 void enable_defense_bit() {
-    printf("enable_defense_bit\n");
-    fflush(stdout);
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
     MXC_Delay(500000);
@@ -322,8 +318,6 @@ void secure_send(uint8_t* buffer, uint8_t len) {
     crypto_wipe(sending_buf, MAX_I2C_MESSAGE_LEN + 1);
     crypto_wipe(general_buf_2, MAX_I2C_MESSAGE_LEN + 1);
     
-    // printf("send done\n");
-    // fflush(stdout);
     MXC_Delay(500);
 }
 

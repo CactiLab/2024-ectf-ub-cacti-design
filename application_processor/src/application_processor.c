@@ -398,8 +398,6 @@ void convert_32_to_8(uint8_t *buf, uint32_t i) {
  * delay 4 seconds
 */
 void defense_mode() {
-    printf("defense_mode\n");
-    fflush(stdout);
     __disable_irq();
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
@@ -413,8 +411,6 @@ void defense_mode() {
  * Set the system to defense mode, but do not delay
 */
 void enable_defense_bit() {
-    printf("enable_defense_bit\n");
-    fflush(stdout);
     flash_status.mode = SYS_MODE_DEFENSE;
     WRITE_FLASH_MEMORY;
     MXC_Delay(500000);
