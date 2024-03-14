@@ -448,7 +448,7 @@ int secure_send(uint8_t address, uint8_t* buffer, uint8_t len) {
 
     // send the cmd label packet
     result = send_packet(address, sizeof(uint8_t), sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_20);
     if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
@@ -521,7 +521,7 @@ int secure_receive(i2c_addr_t address, uint8_t* buffer) {
     if (result == ERROR_RETURN) {
         return ERROR_RETURN;
     }
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_5);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_20);
 
     MXC_Delay(50);
 
@@ -759,7 +759,7 @@ int attest_component(uint32_t component_id) {
 
     // send the attestation command
     result = send_packet(addr, 1, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_20);
     if (result != SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
@@ -788,7 +788,7 @@ int attest_component(uint32_t component_id) {
 
     // send the signature
     send_packet(addr, SIGNATURE_SIZE, transmit_buffer);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_14);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_20);
     crypto_wipe(transmit_buffer, sizeof(transmit_buffer));
 
     MXC_Delay(20);
@@ -833,23 +833,6 @@ int attest_component(uint32_t component_id) {
 
 /********************************* AP LOGIC ***********************************/
 
-// Boot sequence
-// YOUR DESIGN MUST NOT CHANGE THIS FUNCTION
-// Boot message is customized through the AP_BOOT_MSG macro
-void boot() {
-    // POST BOOT FUNCTIONALITY
-    // DO NOT REMOVE IN YOUR DESIGN
-    #ifdef POST_BOOT
-        POST_BOOT
-    #else
-
-    // Everything after this point is modifiable in your design
-    while (1) {
-
-    }
-    #endif
-}
-
 void attempt_boot() {
     // define variables
     uint8_t sending_buf[MAX_I2C_MESSAGE_LEN + 1] = {0};
@@ -873,7 +856,7 @@ void attempt_boot() {
 
         // send the pakcet (boot command + nonce + id)
         result = send_packet(addr, NONCE_SIZE + 5, sending_buf);
-        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_16);
+        start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_20);
         if (result == ERROR_RETURN) {
             free(signatures);
             return;
@@ -1012,7 +995,15 @@ void attempt_boot() {
     print_success("Boot\n");
 
     // Boot
-    boot();
+    #ifdef POST_BOOT
+        POST_BOOT
+    #else
+
+    // Everything after this point is modifiable in your design
+    while (1) {
+
+    }
+    #endif
 }
 
 

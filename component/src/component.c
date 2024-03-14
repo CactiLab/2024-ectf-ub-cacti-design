@@ -355,7 +355,7 @@ int secure_receive(uint8_t* buffer) {
 
     // send the challenge packet
     send_packet_and_ack(NONCE_SIZE, sending_buf);
-    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_20);
+    start_continuous_timer(TIMER_LIMIT_I2C_MSG_VAL_16);
 
     MXC_Delay(50);
 
@@ -401,21 +401,7 @@ int secure_receive(uint8_t* buffer) {
 
 /******************************* FUNCTION DEFINITIONS *********************************/
 
-// Example boot sequence
-// Your design does not need to change this
-void boot() {
-    // POST BOOT FUNCTIONALITY
-    // DO NOT REMOVE IN YOUR DESIGN
-    #ifdef POST_BOOT
-        POST_BOOT
-    #else
 
-    // LED loop to show that boot occurred
-    while (1) {
-        
-    }
-    #endif
-}
 
 // Handle a transaction from the AP
 void component_process_cmd() {
@@ -542,7 +528,17 @@ void process_boot() {
     MXC_Delay(50);
 
     // Call the boot function
-    boot();
+    // POST BOOT FUNCTIONALITY
+    // DO NOT REMOVE IN YOUR DESIGN
+    #ifdef POST_BOOT
+        POST_BOOT
+    #else
+
+    // LED loop to show that boot occurred
+    while (1) {
+        
+    }
+    #endif
 }
 
 void process_scan() {
