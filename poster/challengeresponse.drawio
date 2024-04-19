@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2024-04-19T03:15:44.484Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36" etag="r5qbYpcqlj-ZXb7-0cEU" version="24.2.2" type="device">
+<mxfile host="app.diagrams.net" modified="2024-04-19T03:25:16.601Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36" etag="oRu3WthFBWMS5MQIpBxs" version="24.2.5" type="device">
   <diagram name="Page-1" id="Q8tB0Zb_GBSvzR4nFOCO">
-    <mxGraphModel dx="1095" dy="725" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="537" dy="355" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -20,7 +20,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="-c-s189AFRnEuxBVTGTI-8" value="Send Challenge" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=20;fontColor=#5b38c2;" parent="1" vertex="1">
-          <mxGeometry x="314" y="588" width="155" height="30" as="geometry" />
+          <mxGeometry x="318" y="588" width="155" height="30" as="geometry" />
         </mxCell>
         <mxCell id="-c-s189AFRnEuxBVTGTI-9" value="Calculate" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=20;fillColor=#d7cdf8;strokeColor=none;fontColor=#000000;verticalAlign=middle;arcSize=6;" parent="1" vertex="1">
           <mxGeometry x="490" y="590" width="130" height="130" as="geometry" />
@@ -35,7 +35,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="-c-s189AFRnEuxBVTGTI-12" value="Respond" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=20;fontColor=#5b38c2;" parent="1" vertex="1">
-          <mxGeometry x="314" y="657" width="155" height="30" as="geometry" />
+          <mxGeometry x="318" y="658" width="155" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
